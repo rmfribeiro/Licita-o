@@ -1,0 +1,313 @@
+{
+  "meta": {
+    "nome": "Base de regras de conformidade - Lei 14.133/2021",
+    "versao": "0.1 (piloto)",
+    "observacao": "Checklist inicial dos pontos de inconformidade mais frequentes e de maior impacto em editais. Cada regra deve ser validada por jurista. Severidade: alta = pode invalidar o certame; media = gera questionamento/impugnacao; baixa = ajuste formal.",
+    "tipos_verificacao": {
+      "automatica": "Pode ser pre-checada por presenca/ausencia de termos no texto do edital.",
+      "semantica": "Exige leitura interpretativa (IA + jurista): a presenca do termo nao garante conformidade."
+    }
+  },
+  "regras": [
+    {
+      "id": "R01",
+      "categoria": "Estrutura do edital",
+      "item": "Indicacao da modalidade e do criterio de julgamento",
+      "base_legal": "Lei 14.133/2021, arts. 6, 28 a 34 e 36",
+      "severidade": "alta",
+      "tipo": "automatica",
+      "termos": ["modalidade", "criterio de julgamento", "pregao", "concorrencia", "menor preco", "maior desconto", "melhor tecnica", "tecnica e preco"],
+      "o_que_checar": "O edital deve indicar expressamente a modalidade e o criterio de julgamento da licitacao."
+    },
+    {
+      "id": "R02",
+      "categoria": "Publicidade",
+      "item": "Divulgacao no PNCP (Portal Nacional de Contratacoes Publicas)",
+      "base_legal": "Lei 14.133/2021, arts. 54 e 174",
+      "severidade": "alta",
+      "tipo": "automatica",
+      "termos": ["PNCP", "Portal Nacional de Contratacoes Publicas"],
+      "o_que_checar": "A divulgacao do edital no PNCP e obrigatoria como condicao de eficacia e publicidade do certame."
+    },
+    {
+      "id": "R03",
+      "categoria": "Prazos",
+      "item": "Prazo minimo entre a divulgacao e a apresentacao de propostas",
+      "base_legal": "Lei 14.133/2021, art. 55",
+      "severidade": "alta",
+      "tipo": "semantica",
+      "termos": ["prazo", "dias uteis", "abertura", "apresentacao das propostas", "sessao publica"],
+      "o_que_checar": "O prazo de divulgacao deve respeitar o minimo legal conforme a modalidade e o objeto (ex.: pregao 8 dias uteis; varia para bens/servicos e obras). Verificar se a data de abertura respeita o intervalo."
+    },
+    {
+      "id": "R04",
+      "categoria": "Objeto",
+      "item": "Definicao precisa do objeto, sem direcionamento",
+      "base_legal": "Lei 14.133/2021, arts. 18, 40 e 25, par. 1",
+      "severidade": "alta",
+      "tipo": "semantica",
+      "termos": ["objeto", "especificacao", "termo de referencia", "projeto basico"],
+      "o_que_checar": "O objeto deve ser definido de forma clara e suficiente, vedadas especificacoes que, sem justificativa tecnica, restrinjam a competicao ou direcionem o resultado."
+    },
+    {
+      "id": "R05",
+      "categoria": "Objeto",
+      "item": "Indicacao de marca sem justificativa",
+      "base_legal": "Lei 14.133/2021, art. 41, I a III",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["marca", "modelo", "referencia", "ou similar", "ou equivalente"],
+      "o_que_checar": "Indicacao de marca so e admitida em hipoteses justificadas (padronizacao, etc.) e deve vir acompanhada de 'ou similar/equivalente'. Marca isolada sem justificativa e indicio de direcionamento."
+    },
+    {
+      "id": "R06",
+      "categoria": "Orcamento",
+      "item": "Valor estimado e pesquisa de precos",
+      "base_legal": "Lei 14.133/2021, arts. 23 e 24",
+      "severidade": "alta",
+      "tipo": "semantica",
+      "termos": ["valor estimado", "pesquisa de precos", "orcamento estimado", "preco de referencia"],
+      "o_que_checar": "Deve haver valor estimado baseado em pesquisa de precos idonea. Verificar se o orcamento e/ou sua metodologia constam (ou se foi justificado o sigilo, art. 24)."
+    },
+    {
+      "id": "R07",
+      "categoria": "Habilitacao",
+      "item": "Exigencias de qualificacao tecnica proporcionais",
+      "base_legal": "Lei 14.133/2021, arts. 62, 67 e 37",
+      "severidade": "alta",
+      "tipo": "semantica",
+      "termos": ["qualificacao tecnica", "atestado", "capacidade tecnica", "acervo tecnico"],
+      "o_que_checar": "Exigencias de atestados/quantitativos nao podem ser excessivas (em regra, limitadas a parcelas de maior relevancia e ate 50% dos quantitativos). Verificar proporcionalidade para evitar restricao a competitividade."
+    },
+    {
+      "id": "R08",
+      "categoria": "Habilitacao",
+      "item": "Qualificacao economico-financeira",
+      "base_legal": "Lei 14.133/2021, art. 69",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["qualificacao economico-financeira", "capital social", "patrimonio liquido", "indices contabeis", "balanco"],
+      "o_que_checar": "Exigencia de capital/patrimonio limitada a 10% do valor estimado e indices contabeis devem ser justificados. Exigencias acima do permitido restringem a competicao."
+    },
+    {
+      "id": "R09",
+      "categoria": "Habilitacao",
+      "item": "Regularidade fiscal, social e trabalhista",
+      "base_legal": "Lei 14.133/2021, art. 68",
+      "severidade": "media",
+      "tipo": "automatica",
+      "termos": ["regularidade fiscal", "FGTS", "INSS", "CNDT", "trabalhista", "seguridade social"],
+      "o_que_checar": "O edital deve exigir as certidoes de regularidade fiscal, social e trabalhista cabiveis (incluindo CNDT)."
+    },
+    {
+      "id": "R10",
+      "categoria": "Garantias",
+      "item": "Limites de garantia (proposta e execucao)",
+      "base_legal": "Lei 14.133/2021, art. 58 (garantia da proposta) e arts. 96 a 102 (garantia de execucao, em especial arts. 98 e 99)",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["garantia", "garantia de proposta", "garantia de execucao", "seguro-garantia", "caucao"],
+      "o_que_checar": "Garantia da proposta limitada a 1% do valor estimado (art. 58). Garantia de execucao em regra ate 5%, majoravel ate 10% mediante justificativa de complexidade tecnica e riscos (art. 98); em obras e servicos de engenharia de grande vulto, ate 30% com seguro-garantia com clausula de retomada (art. 99). Verificar se o percentual exigido vem acompanhado da devida justificativa."
+    },
+    {
+      "id": "R11",
+      "categoria": "Habilitacao",
+      "item": "Visita tecnica obrigatoria sem alternativa",
+      "base_legal": "Lei 14.133/2021, art. 63, I e III",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["visita tecnica", "vistoria", "atestado de visita"],
+      "o_que_checar": "Visita tecnica nao pode ser exigida de forma a restringir a competicao; deve-se admitir declaracao em substituicao a vistoria. Visita obrigatoria sem alternativa e indicio de restricao."
+    },
+    {
+      "id": "R12",
+      "categoria": "Tratamento diferenciado",
+      "item": "Beneficios a ME/EPP",
+      "base_legal": "LC 123/2006 c/c Lei 14.133/2021, art. 4",
+      "severidade": "media",
+      "tipo": "automatica",
+      "termos": ["microempresa", "ME", "EPP", "empresa de pequeno porte", "Lei Complementar 123"],
+      "o_que_checar": "O edital deve prever o tratamento diferenciado a ME/EPP, salvo justificativa de afastamento prevista em lei."
+    },
+    {
+      "id": "R13",
+      "categoria": "Sancoes",
+      "item": "Previsao de sancoes administrativas",
+      "base_legal": "Lei 14.133/2021, arts. 155 a 163",
+      "severidade": "media",
+      "tipo": "automatica",
+      "termos": ["sancao", "penalidade", "multa", "advertencia", "impedimento de licitar", "declaracao de inidoneidade"],
+      "o_que_checar": "O edital/minuta deve prever as sancoes aplicaveis e o devido processo para sua aplicacao."
+    },
+    {
+      "id": "R14",
+      "categoria": "Anexos",
+      "item": "Minuta de contrato e termo de referencia anexos",
+      "base_legal": "Lei 14.133/2021, art. 25",
+      "severidade": "alta",
+      "tipo": "automatica",
+      "termos": ["minuta do contrato", "minuta de contrato", "termo de referencia", "anexo"],
+      "o_que_checar": "O edital deve conter, como anexos, o termo de referencia/projeto e a minuta do contrato."
+    },
+    {
+      "id": "R15",
+      "categoria": "Orcamento",
+      "item": "Indicacao da dotacao orcamentaria / disponibilidade de recursos",
+      "base_legal": "Lei 14.133/2021, arts. 18 e 105 (planejamento e creditos orcamentarios)",
+      "severidade": "media",
+      "tipo": "automatica",
+      "termos": ["dotacao orcamentaria", "credito orcamentario", "recursos orcamentarios", "programa de trabalho"],
+      "o_que_checar": "Deve haver indicacao da dotacao/credito orcamentario que assegure o pagamento das obrigacoes."
+    },
+    {
+      "id": "R16",
+      "categoria": "Governanca",
+      "item": "Designacao do agente/comissao de contratacao",
+      "base_legal": "Lei 14.133/2021, arts. 7 e 8",
+      "severidade": "baixa",
+      "tipo": "automatica",
+      "termos": ["agente de contratacao", "comissao de contratacao", "pregoeiro"],
+      "o_que_checar": "Deve haver indicacao do agente de contratacao (ou pregoeiro/comissao) responsavel pela conducao do certame."
+    },
+    {
+      "id": "R17",
+      "categoria": "Riscos",
+      "item": "Matriz de alocacao de riscos (quando exigivel)",
+      "base_legal": "Lei 14.133/2021, arts. 22 e 103",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["matriz de risco", "alocacao de riscos", "matriz de alocacao"],
+      "o_que_checar": "Obras e servicos de grande vulto e contratacoes integrada/semi-integrada exigem matriz de riscos. Verificar exigibilidade conforme o objeto."
+    },
+    {
+      "id": "R18",
+      "categoria": "Impugnacao e recursos",
+      "item": "Prazos de esclarecimento, impugnacao e recurso",
+      "base_legal": "Lei 14.133/2021, arts. 164 a 168",
+      "severidade": "media",
+      "tipo": "automatica",
+      "termos": ["impugnacao", "esclarecimento", "recurso", "contrarrazoes"],
+      "o_que_checar": "O edital deve prever os prazos e o procedimento para esclarecimentos, impugnacoes e recursos."
+    },
+    {
+      "id": "R19",
+      "categoria": "Disputa",
+      "item": "Modo de disputa compativel com o criterio de julgamento",
+      "base_legal": "Lei 14.133/2021, art. 56",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["modo de disputa", "aberto", "fechado", "aberto e fechado"],
+      "o_que_checar": "O modo de disputa exclusivamente fechado e vedado quando o criterio for menor preco ou maior desconto; o modo aberto e vedado quando o criterio for tecnica e preco. Verificar a compatibilidade."
+    },
+    {
+      "id": "R20",
+      "categoria": "Julgamento",
+      "item": "Criterio de julgamento valido e definido",
+      "base_legal": "Lei 14.133/2021, art. 33",
+      "severidade": "alta",
+      "tipo": "automatica",
+      "termos": ["menor preco", "maior desconto", "melhor tecnica", "tecnica e preco", "maior lance", "maior retorno economico"],
+      "o_que_checar": "O edital deve adotar um dos criterios de julgamento legais (menor preco, maior desconto, melhor tecnica ou conteudo artistico, tecnica e preco, maior lance ou maior retorno economico)."
+    },
+    {
+      "id": "R21",
+      "categoria": "Vedacoes / integridade",
+      "item": "Vedacoes de participacao por conflito de interesse",
+      "base_legal": "Lei 14.133/2021, art. 14 (e art. 121, par. 3, para subcontratados)",
+      "severidade": "media",
+      "tipo": "automatica",
+      "termos": ["vedada a participacao", "impedidos de participar", "nao poderao participar", "nao poderao disputar", "conflito de interesse", "vinculo", "parente"],
+      "o_que_checar": "O edital deve consignar as vedacoes de participacao (autor do projeto, agentes com vinculo/parentesco, etc.) para prevenir conflito de interesse."
+    },
+    {
+      "id": "R22",
+      "categoria": "Recursos",
+      "item": "Prazo recursal de 3 dias uteis",
+      "base_legal": "Lei 14.133/2021, art. 165",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["recurso", "3 (tres) dias uteis", "tres dias uteis", "contrarrazoes", "intencao de recorrer"],
+      "o_que_checar": "O edital deve prever o prazo de 3 dias uteis para recurso (e igual para contrarrazoes). Verificar se o prazo indicado corresponde ao legal."
+    },
+    {
+      "id": "R23",
+      "categoria": "Execucao contratual",
+      "item": "Subcontratacao - limites e condicoes",
+      "base_legal": "Lei 14.133/2021, art. 122",
+      "severidade": "baixa",
+      "tipo": "semantica",
+      "termos": ["subcontrata", "subcontratacao", "subcontratado"],
+      "o_que_checar": "Se admitida a subcontratacao, o edital deve definir limites e condicoes; pode veda-la ou restringi-la. Verificar coerencia e a comprovacao de capacidade tecnica do subcontratado."
+    },
+    {
+      "id": "R24",
+      "categoria": "Julgamento",
+      "item": "Criterios de desempate",
+      "base_legal": "Lei 14.133/2021, art. 60",
+      "severidade": "baixa",
+      "tipo": "automatica",
+      "termos": ["desempate", "criterio de desempate", "empate"],
+      "o_que_checar": "O edital deve prever os criterios de desempate previstos em lei (incluindo as preferencias legais)."
+    },
+    {
+      "id": "R25",
+      "categoria": "Julgamento",
+      "item": "Negociacao com o primeiro colocado",
+      "base_legal": "Lei 14.133/2021, art. 61",
+      "severidade": "baixa",
+      "tipo": "semantica",
+      "termos": ["negociacao", "negociar condicoes", "primeiro colocado", "melhor proposta"],
+      "o_que_checar": "Apos o julgamento, deve ser prevista a negociacao de condicoes mais vantajosas com o licitante mais bem classificado."
+    },
+    {
+      "id": "R26",
+      "categoria": "Procedimento",
+      "item": "Sequencia das fases da licitacao",
+      "base_legal": "Lei 14.133/2021, art. 17",
+      "severidade": "baixa",
+      "tipo": "semantica",
+      "termos": ["fase", "habilitacao", "julgamento", "fase recursal", "homologacao"],
+      "o_que_checar": "A licitacao deve observar as fases na ordem legal (preparatoria, divulgacao, propostas, julgamento, habilitacao, recursal, homologacao); a habilitacao, em regra, e posterior ao julgamento, salvo inversao justificada."
+    },
+    {
+      "id": "R27",
+      "categoria": "Orcamento",
+      "item": "Orcamento estimado ou justificativa de sigilo",
+      "base_legal": "Lei 14.133/2021, arts. 23 e 24",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["orcamento estimado", "valor estimado", "orcamento sigiloso", "carater sigiloso"],
+      "o_que_checar": "O valor estimado deve constar do edital ou de anexo; caso adotado o orcamento sigiloso (art. 24), o sigilo deve estar expressamente justificado e o valor disponivel aos orgaos de controle."
+    },
+    {
+      "id": "R28",
+      "categoria": "Propostas",
+      "item": "Prazo de validade da proposta definido",
+      "base_legal": "Lei 14.133/2021, art. 56",
+      "severidade": "baixa",
+      "tipo": "automatica",
+      "termos": ["validade da proposta", "prazo de validade da proposta", "validade de sua proposta", "validade da proposta comercial"],
+      "o_que_checar": "O edital deve fixar o prazo de validade da proposta (a lei nao impoe prazo unico; usualmente 60 dias). Verificar se esta definido."
+    },
+    {
+      "id": "R29",
+      "categoria": "Consistencia interna",
+      "item": "Coerencia entre objeto, orgao, municipio, datas e plataforma",
+      "base_legal": "Lei 14.133/2021, arts. 5 (vinculacao ao edital) e 25",
+      "severidade": "alta",
+      "tipo": "semantica",
+      "termos": ["edital", "objeto", "municipio", "secretaria", "data", "endereco eletronico"],
+      "o_que_checar": "Detectar incoerencias internas tipicas de reaproveitamento de modelo: referencias a outro municipio/orgao, secretaria incompativel com o objeto, datas contraditorias, enderecos eletronicos divergentes ou malformados, exercicio orcamentario incorreto."
+    },
+    {
+      "id": "R30",
+      "categoria": "Orcamento",
+      "item": "Exercicio orcamentario correto",
+      "base_legal": "Lei 14.133/2021, arts. 18 e 105 (adequacao orcamentaria e creditos por exercicio)",
+      "severidade": "media",
+      "tipo": "semantica",
+      "termos": ["exercicio", "dotacao", "orcamento do exercicio"],
+      "o_que_checar": "A dotacao/credito deve referir-se ao exercicio vigente da contratacao. Referencia a exercicio anterior indica erro de modelo a corrigir."
+    }
+  ]
+}
