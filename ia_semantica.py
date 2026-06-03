@@ -65,10 +65,12 @@ def _selecionar_trecho_relevante(texto, regras_semanticas, nonce):
         p_lower = paragrafo.lower()
         if any(kw in p_lower for kw in palavras):
             custo = len(paragrafo) + 1
-            if custo > budget:
-                continue       # parágrafo não cabe; tenta os próximos menores
-            selecionados.append(paragrafo)
-            budget -= custo
+            if custo <= budget:
+                selecionados.append(paragrafo)
+                budget -= custo
+            elif budget < 6:
+                break          # budget insuficiente para qualquer parágrafo com keywords
+            # else: parágrafo não cabe mas há budget restante; tenta os próximos
 
     complemento = "\n".join(selecionados)
     if len(texto) > MAX_CHARS_EDITAL and not complemento:
