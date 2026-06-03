@@ -66,7 +66,7 @@ def _selecionar_trecho_relevante(texto, regras_semanticas, nonce):
         if any(kw in p_lower for kw in palavras):
             custo = len(paragrafo) + 1
             if custo > budget:
-                break          # parágrafo não cabe; encerra para não estourar o teto
+                continue       # parágrafo não cabe; tenta os próximos menores
             selecionados.append(paragrafo)
             budget -= custo
 
