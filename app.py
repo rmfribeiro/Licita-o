@@ -19,6 +19,26 @@ ROTULO = {"inconformidade": "Inconformidade", "alerta": "Alerta", "revisar": "Re
 b = branding.carregar()
 st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="📄", layout="wide")
 
+# --- Proteção por senha ---
+_senha_correta = None
+try:
+    _senha_correta = st.secrets.get("APP_PASSWORD")
+except Exception:
+    pass
+if _senha_correta:
+    if "autenticado" not in st.session_state:
+        st.session_state["autenticado"] = False
+    if not st.session_state["autenticado"]:
+        st.title("IA-Licita — Acesso restrito")
+        senha = st.text_input("Senha de acesso", type="password")
+        if st.button("Entrar"):
+            if senha == _senha_correta:
+                st.session_state["autenticado"] = True
+                st.rerun()
+            else:
+                st.error("Senha incorreta.")
+        st.stop()
+
 _logo_file = b.get("logo")
 _logo_path = os.path.join(AQUI, _logo_file) if _logo_file else ""
 _logo_visivel = False
