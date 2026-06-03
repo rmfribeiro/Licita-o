@@ -194,8 +194,7 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
             rag = BaseRAG(base_rag_path)
         except Exception as e:
             print("Aviso: RAG indisponivel:", e)
-    _sev_ok = {"alta", "media", "baixa"}
-    _st_ok  = {"inconformidade", "alerta", "revisar", "ok"}
+    from ia_semantica import STATUS_VALIDOS as _st_ok, SEV_VALIDAS as _sev_ok
     novos = []
     for pz in pareceres:
         sev    = str(pz.get("severidade", "media")).strip().lower()
@@ -219,10 +218,13 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
             "fonte":     "IA (semantica)",
             "fundamento": fundamento,
         })
-    # camada de IA sobrescreve os itens automáticos com mesmo ID
-    ids_ia = {n["id"] for n in novos}
-    apont_restante = [a for a in apont if a["id"] not in ids_ia]
-    return novos + apont_restante
+    # IA sobrescreve itens automáticos com mesmo ID, mas apenas quando encontrou algo
+    # acionável (alerta/inconformidade/revisar). 'ok' da IA não suprime o 'revisar'
+    # automático — preserva comportamento conservador e evita deflação do índice.
+    ids_ia_acionaveis = {n["id"] for n in novos if n["status"] != "ok"}
+    novos_acionaveis  = [n for n in novos if n["status"] != "ok"]
+    apont_restante    = [a for a in apont if a["id"] not in ids_ia_acionaveis]
+    return novos_acionaveis + apont_restante
 
 def indice_de_risco(apont):
     # pontos de risco = soma dos pesos de inconformidades e alertas

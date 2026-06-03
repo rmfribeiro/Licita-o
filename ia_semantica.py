@@ -138,7 +138,7 @@ def _chamar_anthropic(prompt, api_key, modelo, max_tokens=8000):
             "content-type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
+    with urllib.request.urlopen(req, timeout=180) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
     return "".join(b.get("text", "") for b in dados.get("content", []))
 
