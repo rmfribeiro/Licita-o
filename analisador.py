@@ -194,7 +194,11 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
             rag = BaseRAG(base_rag_path)
         except Exception as e:
             print("Aviso: RAG indisponivel:", e)
-    from ia_semantica import STATUS_VALIDOS as _st_ok, SEV_VALIDAS as _sev_ok
+    try:
+        from ia_semantica import STATUS_VALIDOS as _st_ok, SEV_VALIDAS as _sev_ok
+    except ImportError:
+        _st_ok  = {"inconformidade", "alerta", "revisar", "ok"}
+        _sev_ok = {"alta", "media", "baixa"}
     novos = []
     for pz in pareceres:
         sev    = str(pz.get("severidade", "media")).strip().lower()
@@ -220,9 +224,9 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
         })
     # IA sobrescreve itens automáticos com mesmo ID, mas apenas quando encontrou algo
     # acionável (alerta/inconformidade/revisar). 'ok' da IA não suprime o 'revisar'
-    # automático — preserva comportamento conservador e evita deflação do índice.
-    ids_ia_acionaveis = {n["id"] for n in novos if n["status"] != "ok"}
+    # automático — preserva comportamento conservador.
     novos_acionaveis  = [n for n in novos if n["status"] != "ok"]
+    ids_ia_acionaveis = {n["id"] for n in novos_acionaveis}
     apont_restante    = [a for a in apont if a["id"] not in ids_ia_acionaveis]
     return novos_acionaveis + apont_restante
 

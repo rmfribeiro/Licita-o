@@ -64,8 +64,11 @@ def _selecionar_trecho_relevante(texto, regras_semanticas, nonce):
             break
         p_lower = paragrafo.lower()
         if any(kw in p_lower for kw in palavras):
+            custo = len(paragrafo) + 1
+            if custo > budget:
+                break          # parágrafo não cabe; encerra para não estourar o teto
             selecionados.append(paragrafo)
-            budget -= len(paragrafo) + 1
+            budget -= custo
 
     complemento = "\n".join(selecionados)
     if len(texto) > MAX_CHARS_EDITAL and not complemento:
