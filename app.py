@@ -25,18 +25,17 @@ try:
     _senha_correta = st.secrets.get("APP_PASSWORD")
 except Exception:
     pass
-if _senha_correta:
-    if "autenticado" not in st.session_state:
-        st.session_state["autenticado"] = False
-    if not st.session_state["autenticado"]:
-        st.title("IA-Licita — Acesso restrito")
+if _senha_correta and st.session_state.get("autenticado") is not True:
+    st.title("IA-Licita — Acesso restrito")
+    with st.form("login"):
         senha = st.text_input("Senha de acesso", type="password")
-        if st.button("Entrar"):
-            if senha == _senha_correta:
-                st.session_state["autenticado"] = True
-                st.rerun()
-            else:
-                st.error("Senha incorreta.")
+        ok = st.form_submit_button("Entrar")
+    if ok:
+        if senha == _senha_correta:
+            st.session_state["autenticado"] = True
+        else:
+            st.error("Senha incorreta.")
+    if st.session_state.get("autenticado") is not True:
         st.stop()
 
 _logo_file = b.get("logo")
