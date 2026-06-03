@@ -219,8 +219,10 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
             "fonte":     "IA (semantica)",
             "fundamento": fundamento,
         })
-    # camada de IA primeiro, depois as checagens automaticas
-    return novos + apont
+    # camada de IA sobrescreve os itens automáticos com mesmo ID
+    ids_ia = {n["id"] for n in novos}
+    apont_restante = [a for a in apont if a["id"] not in ids_ia]
+    return novos + apont_restante
 
 def indice_de_risco(apont):
     # pontos de risco = soma dos pesos de inconformidades e alertas

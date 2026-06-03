@@ -17,8 +17,8 @@ Uso:
 """
 import os, json, re, uuid, urllib.request, urllib.error
 
-MODELO_PADRAO = os.environ.get("IA_LICITA_MODELO", "claude-sonnet-4-6")
-MAX_CHARS_EDITAL = 120_000   # janela de contexto do edital enviada ao modelo
+MODELO_PADRAO = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+MAX_CHARS_EDITAL = 30_000    # janela de contexto do edital enviada ao modelo
 
 STATUS_VALIDOS = {"inconformidade", "alerta", "revisar", "ok"}
 SEV_VALIDAS = {"alta", "media", "baixa"}
@@ -83,7 +83,7 @@ def montar_prompt(texto_edital, regras_semanticas, rag):
     )
     return usuario
 
-def _chamar_anthropic(prompt, api_key, modelo, max_tokens=4000):
+def _chamar_anthropic(prompt, api_key, modelo, max_tokens=8000):
     corpo = json.dumps({
         "model": modelo,
         "max_tokens": max_tokens,
@@ -99,7 +99,7 @@ def _chamar_anthropic(prompt, api_key, modelo, max_tokens=4000):
             "content-type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=300) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
     return "".join(b.get("text", "") for b in dados.get("content", []))
 
