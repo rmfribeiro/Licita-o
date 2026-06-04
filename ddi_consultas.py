@@ -95,7 +95,32 @@ def _buscar_ceis(cnpj: str) -> list:
 
 
 def _buscar_cnep(cnpj: str) -> list:
-    pass
+    chave = _get_cgu_key()
+    if not chave:
+        return []
+    try:
+        resp = requests.get(
+            "https://api.portaldatransparencia.gov.br/api-de-dados/cnep",
+            params={"cnpjSancionado": cnpj, "pagina": 1},
+            headers={"chave-api": chave, "Accept": "application/json"},
+            timeout=_TIMEOUT,
+        )
+        if resp.status_code != 200:
+            return []
+        return [
+            {
+                "nomeInfrator": r.get("nomeInfrator", ""),
+                "orgaoSancionador": (r.get("orgaoSancionador") or {}).get("nome", ""),
+                "dataInicioSancao": r.get("dataInicioSancao", ""),
+                "dataFimSancao": r.get("dataFimSancao"),
+                "situacaoAtual": r.get("situacaoAtual", ""),
+                "tipoPenalidade": r.get("tipoPenalidade", ""),
+                "fundamentacaoLegal": r.get("fundamentacaoLegal", ""),
+            }
+            for r in (resp.json() or [])
+        ]
+    except requests.exceptions.RequestException:
+        return []
 
 
 def _verificar_pro_etica(cnpj: str) -> bool | None:
