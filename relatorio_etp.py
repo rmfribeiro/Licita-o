@@ -53,14 +53,14 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     # Documentos analisados
     story.append(Paragraph("Documentos Analisados", h2))
     for nome in nomes_arquivos:
-        story.append(Paragraph(f"- {nome}", corpo))
+        story.append(Paragraph(f"- {html.escape(str(nome))}", corpo))
     story.append(Spacer(1, 0.3*cm))
 
     # Avisos
     if avisos:
         story.append(Paragraph("Avisos", h2))
         for aviso in avisos:
-            story.append(Paragraph(f"AVISO: {aviso}", alerta_style))
+            story.append(Paragraph(f"AVISO: {html.escape(str(aviso))}", alerta_style))
         story.append(Spacer(1, 0.3*cm))
 
     # Adequação geral

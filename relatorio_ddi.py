@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 import io
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
@@ -90,7 +91,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     if socios:
         story.append(Paragraph("Quadro Societário", h2))
         for s in socios:
-            story.append(Paragraph(f"- {s.get('nome', '-')} -- {s.get('cargo', '-')}", corpo))
+            story.append(Paragraph(f"- {html.escape(str(s.get('nome', '-')))} -- {html.escape(str(s.get('cargo', '-')))}", corpo))
         story.append(Spacer(1, 0.3*cm))
 
     # Índice de risco
@@ -98,7 +99,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     cor_risco = _COR_RISCO.get(risco, colors.grey)
     story.append(Paragraph("Índice de Risco Geral", h2))
     t_risco = Table(
-        [[Paragraph(f"<b>{risco}</b>",
+        [[Paragraph(f"<b>{html.escape(str(risco))}</b>",
                     ParagraphStyle("r", fontSize=14, textColor=colors.white, alignment=1))]],
         colWidths=[17*cm]
     )
@@ -119,13 +120,14 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         cor = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(
-            f"<font color='{cor}'><b>[{icone}] {label}</b></font>: {dim.get('descricao', '-')}",
+            f"<font color='{cor}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao', '-')))}",
             corpo
         ))
         for achado in dim.get("achados", []):
             story.append(Paragraph(
-                f"  -> <b>{achado.get('fonte', '')}:</b> {achado.get('descricao', '')} "
-                f"(gravidade: {achado.get('gravidade', '')})",
+                f"  -> <b>{html.escape(str(achado.get('fonte', '')))}</b>: "
+                f"{html.escape(str(achado.get('descricao', '')))} "
+                f"(gravidade: {html.escape(str(achado.get('gravidade', '')))})",
                 corpo
             ))
     story.append(Spacer(1, 0.3*cm))
@@ -162,20 +164,20 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
 
     # Parecer
     story.append(Paragraph("Parecer de Integridade", h2))
-    story.append(Paragraph(parecer.get("resumo", "-"), corpo))
+    story.append(Paragraph(html.escape(str(parecer.get("resumo", "-"))), corpo))
     story.append(Spacer(1, 0.2*cm))
     for bl in parecer.get("base_legal", []):
-        story.append(Paragraph(f"- {bl}", corpo))
+        story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
     story.append(Spacer(1, 0.3*cm))
 
     # Recomendação
     story.append(Paragraph("Recomendação ao Gestor", h2))
-    story.append(Paragraph(parecer.get("recomendacao", "-"), corpo))
+    story.append(Paragraph(html.escape(str(parecer.get("recomendacao", "-"))), corpo))
     story.append(Spacer(1, 0.4*cm))
 
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
-    story.append(Paragraph(f"Validade do FID: {parecer.get('validade_fid', '12 meses')}", pequeno))
+    story.append(Paragraph(f"Validade do FID: {html.escape(str(parecer.get('validade_fid', '12 meses')))}", pequeno))
     story.append(Paragraph(
         "Gerado por IA-Licita - RM Vértice Digital. Sujeito a verificação humana. "
         "Não substitui parecer jurídico.",

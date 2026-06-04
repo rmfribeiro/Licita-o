@@ -282,13 +282,16 @@ with aba2:
             for bl in parecer.get("base_legal", []):
                 st.write(f"- {bl}")
 
-        pdf_bytes = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
-        st.download_button(
-            label="Baixar Relatorio PDF",
-            data=pdf_bytes,
-            file_name=f"DDI_{cnpj_final}.pdf",
-            mime="application/pdf",
-        )
+        try:
+            pdf_bytes = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
+            st.download_button(
+                label="Baixar Relatorio PDF",
+                data=pdf_bytes,
+                file_name=f"DDI_{cnpj_final}.pdf",
+                mime="application/pdf",
+            )
+        except Exception as _e:
+            st.error(f"Erro ao gerar PDF: {_e}")
 
 with aba3:
     st.subheader("Auditoria de ETP — Estudo Técnico Preliminar")
@@ -298,10 +301,9 @@ with aba3:
     if not _api_key_etp:
         try:
             _api_key_etp = st.secrets.get("ANTHROPIC_API_KEY")
-        except FileNotFoundError:
-            pass
         except Exception as _e:
-            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+            if "SecretNotFound" not in type(_e).__name__:
+                st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
     _modelo_etp = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     _arqs_etp = st.file_uploader(
