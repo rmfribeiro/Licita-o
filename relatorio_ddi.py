@@ -121,14 +121,14 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         cor = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(
-            f"<font color='{cor}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao', '-')))}",
+            f"<font color='{cor}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao') or '-'))}",
             corpo
         ))
         for achado in dim.get("achados", []):
             story.append(Paragraph(
-                f"  -> <b>{html.escape(str(achado.get('fonte', '')))}</b>: "
-                f"{html.escape(str(achado.get('descricao', '')))} "
-                f"(gravidade: {html.escape(str(achado.get('gravidade', '')))})",
+                f"  -> <b>{html.escape(str(achado.get('fonte') or ''))}</b>: "
+                f"{html.escape(str(achado.get('descricao') or ''))} "
+                f"(gravidade: {html.escape(str(achado.get('gravidade') or ''))})",
                 corpo
             ))
     story.append(Spacer(1, 0.3*cm))

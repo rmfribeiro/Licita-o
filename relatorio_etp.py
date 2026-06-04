@@ -89,7 +89,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
         cor_s = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(
-            f"<font color='{cor_s}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao', '-')))}",
+            f"<font color='{cor_s}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao') or '-'))}",
             corpo,
         ))
     story.append(Spacer(1, 0.3*cm))

@@ -281,11 +281,11 @@ with aba2:
             dim = dims.get(chave, {})
             icone = _icone_status.get((dim.get("status") or "ok").lower(), "ℹ️")
             with st.expander(f"{icone} {label}"):
-                st.write(dim.get("descricao", "-"))
+                st.write(dim.get("descricao") or "-")
                 for achado in dim.get("achados", []):
                     st.error(
-                        f"**{achado.get('fonte')}:** {achado.get('descricao')} "
-                        f"(gravidade: {achado.get('gravidade')})"
+                        f"**{achado.get('fonte') or ''}:** {achado.get('descricao') or ''} "
+                        f"(gravidade: {achado.get('gravidade') or ''})"
                     )
 
         st.subheader("Parecer")
@@ -368,7 +368,7 @@ with aba3:
             _d = _dims.get(_ch, {})
             _ic = _ic_st.get((_d.get("status") or "ok").lower(), "ℹ️")
             with st.expander(f"{_ic} {_lb}"):
-                st.write(_d.get("descricao", "—"))
+                st.write(_d.get("descricao") or "—")
 
         _criticos = _pr.get("pontos_criticos", [])
         if _criticos:

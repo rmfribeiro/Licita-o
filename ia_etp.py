@@ -72,10 +72,15 @@ def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict
         f"{texto}\n\n"
         f"Retorne o parecer de auditoria no formato:\n{_ESTRUTURA_PARECER}"
     )
+    _ADEQ_VALIDOS = {"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"}
     try:
         bruto = _chamar_anthropic(prompt, api_key, modelo)
-        return _extrair_json(bruto)
+        parecer = _extrair_json(bruto)
     except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
     except (ValueError, Exception) as exc:
         raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    _adeq = str(parecer.get("adequacao_geral") or "INADEQUADO").strip().upper()
+    parecer["adequacao_geral"] = _adeq if _adeq in _ADEQ_VALIDOS else "INADEQUADO"
+    return parecer
