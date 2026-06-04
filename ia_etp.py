@@ -3,6 +3,7 @@ import json
 import re
 import urllib.request
 import urllib.error
+from ia_utils import extrair_json as _extrair_json
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 _ADEQ_VALIDOS = {"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"}
@@ -51,44 +52,6 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
     with urllib.request.urlopen(req, timeout=180) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
     return "".join(b.get("text", "") for b in dados.get("content", []))
-
-
-def _extrair_json(texto: str) -> dict:
-    t = texto.strip()
-    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.IGNORECASE | re.MULTILINE).strip()
-    ini = t.find("{")
-    fim = t.rfind("}") + 1
-    if ini == -1 or fim == 0:
-        try:
-            return json.loads(t)
-        except json.JSONDecodeError:
-            raise ValueError("Resposta sem JSON reconhecível")
-    raw = t[ini:fim]
-    # Try 1: direct parse
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        pass
-    # Try 2: remove trailing commas
-    cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        pass
-    # Try 3: truncate at error position and close open braces/brackets
-    try:
-        json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        trunc = cleaned[:exc.pos]
-        open_b = trunc.count("{") - trunc.count("}")
-        open_r = trunc.count("[") - trunc.count("]")
-        if open_b >= 0 and open_r >= 0:
-            closed = trunc + "]" * open_r + "}" * open_b
-            try:
-                return json.loads(closed)
-            except json.JSONDecodeError:
-                pass
-    raise ValueError("Resposta sem JSON reconhecível após tentativas de reparo")
 
 
 def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict:
