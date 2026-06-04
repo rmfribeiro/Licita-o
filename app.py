@@ -9,8 +9,7 @@ import streamlit as st
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
 except ImportError:
-    class _SecretsNotFound(Exception):
-        pass
+    _SecretsNotFound = Exception  # Streamlit antigo: silencia todas as exceções de secrets
 import analisador as A
 import branding
 import ddi_consultas
@@ -81,10 +80,7 @@ with aba1:
             return True
         try:
             return bool(st.secrets.get("ANTHROPIC_API_KEY"))
-        except _SecretsNotFound:
-            return False
-        except Exception as _e:
-            st.warning(f"Erro ao ler configurações de API: {_e}")
+        except Exception:
             return False
 
     tem_chave = _chave_disponivel()
@@ -100,8 +96,9 @@ with aba1:
         try:
             if not os.environ.get("ANTHROPIC_API_KEY"):
                 try:
-                    if st.secrets.get("ANTHROPIC_API_KEY"):
-                        os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
+                    _val = st.secrets.get("ANTHROPIC_API_KEY")
+                    if _val:
+                        os.environ["ANTHROPIC_API_KEY"] = str(_val)
                 except _SecretsNotFound:
                     pass
                 except Exception as _e:
@@ -260,9 +257,10 @@ with aba2:
         valor_final = st.session_state["ddi_valor"]
 
         st.divider()
-        risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip()
+        risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
+        risco = {"MEDIO": "MÉDIO"}.get(risco, risco)
         _icone_risco = {
-            "ALTO": "🔴", "MÉDIO": "🟠", "MEDIO": "🟠",
+            "ALTO": "🔴", "MÉDIO": "🟠",
             "BAIXO": "🟡", "SEM RISCO IDENTIFICADO": "🟢"
         }
         st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {risco}")
@@ -315,7 +313,9 @@ with aba3:
     _api_key_etp = os.environ.get("ANTHROPIC_API_KEY")
     if not _api_key_etp:
         try:
-            _api_key_etp = st.secrets.get("ANTHROPIC_API_KEY")
+            _val = st.secrets.get("ANTHROPIC_API_KEY")
+            if _val:
+                _api_key_etp = str(_val)
         except _SecretsNotFound:
             pass
         except Exception as _e:
