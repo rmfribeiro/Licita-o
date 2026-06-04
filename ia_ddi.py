@@ -138,6 +138,8 @@ def analisar(dados: dict, fid: dict) -> dict:
     except (ValueError, Exception) as exc:
         raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
 
+    if not isinstance(parecer, dict):
+        raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
     _risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
     _risco = {"MEDIO": "MÉDIO"}.get(_risco, _risco)
     parecer["risco_geral"] = _risco if _risco in _RISCO_ORDEM else "SEM RISCO IDENTIFICADO"

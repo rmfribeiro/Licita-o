@@ -296,7 +296,7 @@ with aba2:
 
         with st.expander("Base Legal"):
             for bl in parecer.get("base_legal", []):
-                st.write(f"- {bl}")
+                st.write(f"- {bl or ''}")
 
         try:
             pdf_bytes = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
@@ -374,17 +374,17 @@ with aba3:
         if _criticos:
             st.subheader("Pontos Críticos")
             for _c in _criticos:
-                st.error(_c)
+                st.error(_c or "")
 
         _recs = _pr.get("recomendacoes", [])
         if _recs:
             st.subheader("Recomendações ao Gestor")
             for _r in _recs:
-                st.info(_r)
+                st.info(_r or "")
 
         with st.expander("Base Legal"):
             for _bl in _pr.get("base_legal", []):
-                st.write(f"• {_bl}")
+                st.write(f"• {_bl or ''}")
 
         try:
             _pdf_etp = relatorio_etp.gerar_pdf(_nm, _av, _pr)

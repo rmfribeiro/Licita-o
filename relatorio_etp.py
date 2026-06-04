@@ -99,7 +99,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     if criticos:
         story.append(Paragraph("Pontos Críticos", h2))
         for i, ponto in enumerate(criticos, 1):
-            story.append(Paragraph(f"{i}. {html.escape(str(ponto))}", corpo))
+            story.append(Paragraph(f"{i}. {html.escape(str(ponto or ''))}", corpo))
         story.append(Spacer(1, 0.3*cm))
 
     # Recomendações
@@ -107,7 +107,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     if recs:
         story.append(Paragraph("Recomendações ao Gestor", h2))
         for i, rec in enumerate(recs, 1):
-            story.append(Paragraph(f"{i}. {html.escape(str(rec))}", corpo))
+            story.append(Paragraph(f"{i}. {html.escape(str(rec or ''))}", corpo))
         story.append(Spacer(1, 0.3*cm))
 
     # Base legal
