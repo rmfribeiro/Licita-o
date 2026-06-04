@@ -62,3 +62,79 @@ class TestAplicarPiso:
         dados = {**_dados_base(), "grande_vulto": True, "pro_etica": False}
         fid = {"q1": "Sim", "q2": "Sim", "q3": "Sim", "q4": "Não", "q5": "Não"}
         assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
+
+
+from unittest.mock import patch, MagicMock
+import json as _json
+import urllib.error
+
+
+def _parecer_ia_mock():
+    return {
+        "risco_geral": "BAIXO",
+        "dimensoes": {
+            "situacao_cadastral": {"status": "ok", "descricao": "Empresa ativa."},
+            "sancoes": {"status": "ok", "achados": []},
+            "programa_integridade": {
+                "status": "alerta", "obrigatorio": False,
+                "pro_etica": False, "descricao": "Sem PI declarado.",
+            },
+            "fid": {"status": "ok", "inconsistencias": [], "descricao": "Consistente."},
+            "contexto_contrato": {
+                "status": "ok", "grande_vulto": False,
+                "descricao": "Abaixo do limite.",
+            },
+        },
+        "resumo": "Empresa sem ocorrências graves.",
+        "recomendacao": "Contratação pode prosseguir.",
+        "base_legal": ["Portaria SEGES/ME 8.678/2021, art. 2º, III"],
+        "validade_fid": "12 meses a partir da data desta consulta",
+    }
+
+
+class TestAnalisar:
+    @patch('ia_ddi.urllib.request.urlopen')
+    def test_retorna_estrutura_correta(self, mock_urlopen):
+        resposta = _json.dumps({
+            "content": [{"text": _json.dumps(_parecer_ia_mock())}]
+        }).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=resposta)))
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_cm
+
+        fid = {"q1": "Sim", "q2": "Sim", "q3": "Não", "q4": "Não sei", "q5": "Não"}
+        resultado = ia_ddi.analisar(_dados_base(), fid)
+
+        assert "risco_geral" in resultado
+        assert "dimensoes" in resultado
+        assert "resumo" in resultado
+        assert "recomendacao" in resultado
+        assert "base_legal" in resultado
+        assert "validade_fid" in resultado
+
+    @patch('ia_ddi.urllib.request.urlopen')
+    def test_piso_prevalece_sobre_ia(self, mock_urlopen):
+        parecer_baixo = _parecer_ia_mock()
+        parecer_baixo["risco_geral"] = "BAIXO"
+        resposta = _json.dumps({
+            "content": [{"text": _json.dumps(parecer_baixo)}]
+        }).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=resposta)))
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_cm
+
+        dados = {**_dados_base(), "ceis": [{"situacaoAtual": "Ativo"}]}
+        fid = {"q1": "Sim", "q2": "Sim", "q3": "Sim", "q4": "Sim", "q5": "Sim"}
+
+        resultado = ia_ddi.analisar(dados, fid)
+
+        assert resultado["risco_geral"] == "ALTO"
+
+    @patch('ia_ddi._get_api_key', return_value=None)
+    def test_sem_api_key_levanta_runtime_error(self, mock_key):
+        fid = {"q1": "Sim", "q2": "Não", "q3": "Não", "q4": "Não", "q5": "Não"}
+
+        with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+            ia_ddi.analisar(_dados_base(), fid)
