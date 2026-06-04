@@ -11,6 +11,9 @@ import branding
 import ddi_consultas
 import ia_ddi
 import relatorio_ddi
+import etp_extrator
+import ia_etp
+import relatorio_etp
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -52,7 +55,11 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2 = st.tabs(["📄 Auditoria de Edital", "🔍 Due Diligence de Integridade"])
+aba1, aba2, aba3 = st.tabs([
+    "📄 Auditoria de Edital",
+    "🔍 Due Diligence de Integridade",
+    "📋 Auditoria de ETP",
+])
 
 with aba1:
     st.subheader("Auditoria de Edital — Lei nº 14.133/2021")
@@ -280,5 +287,95 @@ with aba2:
             label="Baixar Relatorio PDF",
             data=pdf_bytes,
             file_name=f"DDI_{cnpj_final}.pdf",
+            mime="application/pdf",
+        )
+
+with aba3:
+    st.subheader("Auditoria de ETP — Estudo Técnico Preliminar")
+    st.caption("IN SEGES/MGI 58/2022 · Lei 14.133/2021, art. 18, I")
+
+    _api_key_etp = os.environ.get("ANTHROPIC_API_KEY")
+    if not _api_key_etp:
+        try:
+            _api_key_etp = st.secrets.get("ANTHROPIC_API_KEY")
+        except Exception:
+            pass
+    _modelo_etp = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+    _arqs_etp = st.file_uploader(
+        "ETP e documentos complementares (PDF ou Word)",
+        type=["pdf", "docx"],
+        accept_multiple_files=True,
+        key="etp_arquivos",
+    )
+
+    if st.button("Analisar ETP", type="primary", key="btn_etp", disabled=not _arqs_etp):
+        if not _api_key_etp:
+            st.error("ANTHROPIC_API_KEY não configurada.")
+        else:
+            try:
+                with st.spinner("Extraindo texto e analisando com IA (pode levar 1-2 minutos)..."):
+                    _texto_etp, _avisos_etp = etp_extrator.extrair_texto(_arqs_etp)
+                    _parecer_etp = ia_etp.analisar_etp(_texto_etp, _api_key_etp, _modelo_etp)
+                st.session_state["etp_parecer"] = _parecer_etp
+                st.session_state["etp_avisos"] = _avisos_etp
+                st.session_state["etp_nomes"] = [f.name for f in _arqs_etp]
+            except ValueError as e:
+                st.error(str(e))
+            except RuntimeError as e:
+                st.error(str(e))
+
+    if "etp_parecer" in st.session_state:
+        _pr = st.session_state["etp_parecer"]
+        _av = st.session_state["etp_avisos"]
+        _nm = st.session_state["etp_nomes"]
+
+        for _aviso in _av:
+            st.warning(_aviso)
+
+        st.divider()
+        _adeq = _pr.get("adequacao_geral", "INADEQUADO")
+        _icone_adeq = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
+        st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_adeq}")
+
+        _dims = _pr.get("dimensoes", {})
+        _labels = {
+            "descricao_necessidade":       "Descrição da Necessidade",
+            "alinhamento_estrategico":     "Alinhamento Estratégico",
+            "requisitos_contratacao":      "Requisitos da Contratação",
+            "levantamento_mercado":        "Levantamento de Mercado",
+            "estimativa_quantidade_valor": "Estimativa de Quantidade e Valor",
+            "sustentabilidade":            "Sustentabilidade",
+            "parcelamento":                "Parcelamento do Objeto",
+            "posicionamento_conclusivo":   "Posicionamento Conclusivo",
+        }
+        _ic_st = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
+        for _ch, _lb in _labels.items():
+            _d = _dims.get(_ch, {})
+            _ic = _ic_st.get(_d.get("status", "ok"), "ℹ️")
+            with st.expander(f"{_ic} {_lb}"):
+                st.write(_d.get("descricao", "—"))
+
+        _criticos = _pr.get("pontos_criticos", [])
+        if _criticos:
+            st.subheader("Pontos Críticos")
+            for _c in _criticos:
+                st.error(_c)
+
+        _recs = _pr.get("recomendacoes", [])
+        if _recs:
+            st.subheader("Recomendações ao Gestor")
+            for _r in _recs:
+                st.info(_r)
+
+        with st.expander("Base Legal"):
+            for _bl in _pr.get("base_legal", []):
+                st.write(f"• {_bl}")
+
+        _pdf_etp = relatorio_etp.gerar_pdf(_nm, _av, _pr)
+        st.download_button(
+            label="Baixar Relatório PDF",
+            data=_pdf_etp,
+            file_name="ETP_auditoria.pdf",
             mime="application/pdf",
         )
