@@ -289,10 +289,10 @@ with aba2:
                     )
 
         st.subheader("Parecer")
-        st.info(parecer.get("resumo", "-"))
+        st.info(parecer.get("resumo") or "-")
 
         st.subheader("Recomendacao ao Gestor")
-        st.write(parecer.get("recomendacao", "-"))
+        st.write(parecer.get("recomendacao") or "-")
 
         with st.expander("Base Legal"):
             for bl in parecer.get("base_legal", []):

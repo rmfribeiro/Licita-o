@@ -165,7 +165,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
 
     # Parecer
     story.append(Paragraph("Parecer de Integridade", h2))
-    story.append(Paragraph(html.escape(str(parecer.get("resumo", "-"))), corpo))
+    story.append(Paragraph(html.escape(str(parecer.get("resumo") or "-")), corpo))
     story.append(Spacer(1, 0.2*cm))
     for bl in parecer.get("base_legal", []):
         story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
@@ -173,12 +173,12 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
 
     # Recomendação
     story.append(Paragraph("Recomendação ao Gestor", h2))
-    story.append(Paragraph(html.escape(str(parecer.get("recomendacao", "-"))), corpo))
+    story.append(Paragraph(html.escape(str(parecer.get("recomendacao") or "-")), corpo))
     story.append(Spacer(1, 0.4*cm))
 
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
-    story.append(Paragraph(f"Validade do FID: {html.escape(str(parecer.get('validade_fid', '12 meses')))}", pequeno))
+    story.append(Paragraph(f"Validade do FID: {html.escape(str(parecer.get('validade_fid') or '12 meses'))}", pequeno))
     story.append(Paragraph(
         "Gerado por IA-Licita - RM Vértice Digital. Sujeito a verificação humana. "
         "Não substitui parecer jurídico.",

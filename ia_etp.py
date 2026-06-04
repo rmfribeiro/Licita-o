@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
+_ADEQ_VALIDOS = {"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"}
 
 _SISTEMA = (
     "Você é um auditor especialista em contratações públicas federais brasileiras. "
@@ -72,7 +73,6 @@ def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict
         f"{texto}\n\n"
         f"Retorne o parecer de auditoria no formato:\n{_ESTRUTURA_PARECER}"
     )
-    _ADEQ_VALIDOS = {"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"}
     try:
         bruto = _chamar_anthropic(prompt, api_key, modelo)
         parecer = _extrair_json(bruto)
@@ -81,6 +81,8 @@ def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict
     except (ValueError, Exception) as exc:
         raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
 
+    if not isinstance(parecer, dict):
+        raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
     _adeq = str(parecer.get("adequacao_geral") or "INADEQUADO").strip().upper()
     parecer["adequacao_geral"] = _adeq if _adeq in _ADEQ_VALIDOS else "INADEQUADO"
     return parecer
