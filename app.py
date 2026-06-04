@@ -283,6 +283,8 @@ with aba2:
             with st.expander(f"{icone} {label}"):
                 st.write(dim.get("descricao") or "-")
                 for achado in dim.get("achados", []):
+                    if not achado:
+                        continue
                     st.error(
                         f"**{achado.get('fonte') or ''}:** {achado.get('descricao') or ''} "
                         f"(gravidade: {achado.get('gravidade') or ''})"
@@ -296,7 +298,8 @@ with aba2:
 
         with st.expander("Base Legal"):
             for bl in parecer.get("base_legal", []):
-                st.write(f"- {bl or ''}")
+                if bl:
+                    st.write(f"- {bl}")
 
         try:
             pdf_bytes = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
@@ -374,17 +377,20 @@ with aba3:
         if _criticos:
             st.subheader("Pontos Críticos")
             for _c in _criticos:
-                st.error(_c or "")
+                if _c:
+                    st.error(_c)
 
         _recs = _pr.get("recomendacoes", [])
         if _recs:
             st.subheader("Recomendações ao Gestor")
             for _r in _recs:
-                st.info(_r or "")
+                if _r:
+                    st.info(_r)
 
         with st.expander("Base Legal"):
             for _bl in _pr.get("base_legal", []):
-                st.write(f"• {_bl or ''}")
+                if _bl:
+                    st.write(f"• {_bl}")
 
         try:
             _pdf_etp = relatorio_etp.gerar_pdf(_nm, _av, _pr)

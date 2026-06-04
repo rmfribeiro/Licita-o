@@ -113,7 +113,8 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     # Base legal
     story.append(Paragraph("Base Legal", h2))
     for bl in parecer.get("base_legal", []):
-        story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
+        if bl:
+            story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
     story.append(Spacer(1, 0.4*cm))
 
     # Rodapé

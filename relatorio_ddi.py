@@ -91,7 +91,9 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     if socios:
         story.append(Paragraph("Quadro Societário", h2))
         for s in socios:
-            story.append(Paragraph(f"- {html.escape(str(s.get('nome', '-')))} -- {html.escape(str(s.get('cargo', '-')))}", corpo))
+            if not s:
+                continue
+            story.append(Paragraph(f"- {html.escape(str(s.get('nome') or '-'))} -- {html.escape(str(s.get('cargo') or '-'))}", corpo))
         story.append(Spacer(1, 0.3*cm))
 
     # Índice de risco
@@ -125,6 +127,8 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
             corpo
         ))
         for achado in dim.get("achados", []):
+            if not achado:
+                continue
             story.append(Paragraph(
                 f"  -> <b>{html.escape(str(achado.get('fonte') or ''))}</b>: "
                 f"{html.escape(str(achado.get('descricao') or ''))} "
@@ -168,7 +172,8 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     story.append(Paragraph(html.escape(str(parecer.get("resumo") or "-")), corpo))
     story.append(Spacer(1, 0.2*cm))
     for bl in parecer.get("base_legal", []):
-        story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
+        if bl:
+            story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
     story.append(Spacer(1, 0.3*cm))
 
     # Recomendação
