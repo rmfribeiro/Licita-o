@@ -6,6 +6,10 @@ Rodar localmente:  streamlit run app.py
 """
 import os, io, json, tempfile
 import streamlit as st
+try:
+    from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
+except ImportError:
+    _SecretsNotFound = type(None)
 import analisador as A
 import branding
 import ddi_consultas
@@ -29,8 +33,11 @@ st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="�
 _senha_correta = None
 try:
     _senha_correta = st.secrets.get("APP_PASSWORD")
-except Exception:
+except _SecretsNotFound:
     pass
+except Exception as _e:
+    st.error(f"Erro ao carregar configurações de acesso: {_e}. Contate o administrador.")
+    st.stop()
 if _senha_correta and not st.session_state.get("autenticado"):
     st.title("IA-Licita — Acesso restrito")
     senha = st.text_input("Senha de acesso", type="password", key="pwd")
@@ -301,9 +308,10 @@ with aba3:
     if not _api_key_etp:
         try:
             _api_key_etp = st.secrets.get("ANTHROPIC_API_KEY")
+        except _SecretsNotFound:
+            pass
         except Exception as _e:
-            if "SecretNotFound" not in type(_e).__name__:
-                st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
     _modelo_etp = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     _arqs_etp = st.file_uploader(
