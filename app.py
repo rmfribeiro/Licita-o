@@ -9,7 +9,8 @@ import streamlit as st
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
 except ImportError:
-    _SecretsNotFound = type(None)
+    class _SecretsNotFound(Exception):
+        pass
 import analisador as A
 import branding
 import ddi_consultas
@@ -46,6 +47,8 @@ if _senha_correta and not st.session_state.get("autenticado"):
     else:
         if senha:
             st.error("Senha incorreta.")
+        else:
+            st.info("Informe a senha de acesso para continuar.")
         st.stop()
 
 _logo_file = b.get("logo")
@@ -78,7 +81,10 @@ with aba1:
             return True
         try:
             return bool(st.secrets.get("ANTHROPIC_API_KEY"))
-        except Exception:
+        except _SecretsNotFound:
+            return False
+        except Exception as _e:
+            st.warning(f"Erro ao ler configurações de API: {_e}")
             return False
 
     tem_chave = _chave_disponivel()
@@ -96,8 +102,10 @@ with aba1:
                 try:
                     if st.secrets.get("ANTHROPIC_API_KEY"):
                         os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
-                except Exception:
+                except _SecretsNotFound:
                     pass
+                except Exception as _e:
+                    st.warning(f"Erro ao carregar chave de API: {_e}")
 
             with st.spinner("Analisando o edital…"):
                 texto, paginas = A.extrair_texto(caminho)
@@ -252,9 +260,9 @@ with aba2:
         valor_final = st.session_state["ddi_valor"]
 
         st.divider()
-        risco = parecer.get("risco_geral", "SEM RISCO IDENTIFICADO")
+        risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip()
         _icone_risco = {
-            "ALTO": "🔴", "MÉDIO": "🟠",
+            "ALTO": "🔴", "MÉDIO": "🟠", "MEDIO": "🟠",
             "BAIXO": "🟡", "SEM RISCO IDENTIFICADO": "🟢"
         }
         st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {risco}")
@@ -323,7 +331,7 @@ with aba3:
 
     if st.button("Analisar ETP", type="primary", key="btn_etp", disabled=not _arqs_etp):
         if not _api_key_etp:
-            st.error("ANTHROPIC_API_KEY não configurada.")
+            st.error("ANTHROPIC_API_KEY não configurada — configure via variável de ambiente ou secrets.toml (verifique se o arquivo não tem erros de sintaxe).")
         else:
             try:
                 with st.spinner("Extraindo texto e analisando com IA (pode levar 1-2 minutos)..."):
