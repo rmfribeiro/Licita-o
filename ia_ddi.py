@@ -138,9 +138,11 @@ def analisar(dados: dict, fid: dict) -> dict:
     except (ValueError, Exception) as exc:
         raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
 
-    if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(
-        parecer.get("risco_geral", "SEM RISCO IDENTIFICADO")
-    ):
+    _risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
+    _risco = {"MEDIO": "MÉDIO"}.get(_risco, _risco)
+    parecer["risco_geral"] = _risco if _risco in _RISCO_ORDEM else "SEM RISCO IDENTIFICADO"
+
+    if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(parecer["risco_geral"]):
         parecer["risco_geral"] = piso
 
     return parecer

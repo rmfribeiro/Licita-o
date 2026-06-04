@@ -117,7 +117,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     dims = parecer.get("dimensoes", {})
     for chave, label in _LABEL_DIMENSAO.items():
         dim = dims.get(chave, {})
-        status = dim.get("status", "ok")
+        status = dim.get("status", "ok").lower()
         cor = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(

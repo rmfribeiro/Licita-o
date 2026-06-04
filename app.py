@@ -279,7 +279,7 @@ with aba2:
         _icone_status = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
         for chave, label in _label_dim.items():
             dim = dims.get(chave, {})
-            icone = _icone_status.get(dim.get("status", "ok"), "ℹ️")
+            icone = _icone_status.get(dim.get("status", "ok").lower(), "ℹ️")
             with st.expander(f"{icone} {label}"):
                 st.write(dim.get("descricao", "-"))
                 for achado in dim.get("achados", []):
@@ -366,7 +366,7 @@ with aba3:
         _ic_st = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
         for _ch, _lb in _labels.items():
             _d = _dims.get(_ch, {})
-            _ic = _ic_st.get(_d.get("status", "ok"), "ℹ️")
+            _ic = _ic_st.get(_d.get("status", "ok").lower(), "ℹ️")
             with st.expander(f"{_ic} {_lb}"):
                 st.write(_d.get("descricao", "—"))
 
