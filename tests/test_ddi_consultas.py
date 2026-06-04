@@ -199,3 +199,65 @@ class TestEGrandeVulto:
 
     def test_igual_ao_limite_nao_e_grande_vulto(self):
         assert ddi_consultas._e_grande_vulto(239_000_000.0) is False
+
+
+class TestConsultar:
+    def test_cnpj_invalido_levanta_valor_error(self):
+        with pytest.raises(ValueError, match="CNPJ inválido"):
+            ddi_consultas.consultar("00000000000000", 100_000.0)
+
+    @patch('ddi_consultas._buscar_receita')
+    @patch('ddi_consultas._buscar_ceis')
+    @patch('ddi_consultas._buscar_cnep')
+    @patch('ddi_consultas._verificar_pro_etica')
+    def test_resultado_consolidado(self, mock_pro, mock_cnep, mock_ceis, mock_receita):
+        mock_receita.return_value = {
+            "razao_social": "EMPRESA TESTE LTDA",
+            "nome_fantasia": "",
+            "situacao": "ATIVA",
+            "porte": "MICRO EMPRESA",
+            "cnae": "Desenvolvimento de software",
+            "data_abertura": "2010-01-15",
+            "socios": [],
+        }
+        mock_ceis.return_value = []
+        mock_cnep.return_value = []
+        mock_pro.return_value = False
+
+        result = ddi_consultas.consultar("11222333000181", 100_000.0)
+
+        assert result["razao_social"] == "EMPRESA TESTE LTDA"
+        assert result["ceis"] == []
+        assert result["cnep"] == []
+        assert result["pro_etica"] is False
+        assert result["grande_vulto"] is False
+        assert result["valor_contrato"] == 100_000.0
+        assert result["cnpj"] == "11222333000181"
+
+    @patch('ddi_consultas._buscar_receita')
+    @patch('ddi_consultas._buscar_ceis')
+    @patch('ddi_consultas._buscar_cnep')
+    @patch('ddi_consultas._verificar_pro_etica')
+    def test_grande_vulto_flag(self, mock_pro, mock_cnep, mock_ceis, mock_receita):
+        mock_receita.return_value = {
+            "razao_social": "CONSTRUTORA GRANDE", "nome_fantasia": "",
+            "situacao": "ATIVA", "porte": "GRANDE", "cnae": "Construção",
+            "data_abertura": "2000-01-01", "socios": [],
+        }
+        mock_ceis.return_value = []
+        mock_cnep.return_value = []
+        mock_pro.return_value = False
+
+        result = ddi_consultas.consultar("11222333000181", 300_000_000.0)
+
+        assert result["grande_vulto"] is True
+
+    @patch('ddi_consultas._buscar_receita', return_value=None)
+    @patch('ddi_consultas._buscar_ceis', return_value=[])
+    @patch('ddi_consultas._buscar_cnep', return_value=[])
+    @patch('ddi_consultas._verificar_pro_etica', return_value=None)
+    def test_receita_indisponivel_retorna_campos_vazios(self, *mocks):
+        result = ddi_consultas.consultar("11222333000181", 100_000.0)
+
+        assert result["razao_social"] == ""
+        assert result["receita_disponivel"] is False

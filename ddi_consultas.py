@@ -135,4 +135,27 @@ def _verificar_pro_etica(cnpj: str) -> bool | None:
 
 
 def consultar(cnpj: str, valor_contrato: float) -> dict:
-    pass
+    cnpj_limpo = re.sub(r'\D', '', cnpj)
+    if not _validar_cnpj(cnpj_limpo):
+        raise ValueError(f"CNPJ inválido: {cnpj}")
+
+    receita = _buscar_receita(cnpj_limpo)
+    ceis = _buscar_ceis(cnpj_limpo)
+    cnep = _buscar_cnep(cnpj_limpo)
+    pro_etica = _verificar_pro_etica(cnpj_limpo)
+
+    base = receita or {
+        "razao_social": "", "nome_fantasia": "", "situacao": "",
+        "porte": "", "cnae": "", "data_abertura": "", "socios": [],
+    }
+    return {
+        **base,
+        "cnpj": cnpj_limpo,
+        "ceis": ceis,
+        "cnep": cnep,
+        "pro_etica": pro_etica,
+        "grande_vulto": _e_grande_vulto(valor_contrato),
+        "valor_contrato": valor_contrato,
+        "receita_disponivel": receita is not None,
+        "ceis_disponivel": _get_cgu_key() is not None,
+    }
