@@ -268,7 +268,7 @@ with aba2:
         }
         st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {risco}")
 
-        dims = parecer.get("dimensoes", {})
+        dims = parecer.get("dimensoes") or {}
         _label_dim = {
             "situacao_cadastral": "Situacao Cadastral",
             "sancoes": "Sancoes e Punicoes",
@@ -278,11 +278,11 @@ with aba2:
         }
         _icone_status = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
         for chave, label in _label_dim.items():
-            dim = dims.get(chave, {})
+            dim = dims.get(chave) or {}
             icone = _icone_status.get((dim.get("status") or "ok").lower(), "ℹ️")
             with st.expander(f"{icone} {label}"):
                 st.write(dim.get("descricao") or "-")
-                for achado in dim.get("achados", []):
+                for achado in (dim.get("achados") or []):
                     if not achado:
                         continue
                     st.error(
@@ -297,7 +297,7 @@ with aba2:
         st.write(parecer.get("recomendacao") or "-")
 
         with st.expander("Base Legal"):
-            for bl in parecer.get("base_legal", []):
+            for bl in (parecer.get("base_legal") or []):
                 if bl:
                     st.write(f"- {bl}")
 
@@ -364,11 +364,11 @@ with aba3:
         _icone_adeq = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
         st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_adeq}")
 
-        _dims = _pr.get("dimensoes", {})
+        _dims = _pr.get("dimensoes") or {}
         _labels = relatorio_etp._LABEL_DIMENSAO
         _ic_st = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
         for _ch, _lb in _labels.items():
-            _d = _dims.get(_ch, {})
+            _d = _dims.get(_ch) or {}
             _ic = _ic_st.get((_d.get("status") or "ok").lower(), "ℹ️")
             with st.expander(f"{_ic} {_lb}"):
                 st.write(_d.get("descricao") or "—")
@@ -388,7 +388,7 @@ with aba3:
                     st.info(_r)
 
         with st.expander("Base Legal"):
-            for _bl in _pr.get("base_legal", []):
+            for _bl in (_pr.get("base_legal") or []):
                 if _bl:
                     st.write(f"• {_bl}")
 

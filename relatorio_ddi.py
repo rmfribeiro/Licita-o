@@ -87,7 +87,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     story.append(Spacer(1, 0.4*cm))
 
     # Sócios
-    socios = dados.get("socios", [])
+    socios = dados.get("socios") or []
     if socios:
         story.append(Paragraph("Quadro Societário", h2))
         for s in socios:
@@ -116,9 +116,9 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
 
     # Risco por dimensão
     story.append(Paragraph("Análise por Dimensão", h2))
-    dims = parecer.get("dimensoes", {})
+    dims = parecer.get("dimensoes") or {}
     for chave, label in _LABEL_DIMENSAO.items():
-        dim = dims.get(chave, {})
+        dim = dims.get(chave) or {}
         status = (dim.get("status") or "ok").lower()
         cor = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
@@ -126,7 +126,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
             f"<font color='{cor}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao') or '-'))}",
             corpo
         ))
-        for achado in dim.get("achados", []):
+        for achado in (dim.get("achados") or []):
             if not achado:
                 continue
             story.append(Paragraph(
@@ -154,7 +154,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     story.append(Spacer(1, 0.3*cm))
 
     # Programa de Integridade
-    pi_dim = dims.get("programa_integridade", {})
+    pi_dim = dims.get("programa_integridade") or {}
     story.append(Paragraph("Programa de Integridade", h2))
     story.append(Paragraph(
         f"Empresa Pro-Etica (CGU): {'Sim' if pi_dim.get('pro_etica') else 'Não'}",
@@ -171,7 +171,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     story.append(Paragraph("Parecer de Integridade", h2))
     story.append(Paragraph(html.escape(str(parecer.get("resumo") or "-")), corpo))
     story.append(Spacer(1, 0.2*cm))
-    for bl in parecer.get("base_legal", []):
+    for bl in (parecer.get("base_legal") or []):
         if bl:
             story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
     story.append(Spacer(1, 0.3*cm))

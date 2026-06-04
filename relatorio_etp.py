@@ -82,9 +82,9 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
 
     # Análise por dimensão
     story.append(Paragraph("Análise por Dimensão", h2))
-    dims = parecer.get("dimensoes", {})
+    dims = parecer.get("dimensoes") or {}
     for chave, label in _LABEL_DIMENSAO.items():
-        dim = dims.get(chave, {})
+        dim = dims.get(chave) or {}
         status = (dim.get("status") or "ok").lower()
         cor_s = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
@@ -112,7 +112,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
 
     # Base legal
     story.append(Paragraph("Base Legal", h2))
-    for bl in parecer.get("base_legal", []):
+    for bl in (parecer.get("base_legal") or []):
         if bl:
             story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
     story.append(Spacer(1, 0.4*cm))
