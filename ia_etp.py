@@ -54,7 +54,7 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
 
 def _extrair_json(texto: str) -> dict:
     t = texto.strip()
-    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.IGNORECASE | re.MULTILINE).strip()
     try:
         return json.loads(t)
     except json.JSONDecodeError:

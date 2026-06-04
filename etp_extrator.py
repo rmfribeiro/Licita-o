@@ -40,6 +40,8 @@ def extrair_texto(arquivos: list) -> tuple[str, list[str]]:
 
     for arquivo in arquivos:
         nome = arquivo.name
+        if hasattr(arquivo, "seek"):
+            arquivo.seek(0)
         conteudo = arquivo.read() if hasattr(arquivo, "read") else arquivo.getvalue()
         ext = nome.lower().rsplit(".", 1)[-1] if "." in nome else ""
 

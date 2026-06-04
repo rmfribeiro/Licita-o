@@ -298,8 +298,10 @@ with aba3:
     if not _api_key_etp:
         try:
             _api_key_etp = st.secrets.get("ANTHROPIC_API_KEY")
-        except Exception:
+        except FileNotFoundError:
             pass
+        except Exception as _e:
+            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
     _modelo_etp = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     _arqs_etp = st.file_uploader(
@@ -339,16 +341,7 @@ with aba3:
         st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_adeq}")
 
         _dims = _pr.get("dimensoes", {})
-        _labels = {
-            "descricao_necessidade":       "Descrição da Necessidade",
-            "alinhamento_estrategico":     "Alinhamento Estratégico",
-            "requisitos_contratacao":      "Requisitos da Contratação",
-            "levantamento_mercado":        "Levantamento de Mercado",
-            "estimativa_quantidade_valor": "Estimativa de Quantidade e Valor",
-            "sustentabilidade":            "Sustentabilidade",
-            "parcelamento":                "Parcelamento do Objeto",
-            "posicionamento_conclusivo":   "Posicionamento Conclusivo",
-        }
+        _labels = relatorio_etp._LABEL_DIMENSAO
         _ic_st = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
         for _ch, _lb in _labels.items():
             _d = _dims.get(_ch, {})
@@ -372,10 +365,13 @@ with aba3:
             for _bl in _pr.get("base_legal", []):
                 st.write(f"• {_bl}")
 
-        _pdf_etp = relatorio_etp.gerar_pdf(_nm, _av, _pr)
-        st.download_button(
-            label="Baixar Relatório PDF",
-            data=_pdf_etp,
-            file_name="ETP_auditoria.pdf",
-            mime="application/pdf",
-        )
+        try:
+            _pdf_etp = relatorio_etp.gerar_pdf(_nm, _av, _pr)
+            st.download_button(
+                label="Baixar Relatório PDF",
+                data=_pdf_etp,
+                file_name="ETP_auditoria.pdf",
+                mime="application/pdf",
+            )
+        except Exception as _e:
+            st.error(f"Erro ao gerar PDF: {_e}")

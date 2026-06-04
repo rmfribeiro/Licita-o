@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 import io
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
@@ -67,7 +68,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     cor = _COR_ADEQUACAO.get(adequacao, colors.grey)
     story.append(Paragraph("Adequação Geral", h2))
     t_adeq = Table(
-        [[Paragraph(f"<b>{adequacao}</b>",
+        [[Paragraph(f"<b>{html.escape(str(adequacao))}</b>",
                     ParagraphStyle("a", fontSize=14, textColor=colors.white, alignment=1))]],
         colWidths=[17*cm],
     )
@@ -88,7 +89,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
         cor_s = _COR_STATUS.get(status, "#000000")
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(
-            f"<font color='{cor_s}'><b>[{icone}] {label}</b></font>: {dim.get('descricao', '-')}",
+            f"<font color='{cor_s}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao', '-')))}",
             corpo,
         ))
     story.append(Spacer(1, 0.3*cm))
@@ -98,7 +99,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     if criticos:
         story.append(Paragraph("Pontos Críticos", h2))
         for i, ponto in enumerate(criticos, 1):
-            story.append(Paragraph(f"{i}. {ponto}", corpo))
+            story.append(Paragraph(f"{i}. {html.escape(str(ponto))}", corpo))
         story.append(Spacer(1, 0.3*cm))
 
     # Recomendações
@@ -106,13 +107,13 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     if recs:
         story.append(Paragraph("Recomendações ao Gestor", h2))
         for i, rec in enumerate(recs, 1):
-            story.append(Paragraph(f"{i}. {rec}", corpo))
+            story.append(Paragraph(f"{i}. {html.escape(str(rec))}", corpo))
         story.append(Spacer(1, 0.3*cm))
 
     # Base legal
     story.append(Paragraph("Base Legal", h2))
     for bl in parecer.get("base_legal", []):
-        story.append(Paragraph(f"- {bl}", corpo))
+        story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
     story.append(Spacer(1, 0.4*cm))
 
     # Rodapé
