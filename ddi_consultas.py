@@ -41,7 +41,29 @@ def _e_grande_vulto(valor: float) -> bool:
 
 
 def _buscar_receita(cnpj: str) -> dict | None:
-    pass
+    try:
+        resp = requests.get(
+            f"https://publica.cnpj.ws/cnpj/{cnpj}",
+            timeout=_TIMEOUT,
+            headers={"Accept": "application/json"},
+        )
+        if resp.status_code != 200:
+            return None
+        d = resp.json()
+        return {
+            "razao_social": d.get("razao_social", ""),
+            "nome_fantasia": d.get("nome_fantasia", ""),
+            "situacao": d.get("descricao_situacao_cadastral", ""),
+            "porte": d.get("descricao_porte", ""),
+            "cnae": d.get("cnae_fiscal_descricao", ""),
+            "data_abertura": d.get("data_inicio_atividade", ""),
+            "socios": [
+                {"nome": s.get("nome_socio", ""), "cargo": s.get("cargo", "")}
+                for s in d.get("qsa", [])
+            ],
+        }
+    except requests.exceptions.RequestException:
+        return None
 
 
 def _buscar_ceis(cnpj: str) -> list:
