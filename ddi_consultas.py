@@ -124,7 +124,14 @@ def _buscar_cnep(cnpj: str) -> list:
 
 
 def _verificar_pro_etica(cnpj: str) -> bool | None:
-    pass
+    cnpj_fmt = f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+    try:
+        resp = requests.get(_PRO_ETICA_URL, timeout=_TIMEOUT)
+        if resp.status_code != 200:
+            return None
+        return cnpj_fmt in resp.text or cnpj in resp.text
+    except requests.exceptions.RequestException:
+        return None
 
 
 def consultar(cnpj: str, valor_contrato: float) -> dict:

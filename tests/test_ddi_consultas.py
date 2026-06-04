@@ -150,3 +150,52 @@ class TestBuscarCnep:
         result = ddi_consultas._buscar_cnep("11222333000181")
 
         assert result == []
+
+
+class TestVerificarProEtica:
+    @patch('ddi_consultas.requests.get')
+    def test_empresa_consta_formatada(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.text = "...11.222.333/0001-81 EMPRESA TESTE..."
+
+        result = ddi_consultas._verificar_pro_etica("11222333000181")
+
+        assert result is True
+
+    @patch('ddi_consultas.requests.get')
+    def test_empresa_consta_sem_mascara(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.text = "...11222333000181 EMPRESA TESTE..."
+
+        result = ddi_consultas._verificar_pro_etica("11222333000181")
+
+        assert result is True
+
+    @patch('ddi_consultas.requests.get')
+    def test_empresa_nao_consta(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.text = "lista sem match algum"
+
+        result = ddi_consultas._verificar_pro_etica("11222333000181")
+
+        assert result is False
+
+    @patch('ddi_consultas.requests.get')
+    def test_erro_retorna_none(self, mock_get):
+        import requests as req_lib
+        mock_get.side_effect = req_lib.exceptions.Timeout()
+
+        result = ddi_consultas._verificar_pro_etica("11222333000181")
+
+        assert result is None
+
+
+class TestEGrandeVulto:
+    def test_acima_do_limite(self):
+        assert ddi_consultas._e_grande_vulto(239_000_001.0) is True
+
+    def test_abaixo_do_limite(self):
+        assert ddi_consultas._e_grande_vulto(238_999_999.0) is False
+
+    def test_igual_ao_limite_nao_e_grande_vulto(self):
+        assert ddi_consultas._e_grande_vulto(239_000_000.0) is False
