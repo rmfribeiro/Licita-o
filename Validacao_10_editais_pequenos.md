@@ -42,7 +42,7 @@ Que a ferramenta tenha terminado com **zero inconformidade** depois de rejeitar 
 
 ## Leitura honesta para o piloto
 
-Esta amostra **não produz a estatística de “X% com erro grave”** — e isso é informação útil: nem todo município pequeno comete os erros grosseiros de Santa Teresinha. Dois pontos decorrem disso:
+Esta amostra **não produz a estatística de "X% com erro grave"** — e isso é informação útil: nem todo município pequeno comete os erros grosseiros de Santa Teresinha. Dois pontos decorrem disso:
 
 1. **Credibilidade:** a ferramenta calibrou para a qualidade real dos documentos (5 inconformidades no edital ruim, 0 nestes 10 bons), sem alarme falso.
 2. **Limite da camada determinística:** em editais bem redigidos, os defeitos que sobram são sutis e interpretativos (proporcionalidade de exigências, coerência entre cláusulas, aderência fina à lei). Encontrá-los é justamente o trabalho da **camada de IA ao vivo**, que aqui não pôde rodar por falta de chave de API. Para uma estatística de venda robusta, o caminho é: ligar a IA (já integrada e blindada) e rodar em uma amostra maior e aleatória de editais.
