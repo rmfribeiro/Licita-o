@@ -9,7 +9,7 @@ import streamlit as st
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
 except ImportError:
-    _SecretsNotFound = Exception  # Streamlit antigo: silencia todas as exceções de secrets
+    _SecretsNotFound = Exception  # Streamlit antigo: silencia tudo (incl. parse errors — limitação conhecida)
 import analisador as A
 import branding
 import ddi_consultas
@@ -80,7 +80,10 @@ with aba1:
             return True
         try:
             return bool(st.secrets.get("ANTHROPIC_API_KEY"))
-        except Exception:
+        except _SecretsNotFound:
+            return False
+        except Exception as _e:
+            st.warning(f"Erro ao ler configurações de API: {_e}")
             return False
 
     tem_chave = _chave_disponivel()
@@ -354,7 +357,7 @@ with aba3:
             st.warning(_aviso)
 
         st.divider()
-        _adeq = _pr.get("adequacao_geral", "INADEQUADO")
+        _adeq = str(_pr.get("adequacao_geral") or "INADEQUADO").strip().upper()
         _icone_adeq = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
         st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_adeq}")
 

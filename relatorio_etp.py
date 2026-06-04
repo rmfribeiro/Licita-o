@@ -64,7 +64,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
         story.append(Spacer(1, 0.3*cm))
 
     # Adequação geral
-    adequacao = parecer.get("adequacao_geral", "INADEQUADO")
+    adequacao = str(parecer.get("adequacao_geral") or "INADEQUADO").strip().upper()
     cor = _COR_ADEQUACAO.get(adequacao, colors.grey)
     story.append(Paragraph("Adequação Geral", h2))
     t_adeq = Table(

@@ -95,7 +95,8 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         story.append(Spacer(1, 0.3*cm))
 
     # Índice de risco
-    risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip()
+    risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
+    risco = {"MEDIO": "MÉDIO"}.get(risco, risco)
     cor_risco = _COR_RISCO.get(risco, colors.grey)
     story.append(Paragraph("Índice de Risco Geral", h2))
     t_risco = Table(
