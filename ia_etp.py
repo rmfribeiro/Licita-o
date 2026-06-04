@@ -64,7 +64,13 @@ def _extrair_json(texto: str) -> dict:
     fim = t.rfind("}") + 1
     if ini == -1 or fim == 0:
         raise ValueError("Resposta sem JSON reconhecível")
-    return json.loads(t[ini:fim])
+    raw = t[ini:fim]
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Remove trailing commas before } or ] (common LLM JSON mistake)
+        cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
+        return json.loads(cleaned)
 
 
 def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict:
