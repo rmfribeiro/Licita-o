@@ -83,21 +83,39 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
 def _extrair_json(texto: str) -> dict:
     t = texto.strip()
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.IGNORECASE).strip()
-    try:
-        return json.loads(t)
-    except json.JSONDecodeError:
-        pass
     ini = t.find("{")
     fim = t.rfind("}") + 1
     if ini == -1 or fim == 0:
-        raise ValueError("Resposta sem JSON reconhecível")
+        try:
+            return json.loads(t)
+        except json.JSONDecodeError:
+            raise ValueError("Resposta sem JSON reconhecível")
     raw = t[ini:fim]
+    # Try 1: direct parse
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Remove trailing commas before } or ] (common LLM JSON mistake)
-        cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
+        pass
+    # Try 2: remove trailing commas
+    cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
+    try:
         return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    # Try 3: truncate at error position and close open braces/brackets
+    try:
+        json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        trunc = cleaned[:exc.pos]
+        open_b = trunc.count("{") - trunc.count("}")
+        open_r = trunc.count("[") - trunc.count("]")
+        if open_b >= 0 and open_r >= 0:
+            closed = trunc + "]" * open_r + "}" * open_b
+            try:
+                return json.loads(closed)
+            except json.JSONDecodeError:
+                pass
+    raise ValueError("Resposta sem JSON reconhecível após tentativas de reparo")
 
 
 _ESTRUTURA_PARECER = """{
