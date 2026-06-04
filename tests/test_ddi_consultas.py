@@ -61,3 +61,47 @@ class TestBuscarReceita:
         result = ddi_consultas._buscar_receita("11222333000181")
 
         assert result is None
+
+
+class TestBuscarCeis:
+    @patch('ddi_consultas.requests.get')
+    def test_com_sancao_ativa(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = [{
+            "nomeInfrator": "EMPRESA TESTE LTDA",
+            "orgaoSancionador": {"nome": "CGU"},
+            "dataInicioSancao": "2023-01-01",
+            "dataFimSancao": "2025-12-31",
+            "situacaoAtual": "Ativo",
+            "fundamentacaoLegal": "Lei 8.666/93, art. 87",
+        }]
+
+        result = ddi_consultas._buscar_ceis("11222333000181")
+
+        assert len(result) == 1
+        assert result[0]["situacaoAtual"] == "Ativo"
+        assert result[0]["orgaoSancionador"] == "CGU"
+
+    @patch('ddi_consultas.requests.get')
+    def test_sem_sancao_retorna_lista_vazia(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = []
+
+        result = ddi_consultas._buscar_ceis("11222333000181")
+
+        assert result == []
+
+    @patch('ddi_consultas._get_cgu_key', return_value=None)
+    def test_sem_chave_retorna_lista_vazia(self, mock_key):
+        result = ddi_consultas._buscar_ceis("11222333000181")
+
+        assert result == []
+
+    @patch('ddi_consultas.requests.get')
+    def test_timeout_retorna_lista_vazia(self, mock_get):
+        import requests as req_lib
+        mock_get.side_effect = req_lib.exceptions.Timeout()
+
+        result = ddi_consultas._buscar_ceis("11222333000181")
+
+        assert result == []
