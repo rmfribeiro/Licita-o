@@ -3,6 +3,7 @@ import json
 import os
 import urllib.request
 import urllib.error
+import warnings
 try:
     import streamlit as st
     _HAS_ST = True
@@ -131,9 +132,16 @@ def diagnosticar(
     try:
         bruto = _chamar_anthropic("\n".join(partes), api_key, modelo)
         parecer = _extrair_json(bruto)
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
+    except urllib.error.HTTPError as exc:
+        _body = ""
+        try:
+            _body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        raise RuntimeError(f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}") from exc
+    except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-    except (ValueError, Exception) as exc:
+    except Exception as exc:
         raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
 
     if not isinstance(parecer, dict):
@@ -143,6 +151,10 @@ def diagnosticar(
 
     _mat = str(parecer.get("maturidade_geral") or "INEXISTENTE").strip().upper()
     if _mat not in _MATURIDADE_ORDEM:
+        warnings.warn(
+            f"ia_integridade: maturidade_geral inesperada da IA: {_mat!r} — normalizado para INEXISTENTE",
+            stacklevel=2,
+        )
         _mat = "INEXISTENTE"
     parecer["maturidade_geral"] = _aplicar_piso(respostas, _mat)
 

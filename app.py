@@ -475,6 +475,15 @@ with aba4:
                 st.session_state["pip_parecer"] = _parecer_pip
                 st.session_state["pip_municipio"] = _municipio_pip
                 st.session_state["pip_avisos"] = _avisos_pip
+                _nome_pip = _municipio_pip.replace("/", "-").replace(" ", "_")
+                try:
+                    st.session_state["pip_pdf"] = relatorio_integridade.gerar_pdf(
+                        _municipio_pip, _parecer_pip
+                    )
+                    st.session_state["pip_pdf_nome"] = f"PIP_{_nome_pip}.pdf"
+                except Exception as _pdf_e:
+                    st.session_state.pop("pip_pdf", None)
+                    st.warning(f"Não foi possível gerar o PDF: {_pdf_e}")
             except (ValueError, RuntimeError) as _e:
                 st.error(str(_e))
 
@@ -535,14 +544,10 @@ with aba4:
                 if _bl:
                     st.write(f"• {_bl}")
 
-        try:
-            _pdf_pip = relatorio_integridade.gerar_pdf(_mun_pip, _pr_pip)
-            _nome_pdf = f"PIP_{_mun_pip.replace('/', '-').replace(' ', '_')}.pdf"
+        if "pip_pdf" in st.session_state:
             st.download_button(
                 label="Baixar Relatório PDF",
-                data=_pdf_pip,
-                file_name=_nome_pdf,
+                data=st.session_state["pip_pdf"],
+                file_name=st.session_state.get("pip_pdf_nome", "PIP.pdf"),
                 mime="application/pdf",
             )
-        except Exception as _e:
-            st.error(f"Erro ao gerar PDF: {_e}")
