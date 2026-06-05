@@ -63,9 +63,16 @@ def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict
     try:
         bruto = _chamar_anthropic(prompt, api_key, modelo)
         parecer = _extrair_json(bruto)
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
+    except urllib.error.HTTPError as exc:
+        _body = ""
+        try:
+            _body = exc.read().decode("utf-8", errors="replace")
+        except (OSError, IOError):
+            pass
+        raise RuntimeError(f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}") from exc
+    except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-    except (ValueError, Exception) as exc:
+    except Exception as exc:
         raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
 
     if not isinstance(parecer, dict):

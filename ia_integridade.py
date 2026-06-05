@@ -145,7 +145,7 @@ def diagnosticar(
         _body = ""
         try:
             _body = exc.read().decode("utf-8", errors="replace")
-        except Exception:
+        except (OSError, IOError):
             pass
         raise RuntimeError(f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}") from exc
     except (urllib.error.URLError, OSError) as exc:

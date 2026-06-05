@@ -450,6 +450,8 @@ with aba4:
         if not _api_key_pip:
             st.error("ANTHROPIC_API_KEY não configurada — configure via variável de ambiente ou secrets.toml.")
         else:
+            for _k in ("pip_parecer", "pip_municipio", "pip_avisos", "pip_pdf", "pip_pdf_nome"):
+                st.session_state.pop(_k, None)
             try:
                 with st.spinner("Analisando programa de integridade com IA (pode levar 1-2 minutos)..."):
                     _texto_pip, _avisos_pip = (
