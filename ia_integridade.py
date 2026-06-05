@@ -83,9 +83,9 @@ QUESTOES_PIP: tuple[tuple[str, str], ...] = tuple(_ROTULOS_QUESTIONARIO.items())
 _CHAVE_ATO_FORMAL        = "q_ato_formal"
 _CHAVE_RESPONSAVEL       = "q_responsavel_designado"
 
-_CHAVES_PIP = {k for k, _ in QUESTOES_PIP}
-assert _CHAVE_ATO_FORMAL   in _CHAVES_PIP, f"{_CHAVE_ATO_FORMAL!r} ausente em QUESTOES_PIP"
-assert _CHAVE_RESPONSAVEL  in _CHAVES_PIP, f"{_CHAVE_RESPONSAVEL!r} ausente em QUESTOES_PIP"
+assert {_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL} <= {k for k, _ in QUESTOES_PIP}, (
+    f"Chaves críticas ausentes em QUESTOES_PIP: {_CHAVE_ATO_FORMAL!r}, {_CHAVE_RESPONSAVEL!r}"
+)
 
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:

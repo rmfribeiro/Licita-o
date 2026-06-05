@@ -38,6 +38,7 @@ _ESTILO_TITULO  = ParagraphStyle("ddi_titulo", parent=_estilos_base["Title"],   
 _ESTILO_H2      = ParagraphStyle("ddi_h2",     parent=_estilos_base["Heading2"], fontSize=12, spaceAfter=3)
 _ESTILO_CORPO   = ParagraphStyle("ddi_corpo",  parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
 _ESTILO_PEQUENO = ParagraphStyle("ddi_peq",    parent=_estilos_base["Normal"],   fontSize=8, textColor=colors.grey)
+_ESTILO_H1      = ParagraphStyle("ddi_h1",     parent=_estilos_base["Heading1"])
 
 
 def _fmt_cnpj(cnpj: str) -> str:
@@ -55,22 +56,17 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         buf, pagesize=A4,
         leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
     )
-    titulo  = _ESTILO_TITULO
-    h2      = _ESTILO_H2
-    corpo   = _ESTILO_CORPO
-    pequeno = _ESTILO_PEQUENO
-
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", titulo))
-    story.append(Paragraph("Due Diligence de Integridade (DDI)", _estilos_base["Heading1"]))
-    story.append(Paragraph("Portaria SEGES/ME 8.678/2021, art. 2 III - Decreto 12.304/2024", pequeno))
-    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", pequeno))
+    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("Due Diligence de Integridade (DDI)", _ESTILO_H1))
+    story.append(Paragraph("Portaria SEGES/ME 8.678/2021, art. 2 III - Decreto 12.304/2024", _ESTILO_PEQUENO))
+    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
     # Identificação
-    story.append(Paragraph("Identificação do Licitante", h2))
+    story.append(Paragraph("Identificação do Licitante", _ESTILO_H2))
     linhas_id = [
         ["Razão Social", dados.get("razao_social", "-")],
         ["CNPJ", _fmt_cnpj(cnpj)],
@@ -95,18 +91,18 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     # Sócios
     socios = dados.get("socios") or []
     if socios:
-        story.append(Paragraph("Quadro Societário", h2))
+        story.append(Paragraph("Quadro Societário", _ESTILO_H2))
         for s in socios:
             if not s:
                 continue
-            story.append(Paragraph(f"- {html.escape(str(s.get('nome') or '-'))} -- {html.escape(str(s.get('cargo') or '-'))}", corpo))
+            story.append(Paragraph(f"- {html.escape(str(s.get('nome') or '-'))} -- {html.escape(str(s.get('cargo') or '-'))}", _ESTILO_CORPO))
         story.append(Spacer(1, 0.3*cm))
 
     # Índice de risco
     risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
     risco = {"MEDIO": "MÉDIO"}.get(risco, risco)
     cor_risco = _COR_RISCO.get(risco, colors.grey)
-    story.append(Paragraph("Índice de Risco Geral", h2))
+    story.append(Paragraph("Índice de Risco Geral", _ESTILO_H2))
     t_risco = Table(
         [[Paragraph(f"<b>{html.escape(str(risco))}</b>",
                     ParagraphStyle("r", fontSize=14, textColor=colors.white, alignment=1))]],
@@ -121,7 +117,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     story.append(Spacer(1, 0.4*cm))
 
     # Risco por dimensão
-    story.append(Paragraph("Análise por Dimensão", h2))
+    story.append(Paragraph("Análise por Dimensão", _ESTILO_H2))
     dims = parecer.get("dimensoes") or {}
     for chave, label in _LABEL_DIMENSAO.items():
         dim = dims.get(chave) or {}
@@ -130,7 +126,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(
             f"<font color='{cor}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao') or '-'))}",
-            corpo
+            _ESTILO_CORPO
         ))
         for achado in (dim.get("achados") or []):
             if not achado:
@@ -139,12 +135,12 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
                 f"  -> <b>{html.escape(str(achado.get('fonte') or ''))}</b>: "
                 f"{html.escape(str(achado.get('descricao') or ''))} "
                 f"(gravidade: {html.escape(str(achado.get('gravidade') or ''))})",
-                corpo
+                _ESTILO_CORPO
             ))
     story.append(Spacer(1, 0.3*cm))
 
     # FID
-    story.append(Paragraph("Formulário de Integridade e Diligência (FID)", h2))
+    story.append(Paragraph("Formulário de Integridade e Diligência (FID)", _ESTILO_H2))
     linhas_fid = [["Critério", "Resposta"]] + [
         [_PERGUNTAS_FID.get(k, k), v] for k, v in fid.items()
     ]
@@ -161,39 +157,39 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
 
     # Programa de Integridade
     pi_dim = dims.get("programa_integridade") or {}
-    story.append(Paragraph("Programa de Integridade", h2))
+    story.append(Paragraph("Programa de Integridade", _ESTILO_H2))
     story.append(Paragraph(
         f"Empresa Pro-Etica (CGU): {'Sim' if pi_dim.get('pro_etica') else 'Não'}",
-        corpo
+        _ESTILO_CORPO
     ))
     story.append(Paragraph(
         f"PI obrigatorio (Decreto 12.304/2024 - Grande Vulto): "
         f"{'Sim' if pi_dim.get('obrigatorio') else 'Não'}",
-        corpo
+        _ESTILO_CORPO
     ))
     story.append(Spacer(1, 0.3*cm))
 
     # Parecer
-    story.append(Paragraph("Parecer de Integridade", h2))
-    story.append(Paragraph(html.escape(str(parecer.get("resumo") or "-")), corpo))
+    story.append(Paragraph("Parecer de Integridade", _ESTILO_H2))
+    story.append(Paragraph(html.escape(str(parecer.get("resumo") or "-")), _ESTILO_CORPO))
     story.append(Spacer(1, 0.2*cm))
     for bl in (parecer.get("base_legal") or []):
         if bl:
-            story.append(Paragraph(f"- {html.escape(str(bl))}", corpo))
+            story.append(Paragraph(f"- {html.escape(str(bl))}", _ESTILO_CORPO))
     story.append(Spacer(1, 0.3*cm))
 
     # Recomendação
-    story.append(Paragraph("Recomendação ao Gestor", h2))
-    story.append(Paragraph(html.escape(str(parecer.get("recomendacao") or "-")), corpo))
+    story.append(Paragraph("Recomendação ao Gestor", _ESTILO_H2))
+    story.append(Paragraph(html.escape(str(parecer.get("recomendacao") or "-")), _ESTILO_CORPO))
     story.append(Spacer(1, 0.4*cm))
 
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
-    story.append(Paragraph(f"Validade do FID: {html.escape(str(parecer.get('validade_fid') or '12 meses'))}", pequeno))
+    story.append(Paragraph(f"Validade do FID: {html.escape(str(parecer.get('validade_fid') or '12 meses'))}", _ESTILO_PEQUENO))
     story.append(Paragraph(
         "Gerado por IA-Licita - RM Vértice Digital. Sujeito a verificação humana. "
         "Não substitui parecer jurídico.",
-        pequeno
+        _ESTILO_PEQUENO
     ))
 
     doc.build(story)
