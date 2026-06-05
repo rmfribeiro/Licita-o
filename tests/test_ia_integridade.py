@@ -16,8 +16,11 @@ class TestAplicarPiso:
         assert ia_integridade._aplicar_piso(_nao(), "CONSOLIDADO") == "INEXISTENTE"
 
     def test_regra1_tem_precedencia_sobre_regra2(self):
-        # All-Não deve produzir INEXISTENTE, não INICIAL
-        assert ia_integridade._aplicar_piso(_nao(), "CONSOLIDADO") == "INEXISTENTE"
+        # All-Não satisfies both Regra 1 and Regra 2 conditions.
+        # Regra 1 must win: result must be INEXISTENTE, not INICIAL.
+        result = ia_integridade._aplicar_piso(_nao(), "CONSOLIDADO")
+        assert result == "INEXISTENTE"
+        assert result != "INICIAL"
 
     def test_ato_formal_nao_responsavel_nao_cap_inicial(self):
         r = _sim()
