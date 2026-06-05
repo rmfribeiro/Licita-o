@@ -83,8 +83,10 @@ QUESTOES_PIP: tuple[tuple[str, str], ...] = tuple(_ROTULOS_QUESTIONARIO.items())
 _CHAVE_ATO_FORMAL        = "q_ato_formal"
 _CHAVE_RESPONSAVEL       = "q_responsavel_designado"
 
-assert {_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL} <= {k for k, _ in QUESTOES_PIP}, (
-    f"Chaves críticas ausentes em QUESTOES_PIP: {_CHAVE_ATO_FORMAL!r}, {_CHAVE_RESPONSAVEL!r}"
+_chaves_pip = {k for k, _ in QUESTOES_PIP}
+assert {_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL} <= _chaves_pip, (
+    f"Chaves críticas ausentes em QUESTOES_PIP: "
+    f"{', '.join(repr(c) for c in (_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL) if c not in _chaves_pip)}"
 )
 
 
