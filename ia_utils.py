@@ -13,15 +13,16 @@ def extrair_json(texto: str) -> dict:
        strings e fechar delimitadores na ordem correta).
     """
     t = texto.strip()
-    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.IGNORECASE | re.MULTILINE).strip()
+    t = re.sub(r"\A```(?:json)?\s*|\s*```\Z", "", t, flags=re.IGNORECASE).strip()
     ini = t.find("{")
-    fim = t.rfind("}") + 1
-    if ini == -1 or fim == 0:
+    if ini == -1:
         try:
             return json.loads(t)
         except json.JSONDecodeError:
             raise ValueError("Resposta sem JSON reconhecível")
-    raw = t[ini:fim]
+    fim = t.rfind("}") + 1
+    # fim==0 significa JSON truncado sem nenhum } — usa o texto inteiro para repair
+    raw = t[ini:fim] if fim > 0 else t[ini:]
 
     # Try 1: parse direto
     try:
@@ -31,14 +32,15 @@ def extrair_json(texto: str) -> dict:
 
     # Try 2: remove trailing commas
     cleaned = re.sub(r",\s*([}\]])", r"\1", raw)
+    err_pos = None
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as exc2:
-        pass  # exc2.pos reaproveitado em Try 3
+        err_pos = exc2.pos  # captura antes de PEP 3110 deletar exc2
 
     # Try 3: trunca no ponto de erro e fecha delimitadores na ordem correta.
     # Usa stack string-aware para não contar { e [ dentro de strings.
-    trunc = cleaned[:exc2.pos]
+    trunc = cleaned[:err_pos]
     stack: list[str] = []
     in_string = False
     escape = False
@@ -59,9 +61,9 @@ def extrair_json(texto: str) -> dict:
         elif ch in "}]" and stack:
             stack.pop()
 
-    if stack:
+    if stack or in_string:
         closer = {"[": "]", "{": "}"}
-        closing = "".join(closer[c] for c in reversed(stack))
+        closing = ('"' if in_string else "") + "".join(closer[c] for c in reversed(stack))
         try:
             return json.loads(trunc + closing)
         except json.JSONDecodeError:
