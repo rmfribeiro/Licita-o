@@ -16,6 +16,7 @@ Observacoes:
   e alguns "detectores de red flag" por padrao (regex) demonstram o conceito.
 """
 import sys, json, re, unicodedata, datetime, html, os
+from ia_utils import COR_STATUS_HEX as _COR_STATUS_HEX
 
 # ---------------------------------------------------------------- utilidades
 def strip_accents(s):
@@ -240,12 +241,13 @@ def indice_de_risco(apont):
 
 # ----------------------------------------------------------------- relatorio
 COR_STATUS = {
-    "inconformidade": ("#C0392B", "Inconformidade"),
-    "alerta": ("#E67E22", "Alerta - possivel ausencia"),
-    "revisar": ("#2E75B6", "Revisar (IA/jurista)"),
-    "ok": ("#27AE60", "Presente"),
+    "inconformidade": (_COR_STATUS_HEX["critico"], "Inconformidade"),
+    "alerta":         (_COR_STATUS_HEX["alerta"],  "Alerta - possivel ausencia"),
+    "revisar":        ("#2E75B6",                  "Revisar (IA/jurista)"),
+    "ok":             (_COR_STATUS_HEX["ok"],      "Presente"),
 }
-COR_SEV = {"alta": "#C0392B", "media": "#E67E22", "baixa": "#7F8C8D"}
+COR_SEV = {"alta": _COR_STATUS_HEX["critico"], "media": _COR_STATUS_HEX["alerta"], "baixa": "#7F8C8D"}
+_COR_NIVEL = {"BAIXO": _COR_STATUS_HEX["ok"], "MEDIO": _COR_STATUS_HEX["alerta"], "ALTO": _COR_STATUS_HEX["critico"]}
 
 def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     e = html.escape
@@ -253,14 +255,14 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     n_ale = sum(1 for a in apont if a["status"] == "alerta")
     n_rev = sum(1 for a in apont if a["status"] == "revisar")
     n_ok = sum(1 for a in apont if a["status"] == "ok")
-    cor_nivel = {"BAIXO": "#27AE60", "MEDIO": "#E67E22", "ALTO": "#C0392B"}.get(nivel, "#888")
+    cor_nivel = _COR_NIVEL.get(nivel, "#888")
     # nivel de atencao: dirigido pela PIOR severidade entre inconformidades/alertas,
     # distinto do indice numerico (que mede risco agregado de nulidade do merito)
     inc_ale = [a for a in apont if a["status"] in ("inconformidade", "alerta")]
     n_alta_g = sum(1 for a in inc_ale if a["severidade"] == "alta")
     n_media_g = sum(1 for a in inc_ale if a["severidade"] == "media")
     nivel_at = "ALTO" if n_alta_g else ("MEDIO" if n_media_g else "BAIXO")
-    cor_at = {"BAIXO": "#27AE60", "MEDIO": "#E67E22", "ALTO": "#C0392B"}[nivel_at]
+    cor_at = _COR_NIVEL[nivel_at]
     det_at = (f"{n_alta_g} achado(s) de alta severidade" if n_alta_g else
               (f"{n_media_g} de severidade media" if n_media_g else "sem achados que exijam correcao"))
     data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")

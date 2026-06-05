@@ -14,7 +14,7 @@ from ia_utils import COR_STATUS_HEX as _COR_STATUS
 _COR_RISCO = {
     "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
     "MÉDIO":                  colors.HexColor(_COR_STATUS["alerta"]),
-    "BAIXO":                  colors.HexColor("#F39C12"),
+    "BAIXO":                  colors.HexColor(_COR_STATUS["ok"]),
     "SEM RISCO IDENTIFICADO": colors.HexColor(_COR_STATUS["ok"]),
 }
 
