@@ -78,3 +78,72 @@ def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
             return "INICIAL"
 
     return maturidade_ia
+
+
+def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
+    corpo = json.dumps({
+        "model": modelo,
+        "max_tokens": 3000,
+        "system": _SISTEMA,
+        "messages": [{"role": "user", "content": prompt}],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=corpo,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        dados = json.loads(resp.read().decode("utf-8"))
+    return "".join(b.get("text", "") for b in dados.get("content", []))
+
+
+def diagnosticar(
+    respostas: dict,
+    texto_docs: str | None,
+    api_key: str,
+    modelo: str = _MODELO_PADRAO,
+    parecer_ddi: dict | None = None,
+) -> dict:
+    partes = ["Questionário sobre o Programa de Integridade Pública da prefeitura:\n"]
+    for chave, pergunta in _ROTULOS_QUESTIONARIO.items():
+        partes.append(f"- {pergunta} Resposta: {respostas.get(chave, 'Não informado')}")
+
+    if texto_docs:
+        partes.append(f"\nDocumentos da prefeitura fornecidos:\n{texto_docs[:30000]}")
+
+    if parecer_ddi:
+        pi = parecer_ddi.get("dimensoes", {}).get("programa_integridade", {})
+        if pi:
+            partes.append(
+                f"\nContexto DDI (Due Diligence de fornecedor relacionado):\n"
+                f"- Status do programa de integridade: {pi.get('status', '-')}\n"
+                f"- Descrição: {pi.get('descricao', '-')}\n"
+                f"- Programa obrigatório: {pi.get('obrigatorio', '-')}\n"
+                f"- Empresa Pró-Ética: {pi.get('pro_etica', '-')}"
+            )
+
+    partes.append(f"\nRetorne o diagnóstico no formato:\n{_ESTRUTURA_PARECER}")
+
+    try:
+        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo)
+        parecer = _extrair_json(bruto)
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
+        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
+    except (ValueError, Exception) as exc:
+        raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    if not isinstance(parecer, dict):
+        raise RuntimeError(
+            f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}"
+        )
+
+    _mat = str(parecer.get("maturidade_geral") or "INEXISTENTE").strip().upper()
+    if _mat not in _MATURIDADE_ORDEM:
+        _mat = "INEXISTENTE"
+    parecer["maturidade_geral"] = _aplicar_piso(respostas, _mat)
+
+    return parecer
