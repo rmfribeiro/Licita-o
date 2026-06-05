@@ -1,6 +1,13 @@
 from __future__ import annotations
 import json
 import re
+import types
+
+COR_STATUS_HEX: types.MappingProxyType = types.MappingProxyType({
+    "ok":      "#27AE60",
+    "alerta":  "#E67E22",
+    "critico": "#C0392B",
+})
 
 
 def extrair_json(texto: str) -> dict:

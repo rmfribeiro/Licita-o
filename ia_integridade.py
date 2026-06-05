@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import os
+import types
 import urllib.request
 import urllib.error
 import logging
@@ -14,14 +15,6 @@ from ia_utils import extrair_json as _extrair_json
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 _MATURIDADE_ORDEM = ["INEXISTENTE", "INICIAL", "EM DESENVOLVIMENTO", "CONSOLIDADO"]
 
-_CHAVES_QUESTIONARIO = [
-    "q_ato_formal", "q_responsavel_designado",
-    "q_diretrizes_publicadas", "q_diretrizes_divulgadas",
-    "q_base_legal_conhecida",
-    "q_mecanismos_responsabilizacao", "q_precedentes_punicao",
-    "q_plano_gestao", "q_indicadores",
-    "q_primeira_linha", "q_segunda_linha", "q_terceira_linha",
-]
 
 _SISTEMA = (
     "Você é um consultor sênior especialista em Programas de Integridade Pública (PIP) "
@@ -78,20 +71,18 @@ ICONE_MATURIDADE = {
     "INEXISTENTE":        "🔴",
 }
 
-COR_MATURIDADE_HEX = {
+COR_MATURIDADE_HEX: types.MappingProxyType = types.MappingProxyType({
     "CONSOLIDADO":        "#27AE60",
     "EM DESENVOLVIMENTO": "#2980B9",
     "INICIAL":            "#F39C12",
     "INEXISTENTE":        "#C0392B",
-}
+})
 
-QUESTOES_PIP: list[tuple[str, str]] = [
-    (k, _ROTULOS_QUESTIONARIO[k]) for k in _CHAVES_QUESTIONARIO
-]
+QUESTOES_PIP: tuple[tuple[str, str], ...] = tuple(_ROTULOS_QUESTIONARIO.items())
 
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
-    valores = [str(respostas.get(k) or "Não").strip() for k in _CHAVES_QUESTIONARIO]
+    valores = [str(respostas.get(k) or "Não").strip() for k, _ in QUESTOES_PIP]
 
     # Regra 1 (mais restritiva) — todos Não → INEXISTENTE
     if all(v == "Não" for v in valores):

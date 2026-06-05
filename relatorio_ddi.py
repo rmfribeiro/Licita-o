@@ -9,6 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
+from ia_utils import COR_STATUS_HEX as _COR_STATUS
 
 _COR_RISCO = {
     "ALTO": colors.HexColor("#C0392B"),
@@ -16,7 +17,7 @@ _COR_RISCO = {
     "BAIXO": colors.HexColor("#F39C12"),
     "SEM RISCO IDENTIFICADO": colors.HexColor("#27AE60"),
 }
-_COR_STATUS = {"ok": "#27AE60", "alerta": "#E67E22", "critico": "#C0392B"}
+
 _LABEL_DIMENSAO = {
     "situacao_cadastral": "Situação Cadastral",
     "sancoes": "Sanções e Punições",

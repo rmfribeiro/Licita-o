@@ -15,7 +15,7 @@ _COR_MATURIDADE = {k: colors.HexColor(v) for k, v in _COR_NIVEL_HEX.items()}
 
 _estilos_base   = getSampleStyleSheet()
 _ESTILO_TITULO  = ParagraphStyle("titulo", parent=_estilos_base["Title"],   fontSize=16, spaceAfter=4)
-_ESTILO_H1      = _estilos_base["Heading1"]
+_ESTILO_H1      = ParagraphStyle("h1pip", parent=_estilos_base["Heading1"])
 _ESTILO_H2      = ParagraphStyle("h2",     parent=_estilos_base["Heading2"], fontSize=12, spaceAfter=3)
 _ESTILO_CORPO   = ParagraphStyle("corpo",  parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
 _ESTILO_PEQUENO = ParagraphStyle("peq",    parent=_estilos_base["Normal"],   fontSize=8,

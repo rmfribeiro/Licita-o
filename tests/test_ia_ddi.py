@@ -1,5 +1,9 @@
 from __future__ import annotations
+import io
+import json as _json
+import urllib.error
 import pytest
+from unittest.mock import patch, MagicMock
 import ia_ddi
 
 
@@ -64,10 +68,6 @@ class TestAplicarPiso:
         assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
 
 
-import io
-from unittest.mock import patch, MagicMock
-import json as _json
-import urllib.error
 
 
 def _parecer_ia_mock():

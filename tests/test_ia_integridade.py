@@ -6,11 +6,11 @@ import ia_integridade
 
 
 def _nao() -> dict:
-    return {k: "Não" for k in ia_integridade._CHAVES_QUESTIONARIO}
+    return {k: "Não" for k, _ in ia_integridade.QUESTOES_PIP}
 
 
 def _sim() -> dict:
-    return {k: "Sim" for k in ia_integridade._CHAVES_QUESTIONARIO}
+    return {k: "Sim" for k, _ in ia_integridade.QUESTOES_PIP}
 
 
 class TestAplicarPiso:
