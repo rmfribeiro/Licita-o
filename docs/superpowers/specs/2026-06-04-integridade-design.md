@@ -31,6 +31,8 @@ O módulo produz um parecer com nível de maturidade em escala de 4 estágios (I
 - Tab 3: `📋 Auditoria de ETP` — sem alteração
 - Tab 4: `🏛️ Diagnóstico de Integridade` — novo módulo
 
+> **Atenção (app.py):** a linha atual é `aba1, aba2, aba3 = st.tabs([...])`. Adicionar Tab 4 exige alterar **tanto a lista quanto o destructuring**: `aba1, aba2, aba3, aba4 = st.tabs([..., "🏛️ Diagnóstico de Integridade"])`. Atualizar só a lista sem atualizar o unpacking levanta `ValueError` na inicialização.
+
 ---
 
 ## 3. Arquivos Novos
@@ -53,12 +55,19 @@ Usuário preenche questionário (12 perguntas, 6 dimensões)
       ↓
 [app.py — Tab 4]
   → Coleta respostas do formulário
-  → Extrai texto dos documentos (reutiliza etp_extrator.extrair_texto)
+  → Resolve api_key (mesmo padrão do Tab 3 ETP: tenta os.environ, depois st.secrets)
+  → Se arquivos foram enviados:
+      texto_docs, avisos = etp_extrator.extrair_texto(arquivos)  # retorna tuple[str, list[str]]
+    Caso contrário:
+      texto_docs, avisos = None, []
+    ⚠️ NÃO chamar extrair_texto com lista vazia — levanta ValueError
   → Lê parecer_ddi da sessão se disponível
       ↓
 [ia_integridade.py]
   → Monta prompt com respostas + texto dos docs + resumo DDI
-  → Chamada única à API Anthropic (urllib, mesmo padrão)
+  → Chamada única à API Anthropic via `_chamar_anthropic` local (urllib)
+    ⚠️ Candidato a refatoração futura: ia_ddi e ia_etp também têm cópias privadas.
+       Promover para ia_utils quando houver 3+ módulos usando o mesmo wrapper.
   → Aplica lógica de piso de maturidade
   → Retorna parecer dict
       ↓
@@ -153,13 +162,24 @@ Cada resposta aceita: `"Sim"` | `"Não"` | `"Parcialmente"`.
 
 ### Lógica de piso de maturidade (aplicada após resposta da IA)
 
-- Se `q_ato_formal == "Não"` E `q_responsavel_designado == "Não"` → `maturidade_geral` limitada ao máximo `"INICIAL"`
-- Se todos os 12 campos == `"Não"` → força `"INEXISTENTE"`
-- Caso contrário: maturidade_geral retornada pela IA é aceita
+Regras aplicadas **nesta ordem** (a mais restritiva primeiro):
+
+1. Se **todos os 12 campos** == `"Não"` → força `maturidade_geral = "INEXISTENTE"`
+2. Se `q_ato_formal` in `{"Não", "Parcialmente"}` **E** `q_responsavel_designado` in `{"Não", "Parcialmente"}` → `maturidade_geral` limitada ao máximo `"INICIAL"` (cobre tanto respostas "Não" quanto "Parcialmente" nos dois campos críticos)
+3. Caso contrário: `maturidade_geral` retornada pela IA é aceita
+
+> **Importante:** a Regra 1 deve ser verificada antes da Regra 2. Implementar como if/elif/else nessa ordem. Se invertidas, o caso all-Não será capturado pela Regra 2 (cap INICIAL) e a Regra 1 nunca emitirá INEXISTENTE.
 
 ### Integração com parecer DDI
 
-Se `parecer_ddi` for fornecido, o prompt inclui o campo `programa_integridade` do DDI (status e descrição) como contexto adicional. Não altera a lógica de piso.
+Se `parecer_ddi` for fornecido, o prompt inclui o sub-dict do DDI acessado pelo caminho exato:
+
+```python
+pi = parecer_ddi.get("dimensoes", {}).get("programa_integridade", {})
+# Campos disponíveis: pi["status"], pi["descricao"], pi["obrigatorio"], pi["pro_etica"]
+```
+
+Todos os quatro campos devem ser incluídos no contexto enviado à IA — `obrigatorio=True` + `pro_etica=False` é a combinação de maior risco legal e deve ser transmitida integralmente. Não altera a lógica de piso.
 
 ### Modelo
 
@@ -199,7 +219,8 @@ def gerar_pdf(municipio: str, respostas: dict, parecer: dict) -> bytes
 **Etapa 1 — Questionário + documentos**
 - 12 perguntas exibidas com `st.selectbox` ("Sim" / "Não" / "Parcialmente")
 - Campo texto para nome do município
-- `st.file_uploader` opcional para documentos de suporte (reutiliza `etp_extrator`)
+- `st.file_uploader` com `accept_multiple_files=True` para documentos de suporte — reutiliza `etp_extrator.extrair_texto`; retorna lista vazia quando nenhum arquivo é enviado (não chamar `extrair_texto` nesse caso)
+- `api_key` resolvida localmente no início do bloco `with aba4:`, seguindo o mesmo padrão do Tab 3 ETP (tenta `os.environ["ANTHROPIC_API_KEY"]`, depois `st.secrets.get("ANTHROPIC_API_KEY")`)
 - Botão "Gerar Diagnóstico"
 
 **Etapa 2 — Resultado**
