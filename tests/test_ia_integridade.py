@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pytest
+import urllib.error
 import ia_integridade
 
 
@@ -152,3 +153,15 @@ class TestDiagnosticar:
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
         assert resultado["maturidade_geral"] == "INEXISTENTE"
+
+    @patch("ia_integridade.urllib.request.urlopen")
+    def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):
+        import io
+        fp = io.BytesIO(b'{"error": "invalid_api_key"}')
+        mock_urlopen.side_effect = urllib.error.HTTPError(
+            "https://api.anthropic.com/v1/messages", 401, "Unauthorized", {}, fp
+        )
+        with pytest.raises(RuntimeError) as exc_info:
+            ia_integridade.diagnosticar(_sim(), None, "sk-test")
+        assert "401" in str(exc_info.value)
+        assert "invalid_api_key" in str(exc_info.value)

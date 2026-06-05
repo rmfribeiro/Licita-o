@@ -428,8 +428,8 @@ with aba4:
 
     st.markdown("**Questionário — 12 perguntas sobre o PIP**")
     _PERGUNTAS_PIP = [
-        (k, f"{i}. {ia_integridade._ROTULOS_QUESTIONARIO[k]}")
-        for i, k in enumerate(ia_integridade._CHAVES_QUESTIONARIO, 1)
+        (k, f"{i}. {label}")
+        for i, (k, label) in enumerate(ia_integridade.questoes_pip(), 1)
     ]
     _respostas_pip = {}
     for _chave_pip, _pergunta_pip in _PERGUNTAS_PIP:
@@ -489,11 +489,7 @@ with aba4:
 
         st.divider()
         _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
-        _icone_maturidade = {
-            "CONSOLIDADO": "🟢", "EM DESENVOLVIMENTO": "🔵",
-            "INICIAL": "🟡",    "INEXISTENTE": "🔴",
-        }
-        st.subheader(f"{_icone_maturidade.get(_mat_pip, '⚪')} Maturidade Geral: {_mat_pip}")
+        st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_mat_pip}")
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
         if _resumo_pip:
@@ -503,7 +499,7 @@ with aba4:
         for _ch, _lb in ia_integridade.LABEL_DIMENSAO.items():
             _d   = _dims_pip.get(_ch) or {}
             _niv = str(_d.get("nivel") or "INEXISTENTE").strip().upper()
-            _ic  = _icone_maturidade.get(_niv, "⚪")
+            _ic  = ia_integridade.ICONE_MATURIDADE.get(_niv, "⚪")
             with st.expander(f"{_ic} {_lb} — {_niv}"):
                 for _ach in (_d.get("achados") or []):
                     if _ach:

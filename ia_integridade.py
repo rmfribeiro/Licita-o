@@ -3,7 +3,7 @@ import json
 import os
 import urllib.request
 import urllib.error
-import warnings
+import logging
 try:
     import streamlit as st
     _HAS_ST = True
@@ -70,6 +70,17 @@ LABEL_DIMENSAO = {
     "metodologia_gestao":      "Metodologia de Gestão",
     "tres_linhas_defesa":      "Três Linhas de Defesa",
 }
+
+ICONE_MATURIDADE = {
+    "CONSOLIDADO":        "🟢",
+    "EM DESENVOLVIMENTO": "🔵",
+    "INICIAL":            "🟡",
+    "INEXISTENTE":        "🔴",
+}
+
+
+def questoes_pip() -> list[tuple[str, str]]:
+    return [(k, _ROTULOS_QUESTIONARIO[k]) for k in _CHAVES_QUESTIONARIO]
 
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
@@ -160,9 +171,8 @@ def diagnosticar(
 
     _mat = str(parecer.get("maturidade_geral") or "INEXISTENTE").strip().upper()
     if _mat not in _MATURIDADE_ORDEM:
-        warnings.warn(
-            f"ia_integridade: maturidade_geral inesperada da IA: {_mat!r} — normalizado para INEXISTENTE",
-            stacklevel=2,
+        logging.warning(
+            "ia_integridade: maturidade_geral inesperada da IA: %r — normalizado para INEXISTENTE", _mat
         )
         _mat = "INEXISTENTE"
     parecer["maturidade_geral"] = _aplicar_piso(respostas, _mat)
