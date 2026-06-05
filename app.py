@@ -18,6 +18,8 @@ import relatorio_ddi
 import etp_extrator
 import ia_etp
 import relatorio_etp
+import ia_integridade
+import relatorio_integridade
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -64,10 +66,11 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3 = st.tabs([
+aba1, aba2, aba3, aba4 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
+    "🏛️ Diagnóstico de Integridade",
 ])
 
 with aba1:
@@ -398,6 +401,147 @@ with aba3:
                 label="Baixar Relatório PDF",
                 data=_pdf_etp,
                 file_name="ETP_auditoria.pdf",
+                mime="application/pdf",
+            )
+        except Exception as _e:
+            st.error(f"Erro ao gerar PDF: {_e}")
+
+with aba4:
+    st.subheader("Diagnóstico do Programa de Integridade Pública")
+    st.caption(
+        "Decreto 11.129/2022 · IN CGU 21/2021 · Lei 12.846/2013, art. 7º, III · Decreto 8.420/2015"
+    )
+
+    _api_key_pip = os.environ.get("ANTHROPIC_API_KEY")
+    if not _api_key_pip:
+        try:
+            _val = st.secrets.get("ANTHROPIC_API_KEY")
+            if _val:
+                _api_key_pip = str(_val)
+        except _SecretsNotFound:
+            pass
+        except Exception as _e:
+            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+    _modelo_pip = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+    _municipio_pip = st.text_input("Nome do município", key="pip_municipio")
+
+    st.markdown("**Questionário — 12 perguntas sobre o PIP**")
+    _PERGUNTAS_PIP = [
+        ("q_ato_formal",                  "1. Existe ato formal do prefeito instituindo o PIP?"),
+        ("q_responsavel_designado",        "2. Há responsável formalmente designado pelo PIP?"),
+        ("q_diretrizes_publicadas",        "3. As diretrizes de integridade foram publicadas?"),
+        ("q_diretrizes_divulgadas",        "4. As diretrizes foram divulgadas a todos os servidores?"),
+        ("q_base_legal_conhecida",         "5. A autoridade superior conhece o marco legal do PIP (Decreto 11.129/2022)?"),
+        ("q_mecanismos_responsabilizacao", "6. Existem mecanismos formais de responsabilização de servidores?"),
+        ("q_precedentes_punicao",          "7. Já houve apuração e punição por irregularidades nesta prefeitura?"),
+        ("q_plano_gestao",                 "8. Existe plano formal de gestão e acompanhamento do PIP?"),
+        ("q_indicadores",                  "9. Existem indicadores definidos para monitorar o PIP?"),
+        ("q_primeira_linha",               "10. Gestores de linha conhecem e exercem seus controles de conformidade?"),
+        ("q_segunda_linha",                "11. Controle interno está estruturado e ativo?"),
+        ("q_terceira_linha",               "12. Auditoria interna existe e funciona de forma independente?"),
+    ]
+    _respostas_pip = {}
+    for _chave_pip, _pergunta_pip in _PERGUNTAS_PIP:
+        _respostas_pip[_chave_pip] = st.selectbox(
+            _pergunta_pip,
+            ["Sim", "Não", "Parcialmente"],
+            key=f"pip_{_chave_pip}",
+        )
+
+    _arqs_pip = st.file_uploader(
+        "Documentos da prefeitura (opcional — PDF ou Word)",
+        type=["pdf", "docx"],
+        accept_multiple_files=True,
+        key="pip_arquivos",
+    )
+
+    if st.button("Gerar Diagnóstico", type="primary", key="btn_pip", disabled=not _municipio_pip):
+        if not _api_key_pip:
+            st.error("ANTHROPIC_API_KEY não configurada — configure via variável de ambiente ou secrets.toml.")
+        else:
+            try:
+                with st.spinner("Analisando programa de integridade com IA (pode levar 1-2 minutos)..."):
+                    _texto_pip, _avisos_pip = (
+                        etp_extrator.extrair_texto(_arqs_pip) if _arqs_pip else (None, [])
+                    )
+                    _parecer_pip = ia_integridade.diagnosticar(
+                        _respostas_pip,
+                        _texto_pip,
+                        _api_key_pip,
+                        _modelo_pip,
+                        st.session_state.get("ddi_parecer"),
+                    )
+                st.session_state["pip_parecer"] = _parecer_pip
+                st.session_state["pip_municipio"] = _municipio_pip
+                st.session_state["pip_avisos"] = _avisos_pip
+            except (ValueError, RuntimeError) as _e:
+                st.error(str(_e))
+
+    if "pip_parecer" in st.session_state:
+        _pr_pip = st.session_state["pip_parecer"]
+        _mun_pip = st.session_state.get("pip_municipio", "")
+        _av_pip  = st.session_state.get("pip_avisos", [])
+
+        for _aviso in _av_pip:
+            st.warning(_aviso)
+
+        st.divider()
+        _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
+        _icone_mat = {
+            "CONSOLIDADO": "🟢", "EM DESENVOLVIMENTO": "🔵",
+            "INICIAL": "🟡",    "INEXISTENTE": "🔴",
+        }
+        st.subheader(f"{_icone_mat.get(_mat_pip, '⚪')} Maturidade Geral: {_mat_pip}")
+
+        _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
+        if _resumo_pip:
+            st.info(_resumo_pip)
+
+        _LABEL_DIM_PIP = {
+            "compromisso_alta_gestao": "Compromisso da Alta Gestão",
+            "diretrizes_integridade":  "Diretrizes de Integridade",
+            "base_legal_normativa":    "Base Legal e Normativa",
+            "responsabilizacao":       "Responsabilização",
+            "metodologia_gestao":      "Metodologia de Gestão",
+            "tres_linhas_defesa":      "Três Linhas de Defesa",
+        }
+        _icone_nivel = {
+            "CONSOLIDADO": "🟢", "EM DESENVOLVIMENTO": "🔵",
+            "INICIAL": "🟡",    "INEXISTENTE": "🔴",
+        }
+        _dims_pip = _pr_pip.get("dimensoes") or {}
+        for _ch, _lb in _LABEL_DIM_PIP.items():
+            _d   = _dims_pip.get(_ch) or {}
+            _niv = str(_d.get("nivel") or "INEXISTENTE").strip().upper()
+            _ic  = _icone_nivel.get(_niv, "⚪")
+            with st.expander(f"{_ic} {_lb} — {_niv}"):
+                for _ach in (_d.get("achados") or []):
+                    if _ach:
+                        st.warning(_ach)
+                for _rec in (_d.get("recomendacoes") or []):
+                    if _rec:
+                        st.info(_rec)
+
+        _prio_pip = _pr_pip.get("prioridades") or []
+        if _prio_pip:
+            st.subheader("Prioridades Imediatas")
+            for _i, _p in enumerate(_prio_pip, 1):
+                if _p:
+                    st.error(f"{_i}. {_p}")
+
+        with st.expander("Base Legal"):
+            for _bl in (_pr_pip.get("base_legal") or []):
+                if _bl:
+                    st.write(f"• {_bl}")
+
+        try:
+            _pdf_pip = relatorio_integridade.gerar_pdf(_mun_pip, _pr_pip)
+            _nome_pdf = f"PIP_{_mun_pip.replace('/', '-').replace(' ', '_')}.pdf"
+            st.download_button(
+                label="Baixar Relatório PDF",
+                data=_pdf_pip,
+                file_name=_nome_pdf,
                 mime="application/pdf",
             )
         except Exception as _e:
