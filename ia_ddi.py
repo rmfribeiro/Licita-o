@@ -63,7 +63,7 @@ def _aplicar_piso(dados: dict, fid: dict | None = None) -> str:
 def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
     corpo = json.dumps({
         "model": modelo,
-        "max_tokens": 2000,
+        "max_tokens": 3000,
         "system": _SISTEMA,
         "messages": [{"role": "user", "content": prompt}],
     }).encode("utf-8")
@@ -76,7 +76,7 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
             "content-type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=180) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
     return "".join(b.get("text", "") for b in dados.get("content", []))
 
