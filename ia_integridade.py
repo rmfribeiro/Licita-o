@@ -62,6 +62,15 @@ _ROTULOS_QUESTIONARIO = {
     "q_terceira_linha":              "Auditoria interna existe e funciona de forma independente?",
 }
 
+LABEL_DIMENSAO = {
+    "compromisso_alta_gestao": "Compromisso da Alta Gestão",
+    "diretrizes_integridade":  "Diretrizes de Integridade",
+    "base_legal_normativa":    "Base Legal e Normativa",
+    "responsabilizacao":       "Responsabilização",
+    "metodologia_gestao":      "Metodologia de Gestão",
+    "tres_linhas_defesa":      "Três Linhas de Defesa",
+}
+
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
     valores = [str(respostas.get(k) or "Não").strip() for k in _CHAVES_QUESTIONARIO]
@@ -74,7 +83,7 @@ def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
     ato = str(respostas.get("q_ato_formal") or "Não").strip()
     resp = str(respostas.get("q_responsavel_designado") or "Não").strip()
     if ato in {"Não", "Parcialmente"} and resp in {"Não", "Parcialmente"}:
-        idx_ia = _MATURIDADE_ORDEM.index(maturidade_ia) if maturidade_ia in _MATURIDADE_ORDEM else 3
+        idx_ia = _MATURIDADE_ORDEM.index(maturidade_ia) if maturidade_ia in _MATURIDADE_ORDEM else 0
         if idx_ia > _MATURIDADE_ORDEM.index("INICIAL"):
             return "INICIAL"
 

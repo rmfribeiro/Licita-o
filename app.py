@@ -428,18 +428,8 @@ with aba4:
 
     st.markdown("**Questionário — 12 perguntas sobre o PIP**")
     _PERGUNTAS_PIP = [
-        ("q_ato_formal",                  "1. Existe ato formal do prefeito instituindo o PIP?"),
-        ("q_responsavel_designado",        "2. Há responsável formalmente designado pelo PIP?"),
-        ("q_diretrizes_publicadas",        "3. As diretrizes de integridade foram publicadas?"),
-        ("q_diretrizes_divulgadas",        "4. As diretrizes foram divulgadas a todos os servidores?"),
-        ("q_base_legal_conhecida",         "5. A autoridade superior conhece o marco legal do PIP (Decreto 11.129/2022)?"),
-        ("q_mecanismos_responsabilizacao", "6. Existem mecanismos formais de responsabilização de servidores?"),
-        ("q_precedentes_punicao",          "7. Já houve apuração e punição por irregularidades nesta prefeitura?"),
-        ("q_plano_gestao",                 "8. Existe plano formal de gestão e acompanhamento do PIP?"),
-        ("q_indicadores",                  "9. Existem indicadores definidos para monitorar o PIP?"),
-        ("q_primeira_linha",               "10. Gestores de linha conhecem e exercem seus controles de conformidade?"),
-        ("q_segunda_linha",                "11. Controle interno está estruturado e ativo?"),
-        ("q_terceira_linha",               "12. Auditoria interna existe e funciona de forma independente?"),
+        (k, f"{i}. {ia_integridade._ROTULOS_QUESTIONARIO[k]}")
+        for i, k in enumerate(ia_integridade._CHAVES_QUESTIONARIO, 1)
     ]
     _respostas_pip = {}
     for _chave_pip, _pergunta_pip in _PERGUNTAS_PIP:
@@ -497,33 +487,21 @@ with aba4:
 
         st.divider()
         _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
-        _icone_mat = {
+        _icone_maturidade = {
             "CONSOLIDADO": "🟢", "EM DESENVOLVIMENTO": "🔵",
             "INICIAL": "🟡",    "INEXISTENTE": "🔴",
         }
-        st.subheader(f"{_icone_mat.get(_mat_pip, '⚪')} Maturidade Geral: {_mat_pip}")
+        st.subheader(f"{_icone_maturidade.get(_mat_pip, '⚪')} Maturidade Geral: {_mat_pip}")
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
         if _resumo_pip:
             st.info(_resumo_pip)
 
-        _LABEL_DIM_PIP = {
-            "compromisso_alta_gestao": "Compromisso da Alta Gestão",
-            "diretrizes_integridade":  "Diretrizes de Integridade",
-            "base_legal_normativa":    "Base Legal e Normativa",
-            "responsabilizacao":       "Responsabilização",
-            "metodologia_gestao":      "Metodologia de Gestão",
-            "tres_linhas_defesa":      "Três Linhas de Defesa",
-        }
-        _icone_nivel = {
-            "CONSOLIDADO": "🟢", "EM DESENVOLVIMENTO": "🔵",
-            "INICIAL": "🟡",    "INEXISTENTE": "🔴",
-        }
         _dims_pip = _pr_pip.get("dimensoes") or {}
-        for _ch, _lb in _LABEL_DIM_PIP.items():
+        for _ch, _lb in ia_integridade.LABEL_DIMENSAO.items():
             _d   = _dims_pip.get(_ch) or {}
             _niv = str(_d.get("nivel") or "INEXISTENTE").strip().upper()
-            _ic  = _icone_nivel.get(_niv, "⚪")
+            _ic  = _icone_maturidade.get(_niv, "⚪")
             with st.expander(f"{_ic} {_lb} — {_niv}"):
                 for _ach in (_d.get("achados") or []):
                     if _ach:

@@ -22,14 +22,7 @@ _COR_NIVEL_HEX = {
     "INICIAL":            "#F39C12",
     "INEXISTENTE":        "#C0392B",
 }
-_LABEL_DIMENSAO = {
-    "compromisso_alta_gestao": "Compromisso da Alta Gestão",
-    "diretrizes_integridade":  "Diretrizes de Integridade",
-    "base_legal_normativa":    "Base Legal e Normativa",
-    "responsabilizacao":       "Responsabilização",
-    "metodologia_gestao":      "Metodologia de Gestão",
-    "tres_linhas_defesa":      "Três Linhas de Defesa",
-}
+from ia_integridade import LABEL_DIMENSAO as _LABEL_DIMENSAO
 
 
 def gerar_pdf(municipio: str, parecer: dict) -> bytes:
