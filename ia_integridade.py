@@ -71,7 +71,7 @@ ICONE_MATURIDADE = {
     "INEXISTENTE":        "🔴",
 }
 
-COR_MATURIDADE_HEX: types.MappingProxyType = types.MappingProxyType({
+COR_MATURIDADE_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
     "CONSOLIDADO":        "#27AE60",
     "EM DESENVOLVIMENTO": "#2980B9",
     "INICIAL":            "#F39C12",
@@ -79,6 +79,13 @@ COR_MATURIDADE_HEX: types.MappingProxyType = types.MappingProxyType({
 })
 
 QUESTOES_PIP: tuple[tuple[str, str], ...] = tuple(_ROTULOS_QUESTIONARIO.items())
+
+_CHAVE_ATO_FORMAL        = "q_ato_formal"
+_CHAVE_RESPONSAVEL       = "q_responsavel_designado"
+
+_CHAVES_PIP = {k for k, _ in QUESTOES_PIP}
+assert _CHAVE_ATO_FORMAL   in _CHAVES_PIP, f"{_CHAVE_ATO_FORMAL!r} ausente em QUESTOES_PIP"
+assert _CHAVE_RESPONSAVEL  in _CHAVES_PIP, f"{_CHAVE_RESPONSAVEL!r} ausente em QUESTOES_PIP"
 
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
@@ -89,8 +96,8 @@ def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
         return "INEXISTENTE"
 
     # Regra 2 — campos críticos ausentes/parciais → cap INICIAL
-    ato = str(respostas.get("q_ato_formal") or "Não").strip()
-    resp = str(respostas.get("q_responsavel_designado") or "Não").strip()
+    ato = str(respostas.get(_CHAVE_ATO_FORMAL) or "Não").strip()
+    resp = str(respostas.get(_CHAVE_RESPONSAVEL) or "Não").strip()
     if ato in {"Não", "Parcialmente"} and resp in {"Não", "Parcialmente"}:
         idx_ia = _MATURIDADE_ORDEM.index(maturidade_ia) if maturidade_ia in _MATURIDADE_ORDEM else 0
         if idx_ia > _MATURIDADE_ORDEM.index("INICIAL"):

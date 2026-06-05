@@ -3,7 +3,7 @@ import json
 import re
 import types
 
-COR_STATUS_HEX: types.MappingProxyType = types.MappingProxyType({
+COR_STATUS_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ok":      "#27AE60",
     "alerta":  "#E67E22",
     "critico": "#C0392B",

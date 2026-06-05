@@ -12,10 +12,10 @@ from reportlab.platypus import (
 from ia_utils import COR_STATUS_HEX as _COR_STATUS
 
 _COR_RISCO = {
-    "ALTO": colors.HexColor("#C0392B"),
-    "MÉDIO": colors.HexColor("#E67E22"),
-    "BAIXO": colors.HexColor("#F39C12"),
-    "SEM RISCO IDENTIFICADO": colors.HexColor("#27AE60"),
+    "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
+    "MÉDIO":                  colors.HexColor(_COR_STATUS["alerta"]),
+    "BAIXO":                  colors.HexColor("#F39C12"),
+    "SEM RISCO IDENTIFICADO": colors.HexColor(_COR_STATUS["ok"]),
 }
 
 _LABEL_DIMENSAO = {
@@ -33,6 +33,12 @@ _PERGUNTAS_FID = {
     "q5": "Auditorias internas ou externas",
 }
 
+_estilos_base   = getSampleStyleSheet()
+_ESTILO_TITULO  = ParagraphStyle("ddi_titulo", parent=_estilos_base["Title"],   fontSize=16, spaceAfter=4)
+_ESTILO_H2      = ParagraphStyle("ddi_h2",     parent=_estilos_base["Heading2"], fontSize=12, spaceAfter=3)
+_ESTILO_CORPO   = ParagraphStyle("ddi_corpo",  parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
+_ESTILO_PEQUENO = ParagraphStyle("ddi_peq",    parent=_estilos_base["Normal"],   fontSize=8, textColor=colors.grey)
+
 
 def _fmt_cnpj(cnpj: str) -> str:
     c = cnpj.replace(".", "").replace("/", "").replace("-", "")
@@ -49,17 +55,16 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         buf, pagesize=A4,
         leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
     )
-    estilos = getSampleStyleSheet()
-    titulo = ParagraphStyle("titulo", parent=estilos["Title"], fontSize=16, spaceAfter=4)
-    h2 = ParagraphStyle("h2", parent=estilos["Heading2"], fontSize=12, spaceAfter=3)
-    corpo = ParagraphStyle("corpo", parent=estilos["Normal"], fontSize=10, spaceAfter=3)
-    pequeno = ParagraphStyle("peq", parent=estilos["Normal"], fontSize=8, textColor=colors.grey)
+    titulo  = _ESTILO_TITULO
+    h2      = _ESTILO_H2
+    corpo   = _ESTILO_CORPO
+    pequeno = _ESTILO_PEQUENO
 
     story = []
 
     # Cabeçalho
     story.append(Paragraph("IA-Licita — RM Vértice Digital", titulo))
-    story.append(Paragraph("Due Diligence de Integridade (DDI)", estilos["Heading1"]))
+    story.append(Paragraph("Due Diligence de Integridade (DDI)", _estilos_base["Heading1"]))
     story.append(Paragraph("Portaria SEGES/ME 8.678/2021, art. 2 III - Decreto 12.304/2024", pequeno))
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", pequeno))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))

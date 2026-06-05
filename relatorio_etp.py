@@ -12,9 +12,9 @@ from reportlab.platypus import (
 from ia_utils import COR_STATUS_HEX as _COR_STATUS
 
 _COR_ADEQUACAO = {
-    "ADEQUADO": colors.HexColor("#27AE60"),
+    "ADEQUADO":               colors.HexColor(_COR_STATUS["ok"]),
     "ADEQUADO COM RESSALVAS": colors.HexColor("#F39C12"),
-    "INADEQUADO": colors.HexColor("#C0392B"),
+    "INADEQUADO":             colors.HexColor(_COR_STATUS["critico"]),
 }
 
 _LABEL_DIMENSAO = {
@@ -28,6 +28,12 @@ _LABEL_DIMENSAO = {
     "posicionamento_conclusivo":   "Posicionamento Conclusivo",
 }
 
+_estilos_base   = getSampleStyleSheet()
+_ESTILO_TITULO  = ParagraphStyle("etp_titulo", parent=_estilos_base["Title"],   fontSize=16, spaceAfter=4)
+_ESTILO_H2      = ParagraphStyle("etp_h2",     parent=_estilos_base["Heading2"], fontSize=12, spaceAfter=3)
+_ESTILO_CORPO   = ParagraphStyle("etp_corpo",  parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
+_ESTILO_PEQUENO = ParagraphStyle("etp_peq",    parent=_estilos_base["Normal"],   fontSize=8, textColor=colors.grey)
+
 
 def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> bytes:
     buf = io.BytesIO()
@@ -35,18 +41,17 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
         buf, pagesize=A4,
         leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
     )
-    estilos = getSampleStyleSheet()
-    titulo = ParagraphStyle("titulo", parent=estilos["Title"], fontSize=16, spaceAfter=4)
-    h2 = ParagraphStyle("h2", parent=estilos["Heading2"], fontSize=12, spaceAfter=3)
-    corpo = ParagraphStyle("corpo", parent=estilos["Normal"], fontSize=10, spaceAfter=3)
-    pequeno = ParagraphStyle("peq", parent=estilos["Normal"], fontSize=8, textColor=colors.grey)
-    alerta_style = ParagraphStyle("alerta", parent=corpo, textColor=colors.HexColor("#E67E22"))
+    titulo       = _ESTILO_TITULO
+    h2           = _ESTILO_H2
+    corpo        = _ESTILO_CORPO
+    pequeno      = _ESTILO_PEQUENO
+    alerta_style = ParagraphStyle("etp_alerta", parent=_ESTILO_CORPO, textColor=colors.HexColor(_COR_STATUS["alerta"]))
 
     story = []
 
     # Cabeçalho
     story.append(Paragraph("IA-Licita — RM Vértice Digital", titulo))
-    story.append(Paragraph("Auditoria de ETP — Estudo Técnico Preliminar", estilos["Heading1"]))
+    story.append(Paragraph("Auditoria de ETP — Estudo Técnico Preliminar", _estilos_base["Heading1"]))
     story.append(Paragraph("IN SEGES/MGI 58/2022 · Lei 14.133/2021, art. 18, I", pequeno))
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", pequeno))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))

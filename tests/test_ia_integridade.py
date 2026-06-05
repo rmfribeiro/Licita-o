@@ -1,7 +1,9 @@
 from __future__ import annotations
 import io
+import json
 import pytest
 import urllib.error
+from unittest.mock import patch, MagicMock
 import ia_integridade
 
 
@@ -51,10 +53,6 @@ class TestAplicarPiso:
         r["q_ato_formal"] = "Não"
         r["q_responsavel_designado"] = "Não"
         assert ia_integridade._aplicar_piso(r, "INICIAL") == "INICIAL"
-
-
-import json
-from unittest.mock import patch, MagicMock
 
 
 def _parecer_mock(maturidade: str = "EM DESENVOLVIMENTO") -> dict:
