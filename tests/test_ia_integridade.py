@@ -1,4 +1,5 @@
 from __future__ import annotations
+import io
 import pytest
 import urllib.error
 import ia_integridade
@@ -156,7 +157,6 @@ class TestDiagnosticar:
 
     @patch("ia_integridade.urllib.request.urlopen")
     def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):
-        import io
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(
             "https://api.anthropic.com/v1/messages", 401, "Unauthorized", {}, fp

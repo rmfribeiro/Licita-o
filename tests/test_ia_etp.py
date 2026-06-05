@@ -1,6 +1,8 @@
 from __future__ import annotations
+import io
 import json
 import pytest
+import urllib.error
 from unittest.mock import patch, MagicMock
 import ia_etp
 
@@ -76,3 +78,14 @@ class TestAnalisarEtp:
         resultado = ia_etp.analisar_etp("Texto", "sk-test")
 
         assert "adequacao_geral" in resultado
+
+    @patch("ia_etp.urllib.request.urlopen")
+    def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):
+        fp = io.BytesIO(b'{"error": "invalid_api_key"}')
+        mock_urlopen.side_effect = urllib.error.HTTPError(
+            "https://api.anthropic.com/v1/messages", 401, "Unauthorized", {}, fp
+        )
+        with pytest.raises(RuntimeError) as exc_info:
+            ia_etp.analisar_etp("Texto do ETP", "sk-test")
+        assert "401" in str(exc_info.value)
+        assert "invalid_api_key" in str(exc_info.value)

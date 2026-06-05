@@ -9,23 +9,19 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_integridade import LABEL_DIMENSAO as _LABEL_DIMENSAO
+from ia_integridade import LABEL_DIMENSAO as _LABEL_DIMENSAO, COR_MATURIDADE_HEX as _COR_NIVEL_HEX
 
-_COR_NIVEL_HEX = {
-    "CONSOLIDADO":        "#27AE60",
-    "EM DESENVOLVIMENTO": "#2980B9",
-    "INICIAL":            "#F39C12",
-    "INEXISTENTE":        "#C0392B",
-}
 _COR_MATURIDADE = {k: colors.HexColor(v) for k, v in _COR_NIVEL_HEX.items()}
 
-_estilos_base  = getSampleStyleSheet()
+_estilos_base   = getSampleStyleSheet()
 _ESTILO_TITULO  = ParagraphStyle("titulo", parent=_estilos_base["Title"],   fontSize=16, spaceAfter=4)
+_ESTILO_H1      = _estilos_base["Heading1"]
 _ESTILO_H2      = ParagraphStyle("h2",     parent=_estilos_base["Heading2"], fontSize=12, spaceAfter=3)
 _ESTILO_CORPO   = ParagraphStyle("corpo",  parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
 _ESTILO_PEQUENO = ParagraphStyle("peq",    parent=_estilos_base["Normal"],   fontSize=8,
                                  textColor=colors.grey)
-_ESTILO_BADGE   = ParagraphStyle("badge",  fontSize=14, textColor=colors.white, alignment=1)
+_ESTILO_BADGE   = ParagraphStyle("badge",  parent=_estilos_base["Normal"],   fontSize=14,
+                                 textColor=colors.white, alignment=1)
 
 
 def gerar_pdf(municipio: str, parecer: dict) -> bytes:
@@ -39,7 +35,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
 
     # Cabeçalho
     story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
-    story.append(Paragraph("Diagnóstico do Programa de Integridade Pública", _estilos_base["Heading1"]))
+    story.append(Paragraph("Diagnóstico do Programa de Integridade Pública", _ESTILO_H1))
     story.append(Paragraph(
         "Decreto 11.129/2022 · IN CGU 21/2021 · Lei 12.846/2013, art. 7º, III · Decreto 8.420/2015",
         _ESTILO_PEQUENO,

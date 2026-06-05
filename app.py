@@ -429,7 +429,7 @@ with aba4:
     st.markdown("**Questionário — 12 perguntas sobre o PIP**")
     _PERGUNTAS_PIP = [
         (k, f"{i}. {label}")
-        for i, (k, label) in enumerate(ia_integridade.questoes_pip(), 1)
+        for i, (k, label) in enumerate(ia_integridade.QUESTOES_PIP, 1)
     ]
     _respostas_pip = {}
     for _chave_pip, _pergunta_pip in _PERGUNTAS_PIP:

@@ -78,9 +78,16 @@ ICONE_MATURIDADE = {
     "INEXISTENTE":        "🔴",
 }
 
+COR_MATURIDADE_HEX = {
+    "CONSOLIDADO":        "#27AE60",
+    "EM DESENVOLVIMENTO": "#2980B9",
+    "INICIAL":            "#F39C12",
+    "INEXISTENTE":        "#C0392B",
+}
 
-def questoes_pip() -> list[tuple[str, str]]:
-    return [(k, _ROTULOS_QUESTIONARIO[k]) for k in _CHAVES_QUESTIONARIO]
+QUESTOES_PIP: list[tuple[str, str]] = [
+    (k, _ROTULOS_QUESTIONARIO[k]) for k in _CHAVES_QUESTIONARIO
+]
 
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
@@ -130,7 +137,7 @@ def diagnosticar(
     parecer_ddi: dict | None = None,
 ) -> dict:
     partes = ["Questionário sobre o Programa de Integridade Pública da prefeitura:\n"]
-    for chave, pergunta in _ROTULOS_QUESTIONARIO.items():
+    for chave, pergunta in QUESTOES_PIP:
         partes.append(f"- {pergunta} Resposta: {respostas.get(chave, 'Não informado')}")
 
     if texto_docs:

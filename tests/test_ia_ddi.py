@@ -64,6 +64,7 @@ class TestAplicarPiso:
         assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
 
 
+import io
 from unittest.mock import patch, MagicMock
 import json as _json
 import urllib.error
@@ -138,3 +139,16 @@ class TestAnalisar:
 
         with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
             ia_ddi.analisar(_dados_base(), fid)
+
+    @patch('ia_ddi.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_httperror_inclui_body_na_mensagem(self, mock_key, mock_urlopen):
+        fp = io.BytesIO(b'{"error": "invalid_api_key"}')
+        mock_urlopen.side_effect = urllib.error.HTTPError(
+            "https://api.anthropic.com/v1/messages", 401, "Unauthorized", {}, fp
+        )
+        fid = {"q1": "Sim", "q2": "Não", "q3": "Não", "q4": "Não", "q5": "Não"}
+        with pytest.raises(RuntimeError) as exc_info:
+            ia_ddi.analisar(_dados_base(), fid)
+        assert "401" in str(exc_info.value)
+        assert "invalid_api_key" in str(exc_info.value)
