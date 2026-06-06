@@ -16,7 +16,6 @@ def _dados_entrega_mock() -> dict:
 
 def _parecer_completo_mock() -> dict:
     return {
-        "tipo_objeto": "servico",
         "recebimento_provisorio": {
             "parecer": "APTO",
             "condicoes": [

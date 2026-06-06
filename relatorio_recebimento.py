@@ -42,6 +42,13 @@ def _as_list(v) -> list:
     return v if isinstance(v, list) else []
 
 
+def _safe_float(v) -> float:
+    try:
+        return float(v or 0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def _fmt_brl(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -88,7 +95,7 @@ def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
     if pendencias:
         story.append(Paragraph("Pendências:", _ESTILO_H2))
         for i, p in enumerate(pendencias, 1):
-            if p:
+            if str(p).strip():
                 story.append(Paragraph(f"{i}. {html.escape(str(p))}", _ESTILO_CORPO))
         story.append(Spacer(1, 0.2 * cm))
 
@@ -117,7 +124,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
         ["Número do Contrato",        html.escape(str(dados_entrega.get("numero_contrato") or "-"))],
         ["Objeto",                    html.escape(str(dados_entrega.get("objeto") or "-"))],
         ["Data de Entrega/Conclusão", html.escape(str(dados_entrega.get("data_entrega") or "-"))],
-        ["Valor do Contrato",         _fmt_brl(float(dados_entrega.get("valor_contrato") or 0))],
+        ["Valor do Contrato",         _fmt_brl(_safe_float(dados_entrega.get("valor_contrato")))],
         ["Tipo de Objeto",            html.escape(tipo_label)],
     ]
     t_id = Table(linhas_id, colWidths=[5 * cm, 12 * cm])
@@ -146,7 +153,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
     if recs:
         story.append(Paragraph("Recomendações ao Gestor", _ESTILO_H2))
         for i, rec in enumerate(recs, 1):
-            if rec:
+            if str(rec).strip():
                 story.append(Paragraph(f"{i}. {html.escape(str(rec))}", _ESTILO_CORPO))
         story.append(Spacer(1, 0.4 * cm))
 
@@ -154,7 +161,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
     if base_legal:
         story.append(Paragraph("Base Legal", _ESTILO_H2))
         for bl in base_legal:
-            if bl:
+            if str(bl).strip():
                 story.append(Paragraph(f"- {html.escape(str(bl))}", _ESTILO_CORPO))
         story.append(Spacer(1, 0.3 * cm))
 
