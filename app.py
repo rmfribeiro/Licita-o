@@ -24,6 +24,8 @@ import ia_pi_empresas
 import relatorio_pi_empresas
 import ia_contratos
 import relatorio_contratos
+import ia_recebimento
+import relatorio_recebimento
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -758,191 +760,391 @@ with aba5:
             )
 
 with aba6:
-    st.subheader("Analisador de Alterações Contratuais")
-    st.caption(
-        "Art. 124 II 'd' · Art. 25 §8º · Art. 137 §2º — Lei 14.133/2021 · Art. 37 XXI CF/88"
-    )
+    st.subheader("Monitor de Contratos")
+    _sub_aba_alt, _sub_aba_recv = st.tabs([
+        "⚖️ Alterações Contratuais",
+        "📦 Recebimento Contratual",
+    ])
 
-    _api_key_cont = os.environ.get("ANTHROPIC_API_KEY")
-    if not _api_key_cont:
-        try:
-            _val = st.secrets.get("ANTHROPIC_API_KEY")
-            if _val:
-                _api_key_cont = str(_val)
-        except _SecretsNotFound:
-            pass
-        except Exception as _e:
-            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
-    _modelo_cont = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
-
-    _tipos_cont_chaves = list(ia_contratos.TIPOS_ALTERACAO.keys())
-    _tipos_cont_labels = list(ia_contratos.TIPOS_ALTERACAO.values())
-    _tipo_cont_idx = st.selectbox(
-        "Tipo de alteração contratual",
-        options=range(len(_tipos_cont_chaves)),
-        format_func=lambda i: _tipos_cont_labels[i],
-        key="cont_tipo_select",
-    )
-    _tipo_cont = _tipos_cont_chaves[_tipo_cont_idx]
-
-    _col_num_cont, _col_data_cont = st.columns(2)
-    _num_cont = _col_num_cont.text_input(
-        "Número do contrato", key="cont_numero", placeholder="001/2024"
-    )
-    _data_cont = _col_data_cont.text_input(
-        "Data de assinatura", key="cont_data", placeholder="DD/MM/AAAA"
-    )
-    _objeto_cont = st.text_input(
-        "Objeto do contrato (resumido)", key="cont_objeto"
-    )
-    _valor_cont = st.number_input(
-        "Valor atual do contrato (R$)",
-        min_value=0.0, format="%.2f", step=10_000.0, key="cont_valor",
-    )
-
-    _arqs_cont = st.file_uploader(
-        "Documentos do pedido (opcional — PDF ou Word): requerimento, memória de cálculo, CCT, planilhas etc.",
-        type=["pdf", "docx"],
-        accept_multiple_files=True,
-        key="cont_docs",
-    )
-
-    if st.button("Analisar Pedido", type="primary", key="btn_cont"):
-        if not _api_key_cont:
-            st.error(
-                "ANTHROPIC_API_KEY não configurada — "
-                "configure via variável de ambiente ou secrets.toml."
-            )
-        else:
-            for _k in ("cont_parecer", "cont_pdf", "cont_dados"):
-                st.session_state.pop(_k, None)
-            _dados_cont = {
-                "numero_contrato": _num_cont or "não informado",
-                "objeto": _objeto_cont or "não informado",
-                "data_assinatura": _data_cont or "não informada",
-                "valor_atual": _valor_cont,
-            }
-            try:
-                with st.spinner(
-                    "Analisando pedido de alteração contratual com IA (pode levar 1-2 minutos)..."
-                ):
-                    _texto_cont, _avisos_cont = (
-                        etp_extrator.extrair_texto(_arqs_cont)
-                        if _arqs_cont
-                        else (None, [])
-                    )
-                    for _av_cont in _avisos_cont:
-                        st.warning(_av_cont)
-                    if _texto_cont and len(_texto_cont) > 30_000:
-                        st.warning(
-                            "Documentos muito extensos: apenas os primeiros 30 000 "
-                            "caracteres serão analisados."
-                        )
-                    _parecer_cont = ia_contratos.analisar(
-                        _tipo_cont,
-                        _dados_cont,
-                        _texto_cont,
-                        _api_key_cont,
-                        _modelo_cont,
-                    )
-                st.session_state["cont_parecer"] = _parecer_cont
-                st.session_state["cont_dados"] = _dados_cont
-                try:
-                    st.session_state["cont_pdf"] = relatorio_contratos.gerar_pdf(
-                        dados_contrato=_dados_cont,
-                        tipo=_tipo_cont,
-                        parecer=_parecer_cont,
-                    )
-                except Exception as _pdf_e:
-                    st.session_state.pop("cont_pdf", None)
-                    st.warning(f"Não foi possível gerar o PDF: {_pdf_e}")
-            except Exception as _e:
-                st.error(str(_e))
-
-    if "cont_parecer" in st.session_state:
-        _pr_cont = st.session_state["cont_parecer"]
-
-        st.divider()
-        _parecer_val_cont = str(_pr_cont.get("parecer") or "INDEFERÍVEL").strip().upper()
-        _parecer_val_cont = {
-            "DEFERIVEL":               "DEFERÍVEL",
-            "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
-            "INDEFERIVEL":             "INDEFERÍVEL",
-        }.get(_parecer_val_cont, _parecer_val_cont)
-        _icone_parecer_cont = {
-            "DEFERÍVEL":               "🟢",
-            "DEFERÍVEL COM RESSALVAS": "🟡",
-            "INDEFERÍVEL":             "🔴",
-        }
-        _cor_parecer_cont = {
-            "DEFERÍVEL":               "#27AE60",
-            "DEFERÍVEL COM RESSALVAS": "#F39C12",
-            "INDEFERÍVEL":             "#C0392B",
-        }
-        st.markdown(
-            f"<div style='background:{_cor_parecer_cont.get(_parecer_val_cont, '#888888')};"
-            f"padding:16px;border-radius:8px;color:white;font-size:20px;"
-            f"font-weight:bold;text-align:center'>"
-            f"{_icone_parecer_cont.get(_parecer_val_cont, '⚪')} {html.escape(_parecer_val_cont)}"
-            f"</div>",
-            unsafe_allow_html=True,
+    with _sub_aba_alt:
+        st.subheader("Analisador de Alterações Contratuais")
+        st.caption(
+            "Art. 124 II 'd' · Art. 25 §8º · Art. 137 §2º — Lei 14.133/2021 · Art. 37 XXI CF/88"
         )
-        st.markdown("")
 
-        _sintese_cont = str(_pr_cont.get("sintese") or "")
-        if _sintese_cont:
-            st.info(_safe_md(_sintese_cont))
+        _api_key_cont = os.environ.get("ANTHROPIC_API_KEY")
+        if not _api_key_cont:
+            try:
+                _val = st.secrets.get("ANTHROPIC_API_KEY")
+                if _val:
+                    _api_key_cont = str(_val)
+            except _SecretsNotFound:
+                pass
+            except Exception as _e:
+                st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+        _modelo_cont = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
-        _requisitos_cont = _pr_cont.get("requisitos")
-        _requisitos_cont = _requisitos_cont if isinstance(_requisitos_cont, list) else []
-        if _requisitos_cont:
-            st.markdown("**Verificação de Requisitos:**")
-            _icone_req_cont = {"ATENDIDO": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
-            for _req_cont in _requisitos_cont:
-                if not isinstance(_req_cont, dict) or not _req_cont:
-                    continue
-                _status_req = str(_req_cont.get("status") or "AUSENTE").strip().upper()
-                _ic_req = _icone_req_cont.get(_status_req, "ℹ️")
-                _obs_req = " ".join(str(_req_cont.get("observacao") or "").split())
-                _desc_req = " ".join(str(_req_cont.get("descricao") or "").split())
-                _linha_req = f"{_ic_req} **{_safe_md(_desc_req)}**"
-                if _obs_req:
-                    _linha_req += f" — {_safe_md(_obs_req)}"
-                st.markdown(_linha_req)
+        _tipos_cont_chaves = list(ia_contratos.TIPOS_ALTERACAO.keys())
+        _tipos_cont_labels = list(ia_contratos.TIPOS_ALTERACAO.values())
+        _tipo_cont_idx = st.selectbox(
+            "Tipo de alteração contratual",
+            options=range(len(_tipos_cont_chaves)),
+            format_func=lambda i: _tipos_cont_labels[i],
+            key="cont_tipo_select",
+        )
+        _tipo_cont = _tipos_cont_chaves[_tipo_cont_idx]
 
-        _lacunas_cont = _pr_cont.get("lacunas_documentais")
-        _lacunas_cont = _lacunas_cont if isinstance(_lacunas_cont, list) else []
-        if _lacunas_cont:
-            with st.expander("📋 Lacunas Documentais"):
-                for _lac in _lacunas_cont:
-                    if _lac:
-                        st.warning(_safe_md(_lac))
+        _col_num_cont, _col_data_cont = st.columns(2)
+        _num_cont = _col_num_cont.text_input(
+            "Número do contrato", key="cont_numero", placeholder="001/2024"
+        )
+        _data_cont = _col_data_cont.text_input(
+            "Data de assinatura", key="cont_data", placeholder="DD/MM/AAAA"
+        )
+        _objeto_cont = st.text_input(
+            "Objeto do contrato (resumido)", key="cont_objeto"
+        )
+        _valor_cont = st.number_input(
+            "Valor atual do contrato (R$)",
+            min_value=0.0, format="%.2f", step=10_000.0, key="cont_valor",
+        )
 
-        _recs_cont = _pr_cont.get("recomendacoes")
-        _recs_cont = _recs_cont if isinstance(_recs_cont, list) else []
-        if _recs_cont:
-            with st.expander("💡 Recomendações ao Gestor"):
-                for _i_cont, _r_cont in enumerate(_recs_cont, 1):
-                    if _r_cont:
-                        st.info(f"{_i_cont}. {_safe_md(_r_cont)}")
+        _arqs_cont = st.file_uploader(
+            "Documentos do pedido (opcional — PDF ou Word): requerimento, memória de cálculo, CCT, planilhas etc.",
+            type=["pdf", "docx"],
+            accept_multiple_files=True,
+            key="cont_docs",
+        )
 
-        _fls_cont = _pr_cont.get("fundamentos_legais")
-        _fls_cont = _fls_cont if isinstance(_fls_cont, list) else []
-        if _fls_cont:
-            with st.expander("⚖️ Fundamentos Legais"):
-                for _fl_cont in _fls_cont:
-                    if _fl_cont:
-                        st.markdown(f"• {_safe_md(_fl_cont)}")
+        if st.button("Analisar Pedido", type="primary", key="btn_cont"):
+            if not _api_key_cont:
+                st.error(
+                    "ANTHROPIC_API_KEY não configurada — "
+                    "configure via variável de ambiente ou secrets.toml."
+                )
+            else:
+                for _k in ("cont_parecer", "cont_pdf", "cont_dados"):
+                    st.session_state.pop(_k, None)
+                _dados_cont = {
+                    "numero_contrato": _num_cont or "não informado",
+                    "objeto": _objeto_cont or "não informado",
+                    "data_assinatura": _data_cont or "não informada",
+                    "valor_atual": _valor_cont,
+                }
+                try:
+                    with st.spinner(
+                        "Analisando pedido de alteração contratual com IA (pode levar 1-2 minutos)..."
+                    ):
+                        _texto_cont, _avisos_cont = (
+                            etp_extrator.extrair_texto(_arqs_cont)
+                            if _arqs_cont
+                            else (None, [])
+                        )
+                        for _av_cont in _avisos_cont:
+                            st.warning(_av_cont)
+                        if _texto_cont and len(_texto_cont) > 30_000:
+                            st.warning(
+                                "Documentos muito extensos: apenas os primeiros 30 000 "
+                                "caracteres serão analisados."
+                            )
+                        _parecer_cont = ia_contratos.analisar(
+                            _tipo_cont,
+                            _dados_cont,
+                            _texto_cont,
+                            _api_key_cont,
+                            _modelo_cont,
+                        )
+                    st.session_state["cont_parecer"] = _parecer_cont
+                    st.session_state["cont_dados"] = _dados_cont
+                    try:
+                        st.session_state["cont_pdf"] = relatorio_contratos.gerar_pdf(
+                            dados_contrato=_dados_cont,
+                            tipo=_tipo_cont,
+                            parecer=_parecer_cont,
+                        )
+                    except Exception as _pdf_e:
+                        st.session_state.pop("cont_pdf", None)
+                        st.warning(f"Não foi possível gerar o PDF: {_pdf_e}")
+                except Exception as _e:
+                    st.error(str(_e))
 
-        if "cont_pdf" in st.session_state:
-            _num_pdf_cont = (
-                (st.session_state.get("cont_dados") or {}).get("numero_contrato")
-                or "contrato"
+        if "cont_parecer" in st.session_state:
+            _pr_cont = st.session_state["cont_parecer"]
+
+            st.divider()
+            _parecer_val_cont = str(_pr_cont.get("parecer") or "INDEFERÍVEL").strip().upper()
+            _parecer_val_cont = {
+                "DEFERIVEL":               "DEFERÍVEL",
+                "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+                "INDEFERIVEL":             "INDEFERÍVEL",
+            }.get(_parecer_val_cont, _parecer_val_cont)
+            _icone_parecer_cont = {
+                "DEFERÍVEL":               "🟢",
+                "DEFERÍVEL COM RESSALVAS": "🟡",
+                "INDEFERÍVEL":             "🔴",
+            }
+            _cor_parecer_cont = {
+                "DEFERÍVEL":               "#27AE60",
+                "DEFERÍVEL COM RESSALVAS": "#F39C12",
+                "INDEFERÍVEL":             "#C0392B",
+            }
+            st.markdown(
+                f"<div style='background:{_cor_parecer_cont.get(_parecer_val_cont, '#888888')};"
+                f"padding:16px;border-radius:8px;color:white;font-size:20px;"
+                f"font-weight:bold;text-align:center'>"
+                f"{_icone_parecer_cont.get(_parecer_val_cont, '⚪')} {html.escape(_parecer_val_cont)}"
+                f"</div>",
+                unsafe_allow_html=True,
             )
-            _nome_pdf_cont = f"Alteracao_{_num_pdf_cont.replace('/', '-').replace(' ', '_')}.pdf"
-            st.download_button(
-                label="⬇️ Baixar Relatório PDF",
-                data=st.session_state["cont_pdf"],
-                file_name=_nome_pdf_cont,
-                mime="application/pdf",
-            )
+            st.markdown("")
+
+            _sintese_cont = str(_pr_cont.get("sintese") or "")
+            if _sintese_cont:
+                st.info(_safe_md(_sintese_cont))
+
+            _requisitos_cont = _pr_cont.get("requisitos")
+            _requisitos_cont = _requisitos_cont if isinstance(_requisitos_cont, list) else []
+            if _requisitos_cont:
+                st.markdown("**Verificação de Requisitos:**")
+                _icone_req_cont = {"ATENDIDO": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
+                for _req_cont in _requisitos_cont:
+                    if not isinstance(_req_cont, dict) or not _req_cont:
+                        continue
+                    _status_req = str(_req_cont.get("status") or "AUSENTE").strip().upper()
+                    _ic_req = _icone_req_cont.get(_status_req, "ℹ️")
+                    _obs_req = " ".join(str(_req_cont.get("observacao") or "").split())
+                    _desc_req = " ".join(str(_req_cont.get("descricao") or "").split())
+                    _linha_req = f"{_ic_req} **{_safe_md(_desc_req)}**"
+                    if _obs_req:
+                        _linha_req += f" — {_safe_md(_obs_req)}"
+                    st.markdown(_linha_req)
+
+            _lacunas_cont = _pr_cont.get("lacunas_documentais")
+            _lacunas_cont = _lacunas_cont if isinstance(_lacunas_cont, list) else []
+            if _lacunas_cont:
+                with st.expander("📋 Lacunas Documentais"):
+                    for _lac in _lacunas_cont:
+                        if _lac:
+                            st.warning(_safe_md(_lac))
+
+            _recs_cont = _pr_cont.get("recomendacoes")
+            _recs_cont = _recs_cont if isinstance(_recs_cont, list) else []
+            if _recs_cont:
+                with st.expander("💡 Recomendações ao Gestor"):
+                    for _i_cont, _r_cont in enumerate(_recs_cont, 1):
+                        if _r_cont:
+                            st.info(f"{_i_cont}. {_safe_md(_r_cont)}")
+
+            _fls_cont = _pr_cont.get("fundamentos_legais")
+            _fls_cont = _fls_cont if isinstance(_fls_cont, list) else []
+            if _fls_cont:
+                with st.expander("⚖️ Fundamentos Legais"):
+                    for _fl_cont in _fls_cont:
+                        if _fl_cont:
+                            st.markdown(f"• {_safe_md(_fl_cont)}")
+
+            if "cont_pdf" in st.session_state:
+                _num_pdf_cont = (
+                    (st.session_state.get("cont_dados") or {}).get("numero_contrato")
+                    or "contrato"
+                )
+                _nome_pdf_cont = f"Alteracao_{_num_pdf_cont.replace('/', '-').replace(' ', '_')}.pdf"
+                st.download_button(
+                    label="⬇️ Baixar Relatório PDF",
+                    data=st.session_state["cont_pdf"],
+                    file_name=_nome_pdf_cont,
+                    mime="application/pdf",
+                )
+
+    with _sub_aba_recv:
+        st.subheader("Recebimento Contratual")
+        st.caption("Art. 140, I e II — Lei 14.133/2021")
+
+        _api_key_recv = os.environ.get("ANTHROPIC_API_KEY")
+        if not _api_key_recv:
+            try:
+                _val = st.secrets.get("ANTHROPIC_API_KEY")
+                if _val:
+                    _api_key_recv = str(_val)
+            except _SecretsNotFound:
+                pass
+            except Exception as _e:
+                st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+        _modelo_recv = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+        _tipos_recv_chaves = list(ia_recebimento.TIPOS_OBJETO.keys())
+        _tipos_recv_labels = list(ia_recebimento.TIPOS_OBJETO.values())
+        _tipo_recv_idx = st.selectbox(
+            "Tipo de objeto contratual",
+            options=range(len(_tipos_recv_chaves)),
+            format_func=lambda i: _tipos_recv_labels[i],
+            key="recv_tipo_select",
+        )
+        _tipo_recv = _tipos_recv_chaves[_tipo_recv_idx]
+
+        _col_num_recv, _col_data_recv = st.columns(2)
+        _num_recv = _col_num_recv.text_input(
+            "Número do contrato", key="recv_numero", placeholder="001/2024"
+        )
+        _data_recv = _col_data_recv.text_input(
+            "Data de entrega/conclusão", key="recv_data", placeholder="DD/MM/AAAA"
+        )
+        _objeto_recv = st.text_input("Objeto do contrato (resumido)", key="recv_objeto")
+        _desc_recv = st.text_area(
+            "Descrição do que foi entregue/executado", key="recv_descricao"
+        )
+        _nao_conf_recv = st.text_area(
+            "Não conformidades ou pendências identificadas (opcional)", key="recv_nao_conf"
+        )
+        _valor_recv = st.number_input(
+            "Valor do contrato (R$)",
+            min_value=0.0, format="%.2f", step=10_000.0, key="recv_valor",
+        )
+        _arqs_recv = st.file_uploader(
+            "Documentos de suporte (opcional — PDF ou DOCX)",
+            type=["pdf", "docx"],
+            accept_multiple_files=True,
+            key="recv_docs",
+        )
+
+        if st.button("Analisar Recebimento", type="primary", key="btn_recv"):
+            if not _api_key_recv:
+                st.error(
+                    "ANTHROPIC_API_KEY não configurada — "
+                    "configure via variável de ambiente ou secrets.toml."
+                )
+            elif not _desc_recv.strip():
+                st.error("Preencha a descrição do que foi entregue/executado.")
+            else:
+                for _k in ("recv_parecer", "recv_pdf", "recv_dados"):
+                    st.session_state.pop(_k, None)
+                _dados_recv = {
+                    "numero_contrato": _num_recv or "não informado",
+                    "objeto": _objeto_recv or "não informado",
+                    "data_entrega": _data_recv or "não informada",
+                    "descricao_entrega": _desc_recv,
+                    "nao_conformidades": _nao_conf_recv or "",
+                    "valor_contrato": _valor_recv,
+                }
+                try:
+                    with st.spinner(
+                        "Analisando recebimento contratual com IA (pode levar 1-2 minutos)..."
+                    ):
+                        _texto_recv, _avisos_recv = (
+                            etp_extrator.extrair_texto(_arqs_recv)
+                            if _arqs_recv
+                            else (None, [])
+                        )
+                        for _av_recv in _avisos_recv:
+                            st.warning(_safe_md(_av_recv))
+                        if _texto_recv and len(_texto_recv) > 30_000:
+                            st.warning(
+                                "Documentos muito extensos: apenas os primeiros 30 000 "
+                                "caracteres serão analisados."
+                            )
+                        _parecer_recv = ia_recebimento.analisar(
+                            _tipo_recv,
+                            _dados_recv,
+                            _texto_recv,
+                            _api_key_recv,
+                            _modelo_recv,
+                        )
+                    st.session_state["recv_parecer"] = _parecer_recv
+                    st.session_state["recv_dados"] = _dados_recv
+                    try:
+                        st.session_state["recv_pdf"] = relatorio_recebimento.gerar_pdf(
+                            dados_entrega=_dados_recv,
+                            tipo_objeto=_tipo_recv,
+                            parecer=_parecer_recv,
+                        )
+                    except Exception as _pdf_e:
+                        st.session_state.pop("recv_pdf", None)
+                        st.warning(f"Não foi possível gerar o PDF: {_pdf_e}")
+                except Exception as _e:
+                    st.error(str(_e))
+
+        if "recv_parecer" in st.session_state:
+            _pr_recv = st.session_state["recv_parecer"]
+            st.divider()
+
+            _icone_parecer_recv = {"APTO": "🟢", "APTO COM RESSALVAS": "🟡", "INAPTO": "🔴"}
+            _cor_parecer_recv = {
+                "APTO": "#27AE60", "APTO COM RESSALVAS": "#F39C12", "INAPTO": "#C0392B",
+            }
+
+            def _render_bloco_recv(bloco_key: str, titulo: str) -> None:
+                _bloco = (_pr_recv.get(bloco_key) or {})
+                _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
+                st.markdown(
+                    f"<div style='background:{_cor_parecer_recv.get(_pval, '#888888')};"
+                    f"padding:12px;border-radius:8px;color:white;font-size:16px;"
+                    f"font-weight:bold;text-align:center'>"
+                    f"{_icone_parecer_recv.get(_pval, '⚪')} {html.escape(_pval)}</div>",
+                    unsafe_allow_html=True,
+                )
+                st.caption(titulo)
+                _sint = str(_bloco.get("sintese") or "")
+                if _sint:
+                    st.info(_safe_md(_sint))
+                _conds = _bloco.get("condicoes")
+                _conds = _conds if isinstance(_conds, list) else []
+                if _conds:
+                    st.markdown("**Condições Verificadas:**")
+                    _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
+                    for _cond in _conds:
+                        if not isinstance(_cond, dict) or not _cond:
+                            continue
+                        _st_c = str(_cond.get("status") or "AUSENTE").strip().upper()
+                        _ic_c = _icone_cond.get(_st_c, "ℹ️")
+                        _obs_c = " ".join(str(_cond.get("observacao") or "").split())
+                        _desc_c = " ".join(str(_cond.get("descricao") or "").split())
+                        _linha_c = f"{_ic_c} **{_safe_md(_desc_c)}**"
+                        if _obs_c:
+                            _linha_c += f" — {_safe_md(_obs_c)}"
+                        st.markdown(_linha_c)
+                _pends = _bloco.get("pendencias")
+                _pends = _pends if isinstance(_pends, list) else []
+                for _p in _pends:
+                    if _p:
+                        st.warning(_safe_md(_p))
+
+            _col_prov, _col_def = st.columns(2)
+            with _col_prov:
+                _render_bloco_recv(
+                    "recebimento_provisorio", "Recebimento Provisório — Art. 140, I"
+                )
+            with _col_def:
+                _render_bloco_recv(
+                    "recebimento_definitivo", "Recebimento Definitivo — Art. 140, II"
+                )
+
+            _recs_recv = _pr_recv.get("recomendacoes_gerais")
+            _recs_recv = _recs_recv if isinstance(_recs_recv, list) else []
+            if _recs_recv:
+                with st.expander("💡 Recomendações ao Gestor"):
+                    for _i_recv, _r_recv in enumerate(_recs_recv, 1):
+                        if _r_recv:
+                            st.info(f"{_i_recv}. {_safe_md(_r_recv)}")
+
+            _bl_recv = _pr_recv.get("base_legal")
+            _bl_recv = _bl_recv if isinstance(_bl_recv, list) else []
+            if _bl_recv:
+                with st.expander("⚖️ Base Legal"):
+                    for _b_recv in _bl_recv:
+                        if _b_recv:
+                            st.markdown(f"• {_safe_md(_b_recv)}")
+
+            if "recv_pdf" in st.session_state:
+                _num_pdf_recv = (
+                    (st.session_state.get("recv_dados") or {}).get("numero_contrato")
+                    or "contrato"
+                )
+                _nome_pdf_recv = (
+                    f"Recebimento_{_num_pdf_recv.replace('/', '-').replace(' ', '_')}.pdf"
+                )
+                st.download_button(
+                    label="⬇️ Baixar Relatório PDF",
+                    data=st.session_state["recv_pdf"],
+                    file_name=_nome_pdf_recv,
+                    mime="application/pdf",
+                )
