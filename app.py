@@ -683,7 +683,7 @@ with aba5:
         st.markdown(
             f"<div style='background:{_cor_pi};padding:16px;border-radius:8px;"
             f"color:white;font-size:20px;font-weight:bold;text-align:center'>"
-            f"{_icone_pi} {_nivel_pi} — {_score_pi:.0f}/100"
+            f"{_icone_pi} {html.escape(_nivel_pi)} — {_score_pi:.0f}/100"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -699,7 +699,7 @@ with aba5:
         # Conclusão para a hipótese
         _conc_pi = str(_pr_pi.get("conclusao_hipotese") or "")
         if _conc_pi:
-            st.info(_conc_pi)
+            st.info(_conc_pi.replace('[', '&#91;'))
 
         # Pontos críticos
         _crit_pi = _pr_pi.get("pontos_criticos") or []
@@ -707,7 +707,7 @@ with aba5:
             st.markdown("**Pontos Críticos**")
             for _i, _c in enumerate(_crit_pi, 1):
                 if _c:
-                    st.error(f"{_i}. {_c}")
+                    st.error(f"{_i}. {str(_c).replace('[', '&#91;')}")
 
         # Análise por dimensão
         _dims_pi = _pr_pi.get("dimensoes") or {}
@@ -722,10 +722,10 @@ with aba5:
                     _pdata = _params_q.get(_p) or {}
                     for _ach in (_pdata.get("achados") or []):
                         if _ach:
-                            st.warning(f"**{ia_pi_empresas.QUESTOES_PI[_p]}:** {_ach}")
+                            st.warning(f"**{ia_pi_empresas.QUESTOES_PI[_p]}:** {str(_ach).replace('[', '&#91;')}")
                     for _rec in (_pdata.get("recomendacoes") or []):
                         if _rec:
-                            st.info(f"→ {_rec}")
+                            st.info(f"→ {str(_rec).replace('[', '&#91;')}")
 
         # Recomendações gerais
         _recs_pi = _pr_pi.get("recomendacoes") or []

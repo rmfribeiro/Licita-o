@@ -114,7 +114,7 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str, sistema: str) -> s
         dados = json.loads(raw_bytes.decode("utf-8"))
     except ValueError as exc:
         raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
-    return "".join(b.get("text", "") for b in dados.get("content", []))
+    return "".join(b.get("text", "") for b in (dados.get("content") or []))
 
 
 def analisar(
