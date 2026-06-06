@@ -280,7 +280,7 @@ with aba2:
             "ALTO": "🔴", "MÉDIO": "🟠",
             "BAIXO": "🟡", "SEM RISCO IDENTIFICADO": "🟢"
         }
-        st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {risco}")
+        st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {_safe_md(risco)}")
 
         dims = parecer.get("dimensoes") or {}
         _label_dim = {
@@ -371,12 +371,12 @@ with aba3:
         _nm = st.session_state["etp_nomes"]
 
         for _aviso in _av:
-            st.warning(_aviso)
+            st.warning(_safe_md(_aviso))
 
         st.divider()
         _adeq = str(_pr.get("adequacao_geral") or "INADEQUADO").strip().upper()
         _icone_adeq = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
-        st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_adeq}")
+        st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_safe_md(_adeq)}")
 
         _dims = _pr.get("dimensoes") or {}
         _labels = relatorio_etp._LABEL_DIMENSAO
@@ -496,11 +496,11 @@ with aba4:
         _av_pip  = st.session_state.get("pip_avisos", [])
 
         for _aviso in _av_pip:
-            st.warning(_aviso)
+            st.warning(_safe_md(_aviso))
 
         st.divider()
         _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
-        st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_mat_pip}")
+        st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_safe_md(_mat_pip)}")
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
         if _resumo_pip:

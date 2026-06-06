@@ -16,6 +16,7 @@ Uso:
     achados = gerar_pareceres(texto_edital, regras, "base_juridica.json")
 """
 import os, json, re, uuid, urllib.request, urllib.error
+from ia_utils import extrair_json as _extrair_json
 
 MODELO_PADRAO = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 MAX_CHARS_EDITAL    = 50_000   # teto total enviado ao modelo
@@ -151,38 +152,6 @@ def _chamar_anthropic(prompt, api_key, modelo, max_tokens=8000):
         raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
     return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
-def _extrair_json(texto):
-    """Extrai o objeto JSON da resposta de forma robusta: remove cercas de codigo
-    e localiza o primeiro objeto {...} balanceado (em vez de um regex guloso)."""
-    t = texto.strip()
-    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t, flags=re.IGNORECASE).strip()
-    try:
-        return json.loads(t)
-    except json.JSONDecodeError:
-        pass
-    ini = t.find("{")
-    if ini == -1:
-        raise ValueError("Resposta do modelo sem JSON reconhecivel.")
-    prof, em_str, esc = 0, False, False
-    for i in range(ini, len(t)):
-        c = t[i]
-        if em_str:
-            if esc:
-                esc = False
-            elif c == "\\":
-                esc = True
-            elif c == '"':
-                em_str = False
-        else:
-            if c == '"':
-                em_str = True
-            elif c == "{":
-                prof += 1
-            elif c == "}":
-                prof -= 1
-                if prof == 0:
-                    return json.loads(t[ini:i + 1])
-    raise ValueError("JSON da resposta esta incompleto ou malformado.")
 
 def _normalizar_achados(achados):
     """Valida e normaliza a saida do LLM: descarta itens malformados, forca os
