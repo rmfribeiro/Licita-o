@@ -872,7 +872,7 @@ with aba6:
 
         _sintese_cont = str(_pr_cont.get("sintese") or "")
         if _sintese_cont:
-            st.info(_sintese_cont)
+            st.info(_sintese_cont.replace('[', '&#91;'))
 
         _requisitos_cont = _pr_cont.get("requisitos")
         _requisitos_cont = _requisitos_cont if isinstance(_requisitos_cont, list) else []
@@ -897,7 +897,7 @@ with aba6:
             with st.expander("📋 Lacunas Documentais"):
                 for _lac in _lacunas_cont:
                     if _lac:
-                        st.warning(str(_lac))
+                        st.warning(str(_lac).replace('[', '&#91;'))
 
         _recs_cont = _pr_cont.get("recomendacoes")
         _recs_cont = _recs_cont if isinstance(_recs_cont, list) else []
