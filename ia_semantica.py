@@ -145,7 +145,7 @@ def _chamar_anthropic(prompt, api_key, modelo, max_tokens=8000):
     )
     with urllib.request.urlopen(req, timeout=180) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
-    return "".join(b.get("text", "") for b in dados.get("content", []))
+    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 def _extrair_json(texto):
     """Extrai o objeto JSON da resposta de forma robusta: remove cercas de codigo

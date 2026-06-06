@@ -128,7 +128,7 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
     )
     with urllib.request.urlopen(req, timeout=180) as resp:
         dados = json.loads(resp.read().decode("utf-8"))
-    return "".join(b.get("text", "") for b in dados.get("content", []))
+    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 
 def diagnosticar(

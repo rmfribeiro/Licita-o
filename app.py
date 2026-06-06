@@ -32,6 +32,11 @@ BASE_RAG = os.path.join(AQUI, "base_juridica.json")
 COR = {"inconformidade": "#C0392B", "alerta": "#E67E22", "revisar": "#2E75B6", "ok": "#27AE60"}
 ROTULO = {"inconformidade": "Inconformidade", "alerta": "Alerta", "revisar": "Revisar", "ok": "Conforme"}
 
+
+def _safe_md(s: object) -> str:
+    return str(s).replace('[', '&#91;')
+
+
 b = branding.carregar()
 st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="📄", layout="wide")
 
@@ -158,12 +163,12 @@ with aba1:
             with st.expander(cab, expanded=(a["status"] == "inconformidade")):
                 st.markdown(f"<span style='color:{cor};font-weight:600'>{ROTULO[a['status']]}</span> · "
                             f"<span style='color:#888'>{a['categoria']}</span>", unsafe_allow_html=True)
-                st.write(a["detalhe"])
+                st.write(_safe_md(a["detalhe"]))
                 if a["trecho"]:
-                    st.markdown(f"> *{a['trecho']}*")
+                    st.markdown(f"> *{_safe_md(a['trecho'])}*")
                 if a.get("fundamento"):
-                    st.caption("Fundamento (RAG): " + a["fundamento"][:400])
-                st.caption(a["base_legal"])
+                    st.caption("Fundamento (RAG): " + _safe_md(a["fundamento"][:400]))
+                st.caption(_safe_md(a["base_legal"]))
 
         html = A.gerar_html(apont, pct, nivel, up.name, len(paginas))
         st.download_button("⬇️ Baixar relatório (HTML)", data=html.encode("utf-8"),
@@ -290,25 +295,25 @@ with aba2:
             dim = dims.get(chave) or {}
             icone = _icone_status.get((dim.get("status") or "ok").lower(), "ℹ️")
             with st.expander(f"{icone} {label}"):
-                st.write(dim.get("descricao") or "-")
+                st.write(_safe_md(dim.get("descricao") or "-"))
                 for achado in (dim.get("achados") or []):
                     if not achado:
                         continue
                     st.error(
-                        f"**{achado.get('fonte') or ''}:** {achado.get('descricao') or ''} "
-                        f"(gravidade: {achado.get('gravidade') or ''})"
+                        f"**{_safe_md(achado.get('fonte') or '')}:** {_safe_md(achado.get('descricao') or '')} "
+                        f"(gravidade: {_safe_md(achado.get('gravidade') or '')})"
                     )
 
         st.subheader("Parecer")
-        st.info(parecer.get("resumo") or "-")
+        st.info(_safe_md(parecer.get("resumo") or "-"))
 
         st.subheader("Recomendacao ao Gestor")
-        st.write(parecer.get("recomendacao") or "-")
+        st.write(_safe_md(parecer.get("recomendacao") or "-"))
 
         with st.expander("Base Legal"):
             for bl in (parecer.get("base_legal") or []):
                 if bl:
-                    st.write(f"- {bl}")
+                    st.write(f"- {_safe_md(bl)}")
 
         try:
             pdf_bytes = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
@@ -499,7 +504,7 @@ with aba4:
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
         if _resumo_pip:
-            st.info(_resumo_pip)
+            st.info(_safe_md(_resumo_pip))
 
         _dims_pip = _pr_pip.get("dimensoes") or {}
         for _ch, _lb in ia_integridade.LABEL_DIMENSAO.items():
@@ -509,22 +514,22 @@ with aba4:
             with st.expander(f"{_ic} {_lb} — {_niv}"):
                 for _ach in (_d.get("achados") or []):
                     if _ach:
-                        st.warning(_ach)
+                        st.warning(_safe_md(_ach))
                 for _rec in (_d.get("recomendacoes") or []):
                     if _rec:
-                        st.info(_rec)
+                        st.info(_safe_md(_rec))
 
         _prio_pip = _pr_pip.get("prioridades") or []
         if _prio_pip:
             st.subheader("Prioridades Imediatas")
             for _i, _p in enumerate(_prio_pip, 1):
                 if _p:
-                    st.error(f"{_i}. {_p}")
+                    st.error(f"{_i}. {_safe_md(_p)}")
 
         with st.expander("Base Legal"):
             for _bl in (_pr_pip.get("base_legal") or []):
                 if _bl:
-                    st.write(f"• {_bl}")
+                    st.write(f"• {_safe_md(_bl)}")
 
         if "pip_pdf" in st.session_state:
             st.download_button(
@@ -699,7 +704,7 @@ with aba5:
         # Conclusão para a hipótese
         _conc_pi = str(_pr_pi.get("conclusao_hipotese") or "")
         if _conc_pi:
-            st.info(_conc_pi.replace('[', '&#91;'))
+            st.info(_safe_md(_conc_pi))
 
         # Pontos críticos
         _crit_pi = _pr_pi.get("pontos_criticos") or []
@@ -707,7 +712,7 @@ with aba5:
             st.markdown("**Pontos Críticos**")
             for _i, _c in enumerate(_crit_pi, 1):
                 if _c:
-                    st.error(f"{_i}. {str(_c).replace('[', '&#91;')}")
+                    st.error(f"{_i}. {_safe_md(_c)}")
 
         # Análise por dimensão
         _dims_pi = _pr_pi.get("dimensoes") or {}
@@ -716,16 +721,16 @@ with aba5:
             _sintese_d = str(_dim_d.get("sintese") or "-")
             _score_d = _por_dim.get(_dim_key, 0.0)
             with st.expander(f"**{_dim_label}** — {_score_d:.0f}/100"):
-                st.write(_sintese_d.replace('[', '&#91;'))
+                st.write(_safe_md(_sintese_d))
                 _params_q = _dim_d.get("parametros") or {}
                 for _p in _params_d:
                     _pdata = _params_q.get(_p) or {}
                     for _ach in (_pdata.get("achados") or []):
                         if _ach:
-                            st.warning(f"**{ia_pi_empresas.QUESTOES_PI[_p]}:** {str(_ach).replace('[', '&#91;')}")
+                            st.warning(f"**{ia_pi_empresas.QUESTOES_PI[_p]}:** {_safe_md(_ach)}")
                     for _rec in (_pdata.get("recomendacoes") or []):
                         if _rec:
-                            st.info(f"→ {str(_rec).replace('[', '&#91;')}")
+                            st.info(f"→ {_safe_md(_rec)}")
 
         # Recomendações gerais
         _recs_pi = _pr_pi.get("recomendacoes") or []
@@ -733,13 +738,13 @@ with aba5:
             with st.expander("**Recomendações ao Gestor**"):
                 for _i, _r in enumerate(_recs_pi, 1):
                     if _r:
-                        st.write(f"{_i}. {str(_r).replace('[', '&#91;')}")
+                        st.write(f"{_i}. {_safe_md(_r)}")
 
         # Base legal
         with st.expander("Base Legal"):
             for _bl in (_pr_pi.get("base_legal") or []):
                 if _bl:
-                    st.write(f"• {str(_bl).replace('[', '&#91;')}")
+                    st.write(f"• {_safe_md(_bl)}")
 
         # Download PDF
         if "pi_pdf" in st.session_state:
@@ -886,7 +891,7 @@ with aba6:
 
         _sintese_cont = str(_pr_cont.get("sintese") or "")
         if _sintese_cont:
-            st.info(_sintese_cont.replace('[', '&#91;'))
+            st.info(_safe_md(_sintese_cont))
 
         _requisitos_cont = _pr_cont.get("requisitos")
         _requisitos_cont = _requisitos_cont if isinstance(_requisitos_cont, list) else []
@@ -900,9 +905,9 @@ with aba6:
                 _ic_req = _icone_req_cont.get(_status_req, "ℹ️")
                 _obs_req = " ".join(str(_req_cont.get("observacao") or "").split())
                 _desc_req = " ".join(str(_req_cont.get("descricao") or "").split())
-                _linha_req = f"{_ic_req} **{_desc_req.replace('[', '&#91;')}**"
+                _linha_req = f"{_ic_req} **{_safe_md(_desc_req)}**"
                 if _obs_req:
-                    _linha_req += f" — {_obs_req.replace('[', '&#91;')}"
+                    _linha_req += f" — {_safe_md(_obs_req)}"
                 st.markdown(_linha_req)
 
         _lacunas_cont = _pr_cont.get("lacunas_documentais")
@@ -911,7 +916,7 @@ with aba6:
             with st.expander("📋 Lacunas Documentais"):
                 for _lac in _lacunas_cont:
                     if _lac:
-                        st.warning(str(_lac).replace('[', '&#91;'))
+                        st.warning(_safe_md(_lac))
 
         _recs_cont = _pr_cont.get("recomendacoes")
         _recs_cont = _recs_cont if isinstance(_recs_cont, list) else []
@@ -919,7 +924,7 @@ with aba6:
             with st.expander("💡 Recomendações ao Gestor"):
                 for _i_cont, _r_cont in enumerate(_recs_cont, 1):
                     if _r_cont:
-                        st.info(f"{_i_cont}. {str(_r_cont).replace('[', '&#91;')}")
+                        st.info(f"{_i_cont}. {_safe_md(_r_cont)}")
 
         _fls_cont = _pr_cont.get("fundamentos_legais")
         _fls_cont = _fls_cont if isinstance(_fls_cont, list) else []
@@ -927,7 +932,7 @@ with aba6:
             with st.expander("⚖️ Fundamentos Legais"):
                 for _fl_cont in _fls_cont:
                     if _fl_cont:
-                        st.markdown(f"• {str(_fl_cont).replace('[', '&#91;')}")
+                        st.markdown(f"• {_safe_md(_fl_cont)}")
 
         if "cont_pdf" in st.session_state:
             _num_pdf_cont = (
