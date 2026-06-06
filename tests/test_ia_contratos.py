@@ -189,3 +189,15 @@ class TestAnalisar:
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
                 )
+
+    def test_bytes_nao_json_no_envelope_levanta_runtime_error(self):
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(
+            return_value=MagicMock(read=MagicMock(return_value=b"<html>Bad Gateway</html>"))
+        )
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=mock_cm):
+            with pytest.raises(RuntimeError, match="não é JSON válido"):
+                ia_contratos.analisar(
+                    "reajuste", _dados_contrato_mock(), None, "key_teste"
+                )

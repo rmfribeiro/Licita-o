@@ -4,7 +4,7 @@ IA-Licita — demo web (Streamlit).
 Sobe um edital em PDF e mostra a auditoria na hora. Para publicar, ver DEPLOY.md.
 Rodar localmente:  streamlit run app.py
 """
-import os, io, json, tempfile
+import os, io, json, html, tempfile
 import streamlit as st
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
@@ -864,7 +864,7 @@ with aba6:
             f"<div style='background:{_cor_parecer_cont.get(_parecer_val_cont, '#888888')};"
             f"padding:16px;border-radius:8px;color:white;font-size:20px;"
             f"font-weight:bold;text-align:center'>"
-            f"{_icone_parecer_cont.get(_parecer_val_cont, '⚪')} {_parecer_val_cont}"
+            f"{_icone_parecer_cont.get(_parecer_val_cont, '⚪')} {html.escape(_parecer_val_cont)}"
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -880,7 +880,7 @@ with aba6:
             st.markdown("**Verificação de Requisitos:**")
             _icone_req_cont = {"ATENDIDO": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
             for _req_cont in _requisitos_cont:
-                if not isinstance(_req_cont, dict):
+                if not isinstance(_req_cont, dict) or not _req_cont:
                     continue
                 _status_req = str(_req_cont.get("status") or "AUSENTE").strip().upper()
                 _ic_req = _icone_req_cont.get(_status_req, "ℹ️")
@@ -905,14 +905,14 @@ with aba6:
             with st.expander("💡 Recomendações ao Gestor"):
                 for _i_cont, _r_cont in enumerate(_recs_cont, 1):
                     if _r_cont:
-                        st.info(f"{_i_cont}. {_r_cont}")
+                        st.info(f"{_i_cont}. {str(_r_cont).replace('[', '&#91;')}")
 
         _fls_cont = _pr_cont.get("fundamentos_legais")
         _fls_cont = _fls_cont if isinstance(_fls_cont, list) else []
         with st.expander("⚖️ Fundamentos Legais"):
             for _fl_cont in _fls_cont:
                 if _fl_cont:
-                    st.write(f"• {_fl_cont}")
+                    st.markdown(f"• {str(_fl_cont).replace('[', '&#91;')}")
 
         if "cont_pdf" in st.session_state:
             _num_pdf_cont = (

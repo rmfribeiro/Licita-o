@@ -125,7 +125,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     if requisitos:
         story.append(Paragraph("Verificação de Requisitos", _ESTILO_H2))
         for req in requisitos:
-            if not isinstance(req, dict):
+            if not isinstance(req, dict) or not req:
                 continue
             status = str(req.get("status") or "AUSENTE").strip().upper()
             icone = _ICONE_REQ.get(status, html.escape(status))
