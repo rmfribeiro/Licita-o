@@ -148,11 +148,13 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
         story.append(Spacer(1, 0.3*cm))
 
     # Fundamentos legais
-    story.append(Paragraph("Fundamentos Legais", _ESTILO_H2))
-    for fl in _as_list(parecer.get("fundamentos_legais")):
-        if fl:
-            story.append(Paragraph(f"- {html.escape(str(fl))}", _ESTILO_CORPO))
-    story.append(Spacer(1, 0.3*cm))
+    fls = _as_list(parecer.get("fundamentos_legais"))
+    if fls:
+        story.append(Paragraph("Fundamentos Legais", _ESTILO_H2))
+        for fl in fls:
+            if fl:
+                story.append(Paragraph(f"- {html.escape(str(fl))}", _ESTILO_CORPO))
+        story.append(Spacer(1, 0.3*cm))
 
     # Recomendações
     recs = _as_list(parecer.get("recomendacoes"))

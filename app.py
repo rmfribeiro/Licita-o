@@ -909,10 +909,11 @@ with aba6:
 
         _fls_cont = _pr_cont.get("fundamentos_legais")
         _fls_cont = _fls_cont if isinstance(_fls_cont, list) else []
-        with st.expander("⚖️ Fundamentos Legais"):
-            for _fl_cont in _fls_cont:
-                if _fl_cont:
-                    st.markdown(f"• {str(_fl_cont).replace('[', '&#91;')}")
+        if _fls_cont:
+            with st.expander("⚖️ Fundamentos Legais"):
+                for _fl_cont in _fls_cont:
+                    if _fl_cont:
+                        st.markdown(f"• {str(_fl_cont).replace('[', '&#91;')}")
 
         if "cont_pdf" in st.session_state:
             _num_pdf_cont = (
