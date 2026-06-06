@@ -35,6 +35,14 @@ class TestConstantes:
         assert isinstance(ia_recebimento.PARECER_OPTIONS, types.MappingProxyType)
         assert isinstance(ia_recebimento.STATUS_CONDICAO, types.MappingProxyType)
 
+    def test_condicoes_cobre_todos_tipos_com_duas_fases(self):
+        for tipo in ia_recebimento.TIPOS_OBJETO:
+            conds = ia_recebimento._CONDICOES_POR_TIPO[tipo]
+            assert "provisorio" in conds
+            assert "definitivo" in conds
+            assert len(conds["provisorio"]) >= 1
+            assert len(conds["definitivo"]) >= 1
+
 
 def _dados_entrega_mock() -> dict:
     return {
@@ -177,7 +185,7 @@ class TestAnalisar:
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
 
-    def test_content_null_nao_levanta(self):
+    def test_content_null_levanta_runtime_error(self):
         payload = json.dumps({"content": None}).encode("utf-8")
         mock_cm = MagicMock()
         mock_cm.__enter__ = MagicMock(

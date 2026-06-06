@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 import types
 import urllib.error
 import urllib.request
@@ -34,7 +35,7 @@ _SISTEMA = (
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
 )
 
-_CONDICOES_POR_TIPO: dict = {
+_CONDICOES_POR_TIPO: types.MappingProxyType = types.MappingProxyType({
     "servico": {
         "provisorio": [
             "Serviço prestado conforme especificações do Termo de Referência",
@@ -75,7 +76,7 @@ _CONDICOES_POR_TIPO: dict = {
             "Responsabilidade técnica do contratado formalmente encerrada",
         ],
     },
-}
+})
 
 _ESTRUTURA_PARECER = """{
   "tipo_objeto": "servico|bem|obra",
@@ -100,11 +101,11 @@ _ESTRUTURA_PARECER = """{
 }"""
 
 
-def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
+def _chamar_anthropic(prompt: str, api_key: str, modelo: str, sistema: str) -> str:
     corpo = json.dumps({
         "model": modelo,
         "max_tokens": 4000,
-        "system": _SISTEMA,
+        "system": sistema,
         "messages": [{"role": "user", "content": prompt}],
     }).encode("utf-8")
     req = urllib.request.Request(
@@ -169,7 +170,7 @@ def analisar(
     partes.append(f"\nRetorne a análise no formato JSON:\n{_ESTRUTURA_PARECER}")
 
     try:
-        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo)
+        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA)
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
