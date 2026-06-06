@@ -9,7 +9,6 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
 from ia_integridade import COR_MATURIDADE_HEX as _COR_MATURIDADE_HEX
 from ia_pi_empresas import DIMENSOES_PI, HIPOTESES, QUESTOES_PI
 
