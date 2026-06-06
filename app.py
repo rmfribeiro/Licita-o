@@ -837,7 +837,7 @@ with aba6:
                 except Exception as _pdf_e:
                     st.session_state.pop("cont_pdf", None)
                     st.warning(f"Não foi possível gerar o PDF: {_pdf_e}")
-            except (ValueError, RuntimeError) as _e:
+            except Exception as _e:
                 st.error(str(_e))
 
     if "cont_parecer" in st.session_state:
@@ -845,6 +845,11 @@ with aba6:
 
         st.divider()
         _parecer_val_cont = str(_pr_cont.get("parecer") or "INDEFERÍVEL").strip().upper()
+        _parecer_val_cont = {
+            "DEFERIVEL":               "DEFERÍVEL",
+            "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+            "INDEFERIVEL":             "INDEFERÍVEL",
+        }.get(_parecer_val_cont, _parecer_val_cont)
         _icone_parecer_cont = {
             "DEFERÍVEL":               "🟢",
             "DEFERÍVEL COM RESSALVAS": "🟡",
@@ -909,7 +914,7 @@ with aba6:
                 (st.session_state.get("cont_dados") or {}).get("numero_contrato")
                 or "contrato"
             )
-            _nome_pdf_cont = f"Alteracao_{_num_pdf_cont.replace('/', '-')}.pdf"
+            _nome_pdf_cont = f"Alteracao_{_num_pdf_cont.replace('/', '-').replace(' ', '_')}.pdf"
             st.download_button(
                 label="⬇️ Baixar Relatório PDF",
                 data=st.session_state["cont_pdf"],

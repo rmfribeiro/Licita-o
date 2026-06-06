@@ -91,6 +91,11 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
 
     # Badge do parecer
     parecer_val = str(parecer.get("parecer") or "INDEFERÍVEL").strip().upper()
+    parecer_val = {
+        "DEFERIVEL":               "DEFERÍVEL",
+        "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+        "INDEFERIVEL":             "INDEFERÍVEL",
+    }.get(parecer_val, parecer_val)
     cor_badge = _COR_PARECER.get(parecer_val, colors.grey)
     story.append(Paragraph("Parecer Conclusivo", _ESTILO_H2))
     t_badge = Table(

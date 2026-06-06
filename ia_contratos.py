@@ -51,7 +51,7 @@ PARECER_OPTIONS: types.MappingProxyType[str, str] = types.MappingProxyType({
     "INDEFERÍVEL":             "INDEFERÍVEL",
 })
 
-_SISTEMA_POR_TIPO: dict[str, str] = {
+_SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "reajuste": (
         "Você é um consultor jurídico especialista em contratos administrativos brasileiros. "
         "Analise pedidos de REAJUSTE contratual à luz do Art. 25 §8º da Lei 14.133/2021. "
@@ -73,7 +73,7 @@ _SISTEMA_POR_TIPO: dict[str, str] = {
         "extraordinário, se há nexo causal comprovado e documentação suficiente do impacto. "
         "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
     ),
-}
+})
 
 _ESTRUTURA_PARECER = """{
   "parecer": "DEFERÍVEL|DEFERÍVEL COM RESSALVAS|INDEFERÍVEL",
@@ -154,7 +154,6 @@ def analisar(
         bruto = _chamar_anthropic(
             "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo]
         )
-        qualitativo = _extrair_json(bruto)
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
@@ -166,8 +165,11 @@ def analisar(
         ) from exc
     except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-    except Exception as exc:
-        raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    try:
+        qualitativo = _extrair_json(bruto)
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
 
     if not isinstance(qualitativo, dict):
         raise RuntimeError(

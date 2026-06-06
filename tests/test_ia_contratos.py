@@ -42,6 +42,7 @@ class TestConstantes:
         assert isinstance(ia_contratos.REQUISITOS_POR_TIPO, types.MappingProxyType)
         assert isinstance(ia_contratos.STATUS_REQUISITO, types.MappingProxyType)
         assert isinstance(ia_contratos.PARECER_OPTIONS, types.MappingProxyType)
+        assert isinstance(ia_contratos._SISTEMA_POR_TIPO, types.MappingProxyType)
 
 
 def _dados_contrato_mock() -> dict:
