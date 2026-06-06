@@ -206,3 +206,23 @@ class TestAvaliar:
         with patch("urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
+
+    def test_url_error_levanta_runtime_error(self):
+        respostas = _respostas_todos_implementados()
+        url_err = urllib.error.URLError(reason="Connection refused")
+        with patch("urllib.request.urlopen", side_effect=url_err):
+            with pytest.raises(RuntimeError):
+                ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
+
+    def test_resposta_nao_json_levanta_runtime_error(self):
+        respostas = _respostas_todos_implementados()
+        # extrair_json will fail on plain text response
+        payload = json.dumps({"content": [{"text": "Desculpe, não posso ajudar."}]}).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(
+            return_value=MagicMock(read=MagicMock(return_value=payload))
+        )
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=mock_cm):
+            with pytest.raises(RuntimeError):
+                ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")

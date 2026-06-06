@@ -68,6 +68,7 @@ class TestGerarPdf:
         )
         assert isinstance(pdf, bytes)
         assert len(pdf) > 1000
+        assert pdf[:4] == b"%PDF"
 
     def test_pdf_sem_pontos_criticos_nao_quebra(self):
         parecer = _parecer_minimo()

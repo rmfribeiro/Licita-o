@@ -242,7 +242,7 @@ def avaliar(
         )
 
     return {
+        **qualitativo,
         "scores":   scores,
         "hipotese": hipotese,
-        **qualitativo,
     }
