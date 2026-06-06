@@ -190,6 +190,17 @@ class TestAnalisar:
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
                 )
 
+    def test_analisar_com_texto_docs_inclui_documentos(self):
+        with patch(
+            "urllib.request.urlopen",
+            return_value=_mock_urlopen(_parecer_api_mock()),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), "Texto do requerimento de reajuste", "key_teste"
+            )
+        assert isinstance(r, dict)
+        assert "parecer" in r
+
     def test_bytes_nao_json_no_envelope_levanta_runtime_error(self):
         mock_cm = MagicMock()
         mock_cm.__enter__ = MagicMock(

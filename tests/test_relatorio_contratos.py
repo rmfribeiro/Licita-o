@@ -90,3 +90,29 @@ class TestGerarPdf:
         )
         assert isinstance(pdf, bytes)
         assert len(pdf) > 1000
+
+    def test_parecer_sem_acento_normalizado(self):
+        parecer = _parecer_completo_mock()
+        parecer["parecer"] = "DEFERIVEL"
+        pdf = relatorio_contratos.gerar_pdf(
+            dados_contrato=_dados_contrato_mock(),
+            tipo="reajuste",
+            parecer=parecer,
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+
+    def test_requisito_nao_dict_ignorado(self):
+        parecer = _parecer_completo_mock()
+        parecer["requisitos"] = [
+            None,
+            {},
+            {"descricao": "Cláusula expressa", "status": "ATENDIDO", "observacao": ""},
+        ]
+        pdf = relatorio_contratos.gerar_pdf(
+            dados_contrato=_dados_contrato_mock(),
+            tipo="reajuste",
+            parecer=parecer,
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
