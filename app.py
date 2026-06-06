@@ -634,9 +634,16 @@ with aba5:
                     with st.spinner(
                         "Avaliando programa de integridade com IA (pode levar 1-2 minutos)..."
                     ):
-                        _texto_pi, _ = (
+                        _texto_pi, _avisos_pi = (
                             etp_extrator.extrair_texto(_arqs_pi) if _arqs_pi else (None, [])
                         )
+                        for _av_pi in _avisos_pi:
+                            st.warning(_av_pi)
+                        if _texto_pi and len(_texto_pi) > 30_000:
+                            st.warning(
+                                "Documentos muito extensos: apenas os primeiros 30 000 "
+                                "caracteres serão analisados."
+                            )
                         _parecer_pi = ia_pi_empresas.avaliar(
                             _respostas_pi,
                             st.session_state["pi_hipotese"],
