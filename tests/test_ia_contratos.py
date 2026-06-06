@@ -173,3 +173,18 @@ class TestAnalisar:
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
                 )
+
+    def test_resposta_nao_json_levanta_runtime_error(self):
+        payload = json.dumps(
+            {"content": [{"text": "Desculpe, não posso ajudar com isso."}]}
+        ).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(
+            return_value=MagicMock(read=MagicMock(return_value=payload))
+        )
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=mock_cm):
+            with pytest.raises(RuntimeError):
+                ia_contratos.analisar(
+                    "reajuste", _dados_contrato_mock(), None, "key_teste"
+                )
