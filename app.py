@@ -841,7 +841,7 @@ with aba6:
                             else (None, [])
                         )
                         for _av_cont in _avisos_cont:
-                            st.warning(_av_cont)
+                            st.warning(_safe_md(_av_cont))
                         if _texto_cont and len(_texto_cont) > 30_000:
                             st.warning(
                                 "Documentos muito extensos: apenas os primeiros 30 000 "
@@ -957,6 +957,42 @@ with aba6:
                 )
 
     with _sub_aba_recv:
+        def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
+            _bloco = (pr.get(bloco_key) or {})
+            _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
+            st.markdown(
+                f"<div style='background:{cores.get(_pval, '#888888')};"
+                f"padding:12px;border-radius:8px;color:white;font-size:16px;"
+                f"font-weight:bold;text-align:center'>"
+                f"{icones.get(_pval, '⚪')} {html.escape(_pval)}</div>",
+                unsafe_allow_html=True,
+            )
+            st.caption(titulo)
+            _sint = str(_bloco.get("sintese") or "")
+            if _sint:
+                st.info(_safe_md(_sint))
+            _conds = _bloco.get("condicoes")
+            _conds = _conds if isinstance(_conds, list) else []
+            if _conds:
+                st.markdown("**Condições Verificadas:**")
+                _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
+                for _cond in _conds:
+                    if not isinstance(_cond, dict) or not _cond:
+                        continue
+                    _st_c = str(_cond.get("status") or "AUSENTE").strip().upper()
+                    _ic_c = _icone_cond.get(_st_c, "ℹ️")
+                    _obs_c = " ".join(str(_cond.get("observacao") or "").split())
+                    _desc_c = " ".join(str(_cond.get("descricao") or "").split())
+                    _linha_c = f"{_ic_c} **{_safe_md(_desc_c)}**"
+                    if _obs_c:
+                        _linha_c += f" — {_safe_md(_obs_c)}"
+                    st.markdown(_linha_c)
+            _pends = _bloco.get("pendencias")
+            _pends = _pends if isinstance(_pends, list) else []
+            for _p in _pends:
+                if _p:
+                    st.warning(_safe_md(_p))
+
         st.subheader("Recebimento Contratual")
         st.caption("Art. 140, I e II — Lei 14.133/2021")
 
@@ -1072,50 +1108,16 @@ with aba6:
                 "APTO": "#27AE60", "APTO COM RESSALVAS": "#F39C12", "INAPTO": "#C0392B",
             }
 
-            def _render_bloco_recv(bloco_key: str, titulo: str) -> None:
-                _bloco = (_pr_recv.get(bloco_key) or {})
-                _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
-                st.markdown(
-                    f"<div style='background:{_cor_parecer_recv.get(_pval, '#888888')};"
-                    f"padding:12px;border-radius:8px;color:white;font-size:16px;"
-                    f"font-weight:bold;text-align:center'>"
-                    f"{_icone_parecer_recv.get(_pval, '⚪')} {html.escape(_pval)}</div>",
-                    unsafe_allow_html=True,
-                )
-                st.caption(titulo)
-                _sint = str(_bloco.get("sintese") or "")
-                if _sint:
-                    st.info(_safe_md(_sint))
-                _conds = _bloco.get("condicoes")
-                _conds = _conds if isinstance(_conds, list) else []
-                if _conds:
-                    st.markdown("**Condições Verificadas:**")
-                    _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
-                    for _cond in _conds:
-                        if not isinstance(_cond, dict) or not _cond:
-                            continue
-                        _st_c = str(_cond.get("status") or "AUSENTE").strip().upper()
-                        _ic_c = _icone_cond.get(_st_c, "ℹ️")
-                        _obs_c = " ".join(str(_cond.get("observacao") or "").split())
-                        _desc_c = " ".join(str(_cond.get("descricao") or "").split())
-                        _linha_c = f"{_ic_c} **{_safe_md(_desc_c)}**"
-                        if _obs_c:
-                            _linha_c += f" — {_safe_md(_obs_c)}"
-                        st.markdown(_linha_c)
-                _pends = _bloco.get("pendencias")
-                _pends = _pends if isinstance(_pends, list) else []
-                for _p in _pends:
-                    if _p:
-                        st.warning(_safe_md(_p))
-
             _col_prov, _col_def = st.columns(2)
             with _col_prov:
                 _render_bloco_recv(
-                    "recebimento_provisorio", "Recebimento Provisório — Art. 140, I"
+                    "recebimento_provisorio", "Recebimento Provisório — Art. 140, I",
+                    _pr_recv, _icone_parecer_recv, _cor_parecer_recv,
                 )
             with _col_def:
                 _render_bloco_recv(
-                    "recebimento_definitivo", "Recebimento Definitivo — Art. 140, II"
+                    "recebimento_definitivo", "Recebimento Definitivo — Art. 140, II",
+                    _pr_recv, _icone_parecer_recv, _cor_parecer_recv,
                 )
 
             _recs_recv = _pr_recv.get("recomendacoes_gerais")
