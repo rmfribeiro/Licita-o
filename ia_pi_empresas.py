@@ -1,10 +1,5 @@
 from __future__ import annotations
-import json
 import types
-import urllib.request
-import urllib.error
-import logging
-from ia_utils import extrair_json as _extrair_json
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -71,6 +66,7 @@ _VALORES_RESPOSTA: types.MappingProxyType[str, int] = types.MappingProxyType({
     "Implementado": 100,
 })
 
+# Level names match ia_integridade._MATURIDADE_ORDEM — update both if levels change.
 _MATURIDADE_FAIXAS: tuple[tuple[float, str], ...] = (
     (75.0, "CONSOLIDADO"),
     (50.0, "EM DESENVOLVIMENTO"),

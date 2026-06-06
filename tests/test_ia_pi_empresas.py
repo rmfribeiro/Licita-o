@@ -87,3 +87,9 @@ class TestCalcularScores:
     def test_pesos_somam_1(self):
         total = sum(ia_pi_empresas.PESOS_DIMENSAO.values())
         assert abs(total - 1.0) < 1e-9
+
+    def test_resposta_desconhecida_conta_como_zero(self):
+        r = _respostas_todos_nao_existem()
+        r["p1"] = "IMPLEMENTADO"  # wrong case — not in _VALORES_RESPOSTA
+        s = ia_pi_empresas.calcular_scores(r)
+        assert s["por_parametro"]["p1"] == 0
