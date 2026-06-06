@@ -716,7 +716,7 @@ with aba5:
             _sintese_d = str(_dim_d.get("sintese") or "-")
             _score_d = _por_dim.get(_dim_key, 0.0)
             with st.expander(f"**{_dim_label}** — {_score_d:.0f}/100"):
-                st.write(_sintese_d)
+                st.write(_sintese_d.replace('[', '&#91;'))
                 _params_q = _dim_d.get("parametros") or {}
                 for _p in _params_d:
                     _pdata = _params_q.get(_p) or {}
@@ -733,13 +733,13 @@ with aba5:
             with st.expander("**Recomendações ao Gestor**"):
                 for _i, _r in enumerate(_recs_pi, 1):
                     if _r:
-                        st.write(f"{_i}. {_r}")
+                        st.write(f"{_i}. {str(_r).replace('[', '&#91;')}")
 
         # Base legal
         with st.expander("Base Legal"):
             for _bl in (_pr_pi.get("base_legal") or []):
                 if _bl:
-                    st.write(f"• {_bl}")
+                    st.write(f"• {str(_bl).replace('[', '&#91;')}")
 
         # Download PDF
         if "pi_pdf" in st.session_state:
