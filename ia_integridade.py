@@ -40,7 +40,7 @@ _ESTRUTURA_PARECER = """{
   "base_legal": ["Decreto 11.129/2022", "IN CGU 21/2021", "Lei 12.846/2013, art. 7 III", "Decreto 8.420/2015"]
 }"""
 
-_ROTULOS_QUESTIONARIO = {
+_ROTULOS_QUESTIONARIO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "q_ato_formal":                  "Existe ato formal do prefeito instituindo o PIP?",
     "q_responsavel_designado":       "Há responsável formalmente designado pelo PIP?",
     "q_diretrizes_publicadas":       "As diretrizes de integridade foram publicadas?",
@@ -53,7 +53,7 @@ _ROTULOS_QUESTIONARIO = {
     "q_primeira_linha":              "Gestores de linha conhecem e exercem seus controles de conformidade?",
     "q_segunda_linha":               "Controle interno está estruturado e ativo?",
     "q_terceira_linha":              "Auditoria interna existe e funciona de forma independente?",
-}
+})
 
 LABEL_DIMENSAO = {
     "compromisso_alta_gestao": "Compromisso da Alta Gestão",
@@ -84,10 +84,12 @@ _CHAVE_ATO_FORMAL        = "q_ato_formal"
 _CHAVE_RESPONSAVEL       = "q_responsavel_designado"
 
 _chaves_pip = {k for k, _ in QUESTOES_PIP}
-assert {_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL} <= _chaves_pip, (
-    f"Chaves críticas ausentes em QUESTOES_PIP: "
-    f"{', '.join(repr(c) for c in (_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL) if c not in _chaves_pip)}"
-)
+_ausentes = {_CHAVE_ATO_FORMAL, _CHAVE_RESPONSAVEL} - _chaves_pip
+if _ausentes:
+    raise RuntimeError(
+        f"Chaves críticas ausentes em QUESTOES_PIP: "
+        f"{', '.join(repr(c) for c in sorted(_ausentes))}"
+    )
 
 
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:

@@ -13,7 +13,7 @@ from ia_utils import COR_STATUS_HEX as _COR_STATUS
 
 _COR_RISCO = {
     "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
-    "MÉDIO":                  colors.HexColor(_COR_STATUS["alerta"]),
+    "MEDIO":                  colors.HexColor(_COR_STATUS["alerta"]),
     "BAIXO":                  colors.HexColor(_COR_STATUS["ok"]),
     "SEM RISCO IDENTIFICADO": colors.HexColor(_COR_STATUS["ok"]),
 }
@@ -39,6 +39,7 @@ _ESTILO_H2      = ParagraphStyle("ddi_h2",     parent=_estilos_base["Heading2"],
 _ESTILO_CORPO   = ParagraphStyle("ddi_corpo",  parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
 _ESTILO_PEQUENO = ParagraphStyle("ddi_peq",    parent=_estilos_base["Normal"],   fontSize=8, textColor=colors.grey)
 _ESTILO_H1      = ParagraphStyle("ddi_h1",     parent=_estilos_base["Heading1"])
+_ESTILO_BADGE   = ParagraphStyle("ddi_badge",  parent=_estilos_base["Normal"], fontSize=14, textColor=colors.white, alignment=1)
 
 
 def _fmt_cnpj(cnpj: str) -> str:
@@ -100,12 +101,11 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
 
     # Índice de risco
     risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
-    risco = {"MEDIO": "MÉDIO"}.get(risco, risco)
+    risco = {"MÉDIO": "MEDIO"}.get(risco, risco)
     cor_risco = _COR_RISCO.get(risco, colors.grey)
     story.append(Paragraph("Índice de Risco Geral", _ESTILO_H2))
     t_risco = Table(
-        [[Paragraph(f"<b>{html.escape(str(risco))}</b>",
-                    ParagraphStyle("r", fontSize=14, textColor=colors.white, alignment=1))]],
+        [[Paragraph(f"<b>{html.escape(str(risco))}</b>", _ESTILO_BADGE)]],
         colWidths=[17*cm]
     )
     t_risco.setStyle(TableStyle([

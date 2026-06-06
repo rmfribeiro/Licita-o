@@ -35,6 +35,7 @@ _ESTILO_CORPO   = ParagraphStyle("etp_corpo",  parent=_estilos_base["Normal"],  
 _ESTILO_PEQUENO = ParagraphStyle("etp_peq",    parent=_estilos_base["Normal"],   fontSize=8, textColor=colors.grey)
 _ESTILO_H1      = ParagraphStyle("etp_h1",     parent=_estilos_base["Heading1"])
 _ESTILO_ALERTA  = ParagraphStyle("etp_alerta", parent=_ESTILO_CORPO, textColor=colors.HexColor(_COR_STATUS["alerta"]))
+_ESTILO_BADGE   = ParagraphStyle("etp_badge",  parent=_estilos_base["Normal"], fontSize=14, textColor=colors.white, alignment=1)
 
 
 def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> bytes:
@@ -70,8 +71,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     cor = _COR_ADEQUACAO.get(adequacao, colors.grey)
     story.append(Paragraph("Adequação Geral", _ESTILO_H2))
     t_adeq = Table(
-        [[Paragraph(f"<b>{html.escape(str(adequacao))}</b>",
-                    ParagraphStyle("a", fontSize=14, textColor=colors.white, alignment=1))]],
+        [[Paragraph(f"<b>{html.escape(str(adequacao))}</b>", _ESTILO_BADGE)]],
         colWidths=[17*cm],
     )
     t_adeq.setStyle(TableStyle([
