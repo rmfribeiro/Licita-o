@@ -77,7 +77,11 @@ def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
         },
     )
     with urllib.request.urlopen(req, timeout=180) as resp:
-        dados = json.loads(resp.read().decode("utf-8"))
+        raw_bytes = resp.read()
+    try:
+        dados = json.loads(raw_bytes.decode("utf-8"))
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
     return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 

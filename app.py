@@ -165,13 +165,13 @@ with aba1:
                             f"<span style='color:#888'>{a['categoria']}</span>", unsafe_allow_html=True)
                 st.write(_safe_md(a["detalhe"]))
                 if a["trecho"]:
-                    st.markdown(f"> *{_safe_md(a['trecho'])}*")
+                    st.markdown(f"> {_safe_md(a['trecho'])}")
                 if a.get("fundamento"):
                     st.caption("Fundamento (RAG): " + _safe_md(a["fundamento"][:400]))
                 st.caption(_safe_md(a["base_legal"]))
 
-        html = A.gerar_html(apont, pct, nivel, up.name, len(paginas))
-        st.download_button("⬇️ Baixar relatório (HTML)", data=html.encode("utf-8"),
+        _html_report = A.gerar_html(apont, pct, nivel, up.name, len(paginas))
+        st.download_button("⬇️ Baixar relatório (HTML)", data=_html_report.encode("utf-8"),
                            file_name=f"relatorio_{os.path.splitext(up.name)[0]}.html", mime="text/html")
         st.caption("Ferramenta de apoio — não substitui o parecer jurídico. "
                    "Os apontamentos devem ser confirmados por profissional habilitado.")
@@ -385,26 +385,26 @@ with aba3:
             _d = _dims.get(_ch) or {}
             _ic = _ic_st.get((_d.get("status") or "ok").lower(), "ℹ️")
             with st.expander(f"{_ic} {_lb}"):
-                st.write(_d.get("descricao") or "—")
+                st.write(_safe_md(_d.get("descricao") or "—"))
 
         _criticos = _pr.get("pontos_criticos", [])
         if _criticos:
             st.subheader("Pontos Críticos")
             for _c in _criticos:
                 if _c:
-                    st.error(_c)
+                    st.error(_safe_md(_c))
 
         _recs = _pr.get("recomendacoes", [])
         if _recs:
             st.subheader("Recomendações ao Gestor")
             for _r in _recs:
                 if _r:
-                    st.info(_r)
+                    st.info(_safe_md(_r))
 
         with st.expander("Base Legal"):
             for _bl in (_pr.get("base_legal") or []):
                 if _bl:
-                    st.write(f"• {_bl}")
+                    st.write(f"• {_safe_md(_bl)}")
 
         try:
             _pdf_etp = relatorio_etp.gerar_pdf(_nm, _av, _pr)
