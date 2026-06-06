@@ -874,38 +874,43 @@ with aba6:
         if _sintese_cont:
             st.info(_sintese_cont)
 
-        _requisitos_cont = _pr_cont.get("requisitos") or []
+        _requisitos_cont = _pr_cont.get("requisitos")
+        _requisitos_cont = _requisitos_cont if isinstance(_requisitos_cont, list) else []
         if _requisitos_cont:
             st.markdown("**Verificação de Requisitos:**")
             _icone_req_cont = {"ATENDIDO": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
             for _req_cont in _requisitos_cont:
-                if not _req_cont:
+                if not isinstance(_req_cont, dict):
                     continue
                 _status_req = str(_req_cont.get("status") or "AUSENTE").strip().upper()
                 _ic_req = _icone_req_cont.get(_status_req, "ℹ️")
-                _obs_req = str(_req_cont.get("observacao") or "")
-                _desc_req = str(_req_cont.get("descricao") or "")
-                _linha_req = f"{_ic_req} **{_desc_req}**"
+                _obs_req = " ".join(str(_req_cont.get("observacao") or "").split())
+                _desc_req = " ".join(str(_req_cont.get("descricao") or "").split())
+                _linha_req = f"{_ic_req} **{_desc_req.replace('[', '&#91;')}**"
                 if _obs_req:
-                    _linha_req += f" — {_obs_req}"
-                st.write(_linha_req)
+                    _linha_req += f" — {_obs_req.replace('[', '&#91;')}"
+                st.markdown(_linha_req)
 
-        _lacunas_cont = _pr_cont.get("lacunas_documentais") or []
+        _lacunas_cont = _pr_cont.get("lacunas_documentais")
+        _lacunas_cont = _lacunas_cont if isinstance(_lacunas_cont, list) else []
         if _lacunas_cont:
             with st.expander("📋 Lacunas Documentais"):
                 for _lac in _lacunas_cont:
                     if _lac:
-                        st.warning(_lac)
+                        st.warning(str(_lac))
 
-        _recs_cont = _pr_cont.get("recomendacoes") or []
+        _recs_cont = _pr_cont.get("recomendacoes")
+        _recs_cont = _recs_cont if isinstance(_recs_cont, list) else []
         if _recs_cont:
             with st.expander("💡 Recomendações ao Gestor"):
                 for _i_cont, _r_cont in enumerate(_recs_cont, 1):
                     if _r_cont:
                         st.info(f"{_i_cont}. {_r_cont}")
 
+        _fls_cont = _pr_cont.get("fundamentos_legais")
+        _fls_cont = _fls_cont if isinstance(_fls_cont, list) else []
         with st.expander("⚖️ Fundamentos Legais"):
-            for _fl_cont in (_pr_cont.get("fundamentos_legais") or []):
+            for _fl_cont in _fls_cont:
                 if _fl_cont:
                     st.write(f"• {_fl_cont}")
 

@@ -43,6 +43,10 @@ _ESTILO_REQ_MAP = {
 }
 
 
+def _as_list(v) -> list:
+    return v if isinstance(v, list) else []
+
+
 def _fmt_brl(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -63,7 +67,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
         _ESTILO_PEQUENO,
     ))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}",
+        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
         _ESTILO_PEQUENO,
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
@@ -117,14 +121,14 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     story.append(Spacer(1, 0.3*cm))
 
     # Checklist de requisitos
-    requisitos = parecer.get("requisitos") or []
+    requisitos = _as_list(parecer.get("requisitos"))
     if requisitos:
         story.append(Paragraph("Verificação de Requisitos", _ESTILO_H2))
         for req in requisitos:
-            if not req:
+            if not isinstance(req, dict):
                 continue
             status = str(req.get("status") or "AUSENTE").strip().upper()
-            icone = _ICONE_REQ.get(status, status)
+            icone = _ICONE_REQ.get(status, html.escape(status))
             estilo = _ESTILO_REQ_MAP.get(status, _ESTILO_CORPO)
             descricao = html.escape(str(req.get("descricao") or ""))
             obs = html.escape(str(req.get("observacao") or ""))
@@ -135,7 +139,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
         story.append(Spacer(1, 0.3*cm))
 
     # Lacunas documentais
-    lacunas = parecer.get("lacunas_documentais") or []
+    lacunas = _as_list(parecer.get("lacunas_documentais"))
     if lacunas:
         story.append(Paragraph("Lacunas Documentais", _ESTILO_H2))
         for i, lac in enumerate(lacunas, 1):
@@ -145,13 +149,13 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
 
     # Fundamentos legais
     story.append(Paragraph("Fundamentos Legais", _ESTILO_H2))
-    for fl in (parecer.get("fundamentos_legais") or []):
+    for fl in _as_list(parecer.get("fundamentos_legais")):
         if fl:
             story.append(Paragraph(f"- {html.escape(str(fl))}", _ESTILO_CORPO))
     story.append(Spacer(1, 0.3*cm))
 
     # Recomendações
-    recs = parecer.get("recomendacoes") or []
+    recs = _as_list(parecer.get("recomendacoes"))
     if recs:
         story.append(Paragraph("Recomendações ao Gestor", _ESTILO_H2))
         for i, rec in enumerate(recs, 1):
