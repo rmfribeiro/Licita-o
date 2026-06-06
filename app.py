@@ -814,11 +814,18 @@ with aba6:
                 with st.spinner(
                     "Analisando pedido de alteração contratual com IA (pode levar 1-2 minutos)..."
                 ):
-                    _texto_cont, _ = (
+                    _texto_cont, _avisos_cont = (
                         etp_extrator.extrair_texto(_arqs_cont)
                         if _arqs_cont
                         else (None, [])
                     )
+                    for _av_cont in _avisos_cont:
+                        st.warning(_av_cont)
+                    if _texto_cont and len(_texto_cont) > 30_000:
+                        st.warning(
+                            "Documentos muito extensos: apenas os primeiros 30 000 "
+                            "caracteres serão analisados."
+                        )
                     _parecer_cont = ia_contratos.analisar(
                         _tipo_cont,
                         _dados_cont,
