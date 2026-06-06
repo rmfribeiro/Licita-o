@@ -20,6 +20,8 @@ import ia_etp
 import relatorio_etp
 import ia_integridade
 import relatorio_integridade
+import ia_pi_empresas
+import relatorio_pi_empresas
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -66,11 +68,12 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3, aba4 = st.tabs([
+aba1, aba2, aba3, aba4, aba5 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
     "🏛️ Diagnóstico de Integridade",
+    "🏢 Avaliação de PI",
 ])
 
 with aba1:
@@ -525,5 +528,216 @@ with aba4:
                 label="Baixar Relatório PDF",
                 data=st.session_state["pip_pdf"],
                 file_name=st.session_state.get("pip_pdf_nome", "PIP.pdf"),
+                mime="application/pdf",
+            )
+
+with aba5:
+    st.subheader("Avaliação do Programa de Integridade — Decreto 12.304/2024")
+    st.caption(
+        "Decreto 12.304/2024 · Lei 14.133/2021, arts. 60-IV e 163 · Lei 12.846/2013, art. 7º, IV"
+    )
+
+    _api_key_pi = os.environ.get("ANTHROPIC_API_KEY")
+    if not _api_key_pi:
+        try:
+            _val = st.secrets.get("ANTHROPIC_API_KEY")
+            if _val:
+                _api_key_pi = str(_val)
+        except _SecretsNotFound:
+            pass
+        except Exception as _e:
+            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+    _modelo_pi = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+    # ── Etapa 1: Identificação ─────────────────────────────────────────────
+    st.markdown("### Etapa 1 — Identificação da Empresa")
+    _col_cnpj, _col_hip = st.columns([2, 3])
+    _cnpj_pi = _col_cnpj.text_input("CNPJ da empresa", key="pi_cnpj_input",
+                                     placeholder="00.000.000/0000-00")
+    _hip_opcoes = {k: v for k, v in ia_pi_empresas.HIPOTESES.items()}
+    _hip_chaves = list(_hip_opcoes.keys())
+    _hip_labels = list(_hip_opcoes.values())
+    _hip_idx = _col_hip.selectbox(
+        "Hipótese legal",
+        options=range(len(_hip_chaves)),
+        format_func=lambda i: _hip_labels[i],
+        key="pi_hipotese_select",
+    )
+    _hipotese_pi = _hip_chaves[_hip_idx]
+
+    if st.button("Consultar empresa", key="btn_pi_etapa1", disabled=not _cnpj_pi):
+        for _k in ("pi_etapa", "pi_dados", "pi_cnpj", "pi_hipotese",
+                   "pi_respostas", "pi_parecer", "pi_pdf"):
+            st.session_state.pop(_k, None)
+        try:
+            with st.spinner("Consultando Receita Federal..."):
+                _dados_pi = ddi_consultas.consultar(_cnpj_pi, 0.0)
+            st.session_state["pi_dados"] = _dados_pi
+            st.session_state["pi_cnpj"] = _dados_pi["cnpj"]
+            st.session_state["pi_hipotese"] = _hipotese_pi
+            st.session_state["pi_etapa"] = 2
+        except ValueError as _e:
+            st.error(str(_e))
+        except Exception as _e:
+            st.error(f"Erro ao consultar empresa: {_e}")
+
+    if st.session_state.get("pi_etapa", 0) >= 2:
+        _d_pi = st.session_state["pi_dados"]
+        _hip_pi = st.session_state["pi_hipotese"]
+        st.success(f"**{_d_pi.get('razao_social') or 'Empresa'}** — "
+                   f"CNPJ: {st.session_state['pi_cnpj']} — "
+                   f"Situação: {_d_pi.get('situacao') or '-'} — "
+                   f"Porte: {_d_pi.get('porte') or '-'}")
+        if _hip_pi == "grande_vulto" and "GRANDE" not in str(_d_pi.get("porte") or "").upper():
+            st.warning(
+                "⚠️ PI obrigatório somente para contratos > R$ 239M (grande vulto). "
+                "Confirme o enquadramento antes de prosseguir."
+            )
+
+        # ── Etapa 2: Questionário ──────────────────────────────────────────
+        st.divider()
+        st.markdown("### Etapa 2 — Questionário (17 parâmetros)")
+
+        _respostas_pi = {}
+        for _dim_key, (_dim_label, _params) in ia_pi_empresas.DIMENSOES_PI.items():
+            with st.expander(f"**{_dim_label}** ({len(_params)} parâmetros)"):
+                for _p in _params:
+                    _rotulo_p = ia_pi_empresas.QUESTOES_PI[_p]
+                    _respostas_pi[_p] = st.radio(
+                        _rotulo_p,
+                        options=["Não existe", "Parcialmente", "Implementado"],
+                        key=f"pi_{_p}",
+                        horizontal=True,
+                    )
+
+        _arqs_pi = st.file_uploader(
+            "Documentos da empresa (opcional — PDF ou Word): regulamento interno, "
+            "código de ética, relatório do PI, etc.",
+            type=["pdf", "docx"],
+            accept_multiple_files=True,
+            key="pi_docs",
+        )
+
+        if st.button("Gerar Avaliação", type="primary", key="btn_pi_etapa2"):
+            if not _api_key_pi:
+                st.error(
+                    "ANTHROPIC_API_KEY não configurada — "
+                    "configure via variável de ambiente ou secrets.toml."
+                )
+            else:
+                for _k in ("pi_respostas", "pi_parecer", "pi_pdf"):
+                    st.session_state.pop(_k, None)
+                try:
+                    with st.spinner(
+                        "Avaliando programa de integridade com IA (pode levar 1-2 minutos)..."
+                    ):
+                        _texto_pi, _ = (
+                            etp_extrator.extrair_texto(_arqs_pi) if _arqs_pi else (None, [])
+                        )
+                        _parecer_pi = ia_pi_empresas.avaliar(
+                            _respostas_pi,
+                            st.session_state["pi_hipotese"],
+                            _texto_pi,
+                            _api_key_pi,
+                            _modelo_pi,
+                        )
+                    st.session_state["pi_respostas"] = _respostas_pi
+                    st.session_state["pi_parecer"] = _parecer_pi
+                    st.session_state["pi_etapa"] = 3
+                    _razao_pi = st.session_state["pi_dados"].get("razao_social") or ""
+                    try:
+                        st.session_state["pi_pdf"] = relatorio_pi_empresas.gerar_pdf(
+                            cnpj=st.session_state["pi_cnpj"],
+                            razao_social=_razao_pi,
+                            hipotese=st.session_state["pi_hipotese"],
+                            parecer=_parecer_pi,
+                        )
+                    except Exception as _pdf_e:
+                        st.session_state.pop("pi_pdf", None)
+                        st.warning(f"Não foi possível gerar o PDF: {_pdf_e}")
+                except (ValueError, RuntimeError) as _e:
+                    st.error(str(_e))
+
+    # ── Etapa 3: Resultado ─────────────────────────────────────────────────
+    if st.session_state.get("pi_etapa", 0) >= 3:
+        _pr_pi = st.session_state["pi_parecer"]
+        _sc_pi = _pr_pi.get("scores") or {}
+
+        st.divider()
+        st.markdown("### Resultado da Avaliação")
+
+        _nivel_pi = str(_sc_pi.get("nivel") or "INEXISTENTE").strip().upper()
+        _score_pi = _sc_pi.get("geral", 0.0)
+        _cor_pi = ia_integridade.COR_MATURIDADE_HEX.get(_nivel_pi, "#888888")
+        _icone_pi = ia_integridade.ICONE_MATURIDADE.get(_nivel_pi, "⚪")
+        st.markdown(
+            f"<div style='background:{_cor_pi};padding:16px;border-radius:8px;"
+            f"color:white;font-size:20px;font-weight:bold;text-align:center'>"
+            f"{_icone_pi} {_nivel_pi} — {_score_pi:.0f}/100"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown("")
+
+        # Scores por dimensão
+        _por_dim = _sc_pi.get("por_dimensao") or {}
+        st.markdown("**Score por Dimensão:**")
+        for _dim_key, (_dim_label, _) in ia_pi_empresas.DIMENSOES_PI.items():
+            _s = _por_dim.get(_dim_key, 0.0)
+            st.write(f"• **{_dim_label}:** {_s:.0f}/100")
+
+        # Conclusão para a hipótese
+        _conc_pi = str(_pr_pi.get("conclusao_hipotese") or "")
+        if _conc_pi:
+            st.info(_conc_pi)
+
+        # Pontos críticos
+        _crit_pi = _pr_pi.get("pontos_criticos") or []
+        if _crit_pi:
+            st.markdown("**Pontos Críticos**")
+            for _i, _c in enumerate(_crit_pi, 1):
+                if _c:
+                    st.error(f"{_i}. {_c}")
+
+        # Análise por dimensão
+        _dims_pi = _pr_pi.get("dimensoes") or {}
+        for _dim_key, (_dim_label, _params_d) in ia_pi_empresas.DIMENSOES_PI.items():
+            _dim_d = _dims_pi.get(_dim_key) or {}
+            _sintese_d = str(_dim_d.get("sintese") or "-")
+            _score_d = _por_dim.get(_dim_key, 0.0)
+            with st.expander(f"**{_dim_label}** — {_score_d:.0f}/100"):
+                st.write(_sintese_d)
+                _params_q = _dim_d.get("parametros") or {}
+                for _p in _params_d:
+                    _pdata = _params_q.get(_p) or {}
+                    for _ach in (_pdata.get("achados") or []):
+                        if _ach:
+                            st.warning(f"**{ia_pi_empresas.QUESTOES_PI[_p]}:** {_ach}")
+                    for _rec in (_pdata.get("recomendacoes") or []):
+                        if _rec:
+                            st.info(f"→ {_rec}")
+
+        # Recomendações gerais
+        _recs_pi = _pr_pi.get("recomendacoes") or []
+        if _recs_pi:
+            with st.expander("**Recomendações ao Gestor**"):
+                for _i, _r in enumerate(_recs_pi, 1):
+                    if _r:
+                        st.write(f"{_i}. {_r}")
+
+        # Base legal
+        with st.expander("Base Legal"):
+            for _bl in (_pr_pi.get("base_legal") or []):
+                if _bl:
+                    st.write(f"• {_bl}")
+
+        # Download PDF
+        if "pi_pdf" in st.session_state:
+            _razao_final = (st.session_state.get("pi_dados") or {}).get("razao_social") or "PI"
+            _nome_pdf_pi = f"PI_{_razao_final.replace(' ', '_')[:30]}.pdf"
+            st.download_button(
+                label="⬇️ Baixar Relatório PDF",
+                data=st.session_state["pi_pdf"],
+                file_name=_nome_pdf_pi,
                 mime="application/pdf",
             )
