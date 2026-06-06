@@ -1,5 +1,11 @@
 from __future__ import annotations
+import json
+import logging
 import types
+import urllib.error
+import urllib.request
+
+from ia_utils import extrair_json as _extrair_json
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -101,4 +107,142 @@ def calcular_scores(respostas: dict) -> dict:
         "por_dimensao":  por_dimensao,
         "geral":         geral,
         "nivel":         nivel_maturidade(geral),
+    }
+
+
+_SISTEMA = (
+    "Você é um consultor sênior especialista em Programas de Integridade para empresas "
+    "privadas e organismos que contratam com a Administração Pública brasileira. "
+    "Avalie o Programa de Integridade da empresa com base nas respostas do questionário "
+    "e nos documentos fornecidos, à luz do Decreto 12.304/2024, da Lei 12.846/2013 "
+    "(art. 7º, IV) e da Lei 14.133/2021. "
+    "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+)
+
+_ESTRUTURA_PARECER = """{
+  "dimensoes": {
+    "comprometimento_alta_direcao": {
+      "sintese": "...",
+      "parametros": {
+        "p1": {"achados": ["..."], "recomendacoes": ["..."]},
+        "p2": {"achados": [], "recomendacoes": []},
+        "p3": {"achados": [], "recomendacoes": []}
+      }
+    },
+    "analise_riscos": {
+      "sintese": "...",
+      "parametros": {
+        "p4": {"achados": [], "recomendacoes": []},
+        "p5": {"achados": [], "recomendacoes": []}
+      }
+    },
+    "estrutura_controles": {
+      "sintese": "...",
+      "parametros": {
+        "p6":  {"achados": [], "recomendacoes": []},
+        "p7":  {"achados": [], "recomendacoes": []},
+        "p8":  {"achados": [], "recomendacoes": []},
+        "p9":  {"achados": [], "recomendacoes": []},
+        "p10": {"achados": [], "recomendacoes": []},
+        "p11": {"achados": [], "recomendacoes": []},
+        "p12": {"achados": [], "recomendacoes": []}
+      }
+    },
+    "monitoramento_melhoria": {
+      "sintese": "...",
+      "parametros": {
+        "p13": {"achados": [], "recomendacoes": []},
+        "p14": {"achados": [], "recomendacoes": []},
+        "p15": {"achados": [], "recomendacoes": []}
+      }
+    },
+    "transparencia": {
+      "sintese": "...",
+      "parametros": {
+        "p16": {"achados": [], "recomendacoes": []},
+        "p17": {"achados": [], "recomendacoes": []}
+      }
+    }
+  },
+  "pontos_criticos": ["..."],
+  "conclusao_hipotese": "Texto específico para a hipótese.",
+  "recomendacoes": ["..."],
+  "base_legal": ["Decreto 12.304/2024, Art. 4º", "Lei 14.133/2021, Art. 60, IV"]
+}"""
+
+
+def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
+    corpo = json.dumps({
+        "model": modelo,
+        "max_tokens": 4000,
+        "system": _SISTEMA,
+        "messages": [{"role": "user", "content": prompt}],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=corpo,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        dados = json.loads(resp.read().decode("utf-8"))
+    return "".join(b.get("text", "") for b in dados.get("content", []))
+
+
+def avaliar(
+    respostas: dict,
+    hipotese: str,
+    texto_docs: str | None,
+    api_key: str,
+    modelo: str = _MODELO_PADRAO,
+) -> dict:
+    scores = calcular_scores(respostas)
+
+    partes = [
+        f"Avaliação do Programa de Integridade — Hipótese: {HIPOTESES.get(hipotese, hipotese)}\n"
+        f"Score geral calculado: {scores['geral']}/100 ({scores['nivel']})\n"
+    ]
+    for dim_key, (dim_label, params) in DIMENSOES_PI.items():
+        partes.append(
+            f"\n=== {dim_label} (score: {scores['por_dimensao'][dim_key]:.0f}/100) ==="
+        )
+        for p in params:
+            valor = scores["por_parametro"][p]
+            resp_txt = {0: "Não existe", 50: "Parcialmente", 100: "Implementado"}.get(valor, str(valor))
+            partes.append(f"- {QUESTOES_PI[p]} → {resp_txt} ({valor}/100)")
+
+    if texto_docs:
+        partes.append(f"\nDocumentos fornecidos pela empresa:\n{texto_docs[:30000]}")
+
+    partes.append(f"\nRetorne a análise qualitativa no formato:\n{_ESTRUTURA_PARECER}")
+
+    try:
+        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo)
+        qualitativo = _extrair_json(bruto)
+    except urllib.error.HTTPError as exc:
+        _body = ""
+        try:
+            _body = exc.read().decode("utf-8", errors="replace")
+        except (OSError, IOError):
+            pass
+        raise RuntimeError(
+            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
+        ) from exc
+    except (urllib.error.URLError, OSError) as exc:
+        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    if not isinstance(qualitativo, dict):
+        raise RuntimeError(
+            f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(qualitativo).__name__}"
+        )
+
+    return {
+        "scores":   scores,
+        "hipotese": hipotese,
+        **qualitativo,
     }

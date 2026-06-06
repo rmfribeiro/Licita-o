@@ -1,6 +1,9 @@
 from __future__ import annotations
 import pytest
 import ia_pi_empresas
+import json
+import urllib.error
+from unittest.mock import patch, MagicMock
 
 
 class TestNivelMaturidade:
@@ -93,3 +96,113 @@ class TestCalcularScores:
         r["p1"] = "IMPLEMENTADO"  # wrong case — not in _VALORES_RESPOSTA
         s = ia_pi_empresas.calcular_scores(r)
         assert s["por_parametro"]["p1"] == 0
+
+
+def _qualitativo_mock() -> dict:
+    return {
+        "dimensoes": {
+            "comprometimento_alta_direcao": {
+                "sintese": "Alta direção comprometida.",
+                "parametros": {
+                    "p1": {"achados": ["Política publicada."], "recomendacoes": []},
+                    "p2": {"achados": [], "recomendacoes": ["Designar CCO."]},
+                    "p3": {"achados": [], "recomendacoes": []},
+                },
+            },
+            "analise_riscos": {
+                "sintese": "Mapeamento básico existente.",
+                "parametros": {
+                    "p4": {"achados": [], "recomendacoes": []},
+                    "p5": {"achados": [], "recomendacoes": []},
+                },
+            },
+            "estrutura_controles": {
+                "sintese": "Controles parcialmente implantados.",
+                "parametros": {
+                    "p6": {"achados": [], "recomendacoes": []},
+                    "p7": {"achados": [], "recomendacoes": []},
+                    "p8": {"achados": [], "recomendacoes": []},
+                    "p9": {"achados": [], "recomendacoes": []},
+                    "p10": {"achados": [], "recomendacoes": []},
+                    "p11": {"achados": [], "recomendacoes": []},
+                    "p12": {"achados": [], "recomendacoes": []},
+                },
+            },
+            "monitoramento_melhoria": {
+                "sintese": "Monitoramento inexistente.",
+                "parametros": {
+                    "p13": {"achados": [], "recomendacoes": []},
+                    "p14": {"achados": [], "recomendacoes": []},
+                    "p15": {"achados": [], "recomendacoes": []},
+                },
+            },
+            "transparencia": {
+                "sintese": "Transparência adequada.",
+                "parametros": {
+                    "p16": {"achados": [], "recomendacoes": []},
+                    "p17": {"achados": [], "recomendacoes": []},
+                },
+            },
+        },
+        "pontos_criticos": ["Canal de denúncias sem garantia de anonimato."],
+        "conclusao_hipotese": "Empresa apta para desempate por PI.",
+        "recomendacoes": ["Formalizar orçamento do PI."],
+        "base_legal": ["Decreto 12.304/2024, Art. 4º"],
+    }
+
+
+def _mock_urlopen(qualitativo: dict):
+    payload = json.dumps(
+        {"content": [{"text": json.dumps(qualitativo)}]}
+    ).encode("utf-8")
+    mock_cm = MagicMock()
+    mock_cm.__enter__ = MagicMock(
+        return_value=MagicMock(read=MagicMock(return_value=payload))
+    )
+    mock_cm.__exit__ = MagicMock(return_value=False)
+    return mock_cm
+
+
+class TestAvaliar:
+    def test_retorna_dict_com_scores_e_qualitativo(self):
+        respostas = _respostas_todos_implementados()
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
+            resultado = ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
+        assert "scores" in resultado
+        assert "dimensoes" in resultado
+        assert "conclusao_hipotese" in resultado
+
+    def test_scores_calculados_localmente(self):
+        respostas = _respostas_todos_implementados()
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
+            resultado = ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
+        assert resultado["scores"]["geral"] == 100.0
+
+    def test_hipotese_gravada_no_resultado(self):
+        respostas = _respostas_todos_nao_existem()
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
+            resultado = ia_pi_empresas.avaliar(respostas, "grande_vulto", None, "key_teste")
+        assert resultado["hipotese"] == "grande_vulto"
+
+    def test_http_error_levanta_runtime_error(self):
+        respostas = _respostas_todos_implementados()
+        http_err = urllib.error.HTTPError(
+            url="https://api.anthropic.com/v1/messages",
+            code=401, msg="Unauthorized", hdrs=None,
+            fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid key"}')),
+        )
+        with patch("urllib.request.urlopen", side_effect=http_err):
+            with pytest.raises(RuntimeError, match="HTTP 401"):
+                ia_pi_empresas.avaliar(respostas, "desempate", None, "key_invalida")
+
+    def test_api_retorna_nao_dict_levanta_runtime_error(self):
+        respostas = _respostas_todos_implementados()
+        payload = json.dumps({"content": [{"text": "[1, 2, 3]"}]}).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(
+            return_value=MagicMock(read=MagicMock(return_value=payload))
+        )
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=mock_cm):
+            with pytest.raises(RuntimeError, match="objeto JSON esperado"):
+                ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
