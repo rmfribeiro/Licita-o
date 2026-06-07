@@ -35,7 +35,7 @@ def _mock_urlopen(parecer: dict):
 
 
 class TestAnalisarEtp:
-    @patch("ia_etp.urllib.request.urlopen")
+    @patch("ia_utils.urllib.request.urlopen")
     def test_retorna_estrutura_correta(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen(_parecer_mock())
 
@@ -47,7 +47,7 @@ class TestAnalisarEtp:
         assert "recomendacoes" in resultado
         assert "base_legal" in resultado
 
-    @patch("ia_etp.urllib.request.urlopen")
+    @patch("ia_utils.urllib.request.urlopen")
     def test_todas_as_8_dimensoes_presentes(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen(_parecer_mock())
 
@@ -61,7 +61,7 @@ class TestAnalisarEtp:
         ]:
             assert esperada in dims, f"Dimensão ausente: {esperada}"
 
-    @patch("ia_etp.urllib.request.urlopen")
+    @patch("ia_utils.urllib.request.urlopen")
     def test_adequacao_geral_valida(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen(_parecer_mock())
 
@@ -71,7 +71,7 @@ class TestAnalisarEtp:
             "ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"
         )
 
-    @patch("ia_etp.urllib.request.urlopen")
+    @patch("ia_utils.urllib.request.urlopen")
     def test_modelo_padrao_usado_se_omitido(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen(_parecer_mock())
 
@@ -79,7 +79,7 @@ class TestAnalisarEtp:
 
         assert "adequacao_geral" in resultado
 
-    @patch("ia_etp.urllib.request.urlopen")
+    @patch("ia_utils.urllib.request.urlopen")
     def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(

@@ -94,7 +94,7 @@ def _parecer_ia_mock():
 
 
 class TestAnalisar:
-    @patch('ia_ddi.urllib.request.urlopen')
+    @patch('ia_utils.urllib.request.urlopen')
     def test_retorna_estrutura_correta(self, mock_urlopen):
         resposta = _json.dumps({
             "content": [{"text": _json.dumps(_parecer_ia_mock())}]
@@ -114,7 +114,7 @@ class TestAnalisar:
         assert "base_legal" in resultado
         assert "validade_fid" in resultado
 
-    @patch('ia_ddi.urllib.request.urlopen')
+    @patch('ia_utils.urllib.request.urlopen')
     def test_piso_prevalece_sobre_ia(self, mock_urlopen):
         parecer_baixo = _parecer_ia_mock()
         parecer_baixo["risco_geral"] = "BAIXO"
@@ -140,7 +140,7 @@ class TestAnalisar:
         with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
             ia_ddi.analisar(_dados_base(), fid)
 
-    @patch('ia_ddi.urllib.request.urlopen')
+    @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_httperror_inclui_body_na_mensagem(self, mock_key, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
