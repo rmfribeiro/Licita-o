@@ -41,7 +41,7 @@ def _safe_md(s: object) -> str:
     return str(s).replace('[', '&#91;')
 
 
-def _get_api_key() -> str | None:
+def _get_api_key():
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         try:
