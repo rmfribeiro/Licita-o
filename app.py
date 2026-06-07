@@ -26,6 +26,8 @@ import ia_contratos
 import relatorio_contratos
 import ia_recebimento
 import relatorio_recebimento
+import ia_tr
+import relatorio_tr
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -91,13 +93,14 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
+aba1, aba2, aba3, aba4, aba5, aba6, aba7 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
     "🏛️ Diagnóstico de Integridade",
     "🏢 Avaliação de PI",
     "⚖️ Alterações Contratuais",
+    "📝 Auditoria de TR",
 ])
 
 with aba1:
@@ -1117,3 +1120,97 @@ with aba6:
                     file_name=_nome_pdf_recv,
                     mime="application/pdf",
                 )
+
+with aba7:
+    st.subheader("Auditoria de Termo de Referência — IN SEGES 81/2022")
+    st.caption("Lei 14.133/2021, Art. 6º, XXIII · IN SEGES/MGI 81/2022 · IN SGD/ME 21/2024 (TIC)")
+
+    _api_key_tr = _get_api_key()
+    _modelo_tr = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+    _tipo_tr_opcoes = {"Serviço": "servico", "Bem / Material": "bem", "Serviço de TIC": "tic"}
+    _tipo_tr_label = st.radio(
+        "Tipo de objeto",
+        list(_tipo_tr_opcoes.keys()),
+        horizontal=True,
+        key="tr_tipo",
+    )
+    _tipo_tr = _tipo_tr_opcoes[_tipo_tr_label]
+
+    _arq_tr = st.file_uploader(
+        "Envie o TR em PDF ou DOCX",
+        type=["pdf", "docx"],
+        accept_multiple_files=True,
+        key="tr_arquivo",
+    )
+
+    if st.button("Analisar TR", type="primary", key="btn_tr", disabled=not _arq_tr):
+        if not _api_key_tr:
+            st.error("ANTHROPIC_API_KEY não configurada — configure via variável de ambiente ou secrets.toml.")
+        else:
+            try:
+                with st.spinner("Extraindo texto e analisando com IA (pode levar 1-2 minutos)..."):
+                    _texto_tr, _avisos_tr = etp_extrator.extrair_texto(_arq_tr)
+                    _parecer_tr = ia_tr.analisar_tr(_texto_tr, _tipo_tr, _api_key_tr, _modelo_tr)
+                st.session_state["tr_parecer"] = _parecer_tr
+                st.session_state["tr_avisos"] = _avisos_tr
+                st.session_state["tr_tipo"] = _tipo_tr
+                st.session_state["tr_nome"] = _arq_tr[0].name if _arq_tr else "TR"
+            except ValueError as e:
+                st.error(str(e))
+            except RuntimeError as e:
+                st.error(str(e))
+
+    if "tr_parecer" in st.session_state:
+        _pr_tr = st.session_state["tr_parecer"]
+        _av_tr = st.session_state["tr_avisos"]
+        _tipo_tr_saved = st.session_state["tr_tipo"]
+        _nome_tr = st.session_state["tr_nome"]
+
+        for _aviso in _av_tr:
+            st.warning(_safe_md(_aviso))
+
+        st.divider()
+        _adeq_tr = str(_pr_tr.get("adequacao_geral") or "INADEQUADO").strip().upper()
+        _icone_adeq_tr = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
+        st.subheader(f"{_icone_adeq_tr.get(_adeq_tr, '⚪')} Adequação Geral: {_safe_md(_adeq_tr)}")
+
+        _dims_tr = _pr_tr.get("dimensoes") or {}
+        _labels_tr = relatorio_tr._LABEL_DIMENSAO_POR_TIPO.get(_tipo_tr_saved, {})
+        _ic_st_tr = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
+        for _ch_tr, _lb_tr in _labels_tr.items():
+            _d_tr = _dims_tr.get(_ch_tr) or {}
+            _ic_tr = _ic_st_tr.get((_d_tr.get("status") or "ok").lower(), "ℹ️")
+            with st.expander(f"{_ic_tr} {_lb_tr}"):
+                st.write(_safe_md(_d_tr.get("descricao") or "—"))
+
+        _criticos_tr = _pr_tr.get("pontos_criticos") or []
+        if _criticos_tr:
+            st.subheader("Pontos Críticos")
+            for _c_tr in _criticos_tr:
+                if _c_tr:
+                    st.error(_safe_md(_c_tr))
+
+        _recs_tr = _pr_tr.get("recomendacoes") or []
+        if _recs_tr:
+            st.subheader("Recomendações ao Gestor")
+            for _r_tr in _recs_tr:
+                if _r_tr:
+                    st.info(_safe_md(_r_tr))
+
+        with st.expander("Base Legal"):
+            for _bl_tr in (_pr_tr.get("base_legal") or []):
+                if _bl_tr:
+                    st.write(f"• {_safe_md(_bl_tr)}")
+
+        try:
+            _pdf_tr = relatorio_tr.gerar_pdf(_nome_tr, _tipo_tr_saved, _pr_tr)
+            st.download_button(
+                label="Baixar Relatório PDF",
+                data=_pdf_tr,
+                file_name="TR_auditoria.pdf",
+                mime="application/pdf",
+                key="tr_download",
+            )
+        except Exception as _e_tr:
+            st.error(f"Erro ao gerar PDF: {_e_tr}")
