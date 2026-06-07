@@ -1,0 +1,142 @@
+# ia_tr.py
+from __future__ import annotations
+import types
+import urllib.error
+
+from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
+
+_MODELO_PADRAO = "claude-haiku-4-5-20251001"
+_ADEQ_VALIDOS = frozenset({"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"})
+
+TIPOS_OBJETO_TR: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "servico": "Serviço",
+    "bem":     "Bem / Material",
+    "tic":     "Serviço de TIC",
+})
+
+_SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "servico": (
+        "Você é um especialista em contratações públicas federais brasileiras. "
+        "Analise o Termo de Referência de SERVIÇOS conforme a IN SEGES/MGI 81/2022, "
+        "Lei 14.133/2021 art. 6º XXIII e art. 40. Avalie as 9 dimensões obrigatórias: "
+        "descricao_objeto, fundamentacao, requisitos_tecnicos, modelo_execucao, modelo_gestao, "
+        "criterio_medicao, criterio_julgamento, estimativa_preco, qualificacao_habilitacao. "
+        "Para cada dimensão, atribua status ok/alerta/critico e uma descrição objetiva. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+    "bem": (
+        "Você é um especialista em contratações públicas federais brasileiras. "
+        "Analise o Termo de Referência de BENS/MATERIAIS conforme a IN SEGES/MGI 81/2022, "
+        "Lei 14.133/2021 art. 6º XXIII, e critérios de sustentabilidade (IN SLTI 01/2010). "
+        "Avalie as 8 dimensões obrigatórias: especificacao_tecnica, justificativa_quantidade, "
+        "qualificacao_tecnica, garantia_assistencia, condicoes_entrega, criterio_julgamento, "
+        "estimativa_preco, sustentabilidade. "
+        "Para cada dimensão, atribua status ok/alerta/critico e uma descrição objetiva. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+    "tic": (
+        "Você é um especialista em contratações públicas de Tecnologia da Informação. "
+        "Analise o Termo de Referência de SERVIÇOS DE TIC conforme a IN SGD/ME 21/2024, "
+        "IN SEGES/MGI 81/2022, Lei 14.133/2021 art. 6º XXIII, e LGPD (Lei 13.709/2018). "
+        "Avalie as 9 dimensões obrigatórias: alinhamento_pdtic, analise_viabilidade, solucao_ti, "
+        "criterios_aceite_ans, equipe_tecnica, seguranca_lgpd, modelo_execucao, "
+        "transicao_contratual, estimativa_preco. "
+        "Para cada dimensão, atribua status ok/alerta/critico e uma descrição objetiva. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+})
+
+_BASE_LEGAL_PADRAO: types.MappingProxyType[str, tuple[str, ...]] = types.MappingProxyType({
+    "servico": (
+        "IN SEGES/MGI 81/2022 (Termo de Referência e Projeto Básico)",
+        "Lei 14.133/2021, Art. 6º, XXIII (definição de TR)",
+        "Lei 14.133/2021, Art. 40 (conteúdo do edital e TR)",
+    ),
+    "bem": (
+        "IN SEGES/MGI 81/2022",
+        "Lei 14.133/2021, Art. 6º, XXIII",
+        "IN SLTI/MPOG 01/2010 (sustentabilidade ambiental)",
+    ),
+    "tic": (
+        "IN SGD/ME 21/2024 (contratações de soluções de TIC)",
+        "IN SEGES/MGI 81/2022",
+        "Lei 14.133/2021, Art. 6º, XXIII",
+        "Lei 13.709/2018 — LGPD (proteção de dados)",
+    ),
+})
+
+_ESTRUTURA_JSON = """{
+  "adequacao_geral": "ADEQUADO | ADEQUADO COM RESSALVAS | INADEQUADO",
+  "dimensoes": {
+    "<chave>": {"status": "ok|alerta|critico", "descricao": "avaliação da dimensão"}
+  },
+  "pontos_criticos": ["item 1", "item 2"],
+  "recomendacoes": ["recomendação 1"],
+  "base_legal": ["norma 1", "norma 2"]
+}"""
+
+
+def analisar_tr(
+    texto: str,
+    tipo_objeto: str,
+    api_key: str,
+    modelo: str = _MODELO_PADRAO,
+) -> dict:
+    """
+    Analisa um Termo de Referência e retorna parecer estruturado.
+
+    Parâmetros:
+        texto       — conteúdo textual do TR (extraído via etp_extrator)
+        tipo_objeto — "servico" | "bem" | "tic"
+        api_key     — chave da API Anthropic
+        modelo      — modelo Claude a usar (padrão: Haiku)
+
+    Retorna dict com: adequacao_geral, dimensoes, pontos_criticos, recomendacoes, base_legal
+    Levanta ValueError para tipo_objeto inválido.
+    Levanta RuntimeError para falha de API ou JSON inválido.
+    """
+    if tipo_objeto not in TIPOS_OBJETO_TR:
+        raise ValueError(
+            f"Tipo de objeto inválido: '{tipo_objeto}'. Esperado: {list(TIPOS_OBJETO_TR)}"
+        )
+
+    prompt = (
+        f"Analise o seguinte Termo de Referência ({TIPOS_OBJETO_TR[tipo_objeto]}) "
+        f"e avalie sua conformidade com a legislação vigente:\n\n"
+        f"{texto}\n\n"
+        f"Retorne o parecer no formato JSON:\n{_ESTRUTURA_JSON}"
+    )
+
+    try:
+        bruto = _chamar_anthropic(
+            prompt, api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto], max_tokens=3000
+        )
+    except urllib.error.HTTPError as exc:
+        _body = ""
+        try:
+            _body = exc.read().decode("utf-8", errors="replace")
+        except (OSError, IOError):
+            pass
+        raise RuntimeError(
+            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
+        ) from exc
+    except (urllib.error.URLError, OSError) as exc:
+        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
+
+    try:
+        parecer = _extrair_json(bruto)
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
+
+    if not isinstance(parecer, dict):
+        raise RuntimeError(
+            f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}"
+        )
+
+    _adeq = str(parecer.get("adequacao_geral") or "INADEQUADO").strip().upper()
+    parecer["adequacao_geral"] = _adeq if _adeq in _ADEQ_VALIDOS else "INADEQUADO"
+
+    if not parecer.get("base_legal"):
+        parecer["base_legal"] = list(_BASE_LEGAL_PADRAO[tipo_objeto])
+
+    return parecer
