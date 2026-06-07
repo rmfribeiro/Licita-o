@@ -9,7 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float
 from ia_contratos import TIPOS_ALTERACAO
 
 _COR_PARECER = {
@@ -43,14 +43,6 @@ _ESTILO_REQ_MAP = {
 }
 
 
-def _as_list(v) -> list:
-    return v if isinstance(v, list) else []
-
-
-def _fmt_brl(valor: float) -> str:
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
 def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -79,7 +71,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
         ["Número do Contrato", html.escape(str(dados_contrato.get("numero_contrato") or "-"))],
         ["Objeto", html.escape(str(dados_contrato.get("objeto") or "-"))],
         ["Data de Assinatura", html.escape(str(dados_contrato.get("data_assinatura") or "-"))],
-        ["Valor Atual", _fmt_brl(float(dados_contrato.get("valor_atual") or 0))],
+        ["Valor Atual", _fmt_brl(_safe_float(dados_contrato.get("valor_atual")))],
         ["Tipo de Alteração", html.escape(tipo_label)],
     ]
     t_id = Table(linhas_id, colWidths=[5*cm, 12*cm])

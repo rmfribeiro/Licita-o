@@ -10,7 +10,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float
 from ia_recebimento import TIPOS_OBJETO
 
 _COR_PARECER = {
@@ -36,21 +36,6 @@ _ESTILO_COND_MAP = {
     "PARCIAL":  _ESTILO_COND_PAR,
     "AUSENTE":  _ESTILO_COND_AUS,
 }
-
-
-def _as_list(v) -> list:
-    return v if isinstance(v, list) else []
-
-
-def _safe_float(v) -> float:
-    try:
-        return float(v or 0)
-    except (ValueError, TypeError):
-        return 0.0
-
-
-def _fmt_brl(valor: float) -> str:
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _render_bloco(story: list, titulo: str, bloco: dict) -> None:

@@ -5,7 +5,7 @@ import types
 import urllib.error
 import urllib.request
 
-from ia_utils import extrair_json as _extrair_json
+from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -90,31 +90,6 @@ _ESTRUTURA_PARECER = """{
   "recomendacoes": ["Próxima ação recomendada ao gestor público"],
   "sintese": "Parágrafo explicando o parecer conclusivo e seus principais fundamentos."
 }"""
-
-
-def _chamar_anthropic(prompt: str, api_key: str, modelo: str, sistema: str) -> str:
-    corpo = json.dumps({
-        "model": modelo,
-        "max_tokens": 4000,
-        "system": sistema,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=corpo,
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        raw_bytes = resp.read()
-    try:
-        dados = json.loads(raw_bytes.decode("utf-8"))
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
-    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 
 def analisar(

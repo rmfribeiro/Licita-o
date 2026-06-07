@@ -39,6 +39,20 @@ def _safe_md(s: object) -> str:
     return str(s).replace('[', '&#91;')
 
 
+def _get_api_key() -> str | None:
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        try:
+            _val = st.secrets.get("ANTHROPIC_API_KEY")
+            if _val:
+                key = str(_val)
+        except _SecretsNotFound:
+            pass
+        except Exception as _e:
+            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+    return key
+
+
 b = branding.carregar()
 st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="📄", layout="wide")
 
@@ -332,16 +346,7 @@ with aba3:
     st.subheader("Auditoria de ETP — Estudo Técnico Preliminar")
     st.caption("IN SEGES/MGI 58/2022 · Lei 14.133/2021, art. 18, I")
 
-    _api_key_etp = os.environ.get("ANTHROPIC_API_KEY")
-    if not _api_key_etp:
-        try:
-            _val = st.secrets.get("ANTHROPIC_API_KEY")
-            if _val:
-                _api_key_etp = str(_val)
-        except _SecretsNotFound:
-            pass
-        except Exception as _e:
-            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+    _api_key_etp = _get_api_key()
     _modelo_etp = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     _arqs_etp = st.file_uploader(
@@ -425,16 +430,7 @@ with aba4:
         "Decreto 11.129/2022 · IN CGU 21/2021 · Lei 12.846/2013, art. 7º, III · Decreto 8.420/2015"
     )
 
-    _api_key_pip = os.environ.get("ANTHROPIC_API_KEY")
-    if not _api_key_pip:
-        try:
-            _val = st.secrets.get("ANTHROPIC_API_KEY")
-            if _val:
-                _api_key_pip = str(_val)
-        except _SecretsNotFound:
-            pass
-        except Exception as _e:
-            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+    _api_key_pip = _get_api_key()
     _modelo_pip = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     _municipio_pip = st.text_input("Nome do município", key="pip_municipio")
@@ -547,16 +543,7 @@ with aba5:
         "Decreto 12.304/2024 · Lei 14.133/2021, arts. 60-IV e 163 · Lei 12.846/2013, art. 7º, IV"
     )
 
-    _api_key_pi = os.environ.get("ANTHROPIC_API_KEY")
-    if not _api_key_pi:
-        try:
-            _val = st.secrets.get("ANTHROPIC_API_KEY")
-            if _val:
-                _api_key_pi = str(_val)
-        except _SecretsNotFound:
-            pass
-        except Exception as _e:
-            st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+    _api_key_pi = _get_api_key()
     _modelo_pi = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     # ── Etapa 1: Identificação ─────────────────────────────────────────────
@@ -772,16 +759,7 @@ with aba6:
             "Art. 124 II 'd' · Art. 25 §8º · Art. 137 §2º — Lei 14.133/2021 · Art. 37 XXI CF/88"
         )
 
-        _api_key_cont = os.environ.get("ANTHROPIC_API_KEY")
-        if not _api_key_cont:
-            try:
-                _val = st.secrets.get("ANTHROPIC_API_KEY")
-                if _val:
-                    _api_key_cont = str(_val)
-            except _SecretsNotFound:
-                pass
-            except Exception as _e:
-                st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+        _api_key_cont = _get_api_key()
         _modelo_cont = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
         _tipos_cont_chaves = list(ia_contratos.TIPOS_ALTERACAO.keys())
@@ -960,6 +938,9 @@ with aba6:
         def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
             _bloco = (pr.get(bloco_key) or {})
             _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
+            _pval = {
+                "APTO COM RESSALVA": "APTO COM RESSALVAS",
+            }.get(_pval, _pval)
             st.markdown(
                 f"<div style='background:{cores.get(_pval, '#888888')};"
                 f"padding:12px;border-radius:8px;color:white;font-size:16px;"
@@ -996,16 +977,7 @@ with aba6:
         st.subheader("Recebimento Contratual")
         st.caption("Art. 140, I e II — Lei 14.133/2021")
 
-        _api_key_recv = os.environ.get("ANTHROPIC_API_KEY")
-        if not _api_key_recv:
-            try:
-                _val = st.secrets.get("ANTHROPIC_API_KEY")
-                if _val:
-                    _api_key_recv = str(_val)
-            except _SecretsNotFound:
-                pass
-            except Exception as _e:
-                st.warning(f"Erro ao ler configurações (secrets.toml): {_e}")
+        _api_key_recv = _get_api_key()
         _modelo_recv = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
         _tipos_recv_chaves = list(ia_recebimento.TIPOS_OBJETO.keys())

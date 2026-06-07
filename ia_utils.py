@@ -2,12 +2,61 @@ from __future__ import annotations
 import json
 import re
 import types
+import urllib.error
+import urllib.request
 
 COR_STATUS_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ok":      "#27AE60",
     "alerta":  "#E67E22",
     "critico": "#C0392B",
 })
+
+
+def as_list(v) -> list:
+    return v if isinstance(v, list) else []
+
+
+def safe_float(v) -> float:
+    try:
+        return float(v or 0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def fmt_brl(valor: float) -> str:
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def chamar_anthropic(
+    prompt: str,
+    api_key: str,
+    modelo: str,
+    sistema: str,
+    *,
+    max_tokens: int = 4000,
+) -> str:
+    corpo = json.dumps({
+        "model": modelo,
+        "max_tokens": max_tokens,
+        "system": sistema,
+        "messages": [{"role": "user", "content": prompt}],
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=corpo,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=180) as resp:
+        raw_bytes = resp.read()
+    try:
+        dados = json.loads(raw_bytes.decode("utf-8"))
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
+    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 
 def extrair_json(texto: str) -> dict:

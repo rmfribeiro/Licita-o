@@ -1,11 +1,9 @@
 from __future__ import annotations
-import json
-import logging
 import types
 import urllib.error
 import urllib.request
 
-from ia_utils import extrair_json as _extrair_json
+from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -27,13 +25,33 @@ STATUS_CONDICAO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "AUSENTE":  "AUSENTE",
 })
 
-_SISTEMA = (
-    "Você é um fiscal de contratos especialista em recebimento de objetos contratuais "
-    "nos termos do Art. 140 da Lei 14.133/2021. Avalie as condições de recebimento "
-    "provisório e definitivo do objeto contratual com base nas informações fornecidas. "
-    "Verifique cada condição legal aplicável ao tipo de objeto e emita parecer motivado. "
-    "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
-)
+_SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "servico": (
+        "Você é um fiscal de contratos especialista em recebimento de SERVIÇOS "
+        "nos termos do Art. 140 da Lei 14.133/2021. Avalie as condições de recebimento "
+        "provisório e definitivo do serviço contratado com base nas informações fornecidas. "
+        "Verifique conformidade com o Termo de Referência, regularidade fiscal e trabalhista, "
+        "medição elaborada e prazo contratual. Emita parecer motivado. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+    "bem": (
+        "Você é um fiscal de contratos especialista em recebimento de BENS/MATERIAIS "
+        "nos termos do Art. 140 da Lei 14.133/2021. Avalie as condições de recebimento "
+        "provisório e definitivo do bem fornecido com base nas informações fornecidas. "
+        "Verifique quantidade, qualidade aparente, nota fiscal, laudo técnico de inspeção "
+        "e conformidade com especificações do TR. Emita parecer motivado. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+    "obra": (
+        "Você é um fiscal de obras especialista em recebimento de OBRAS PÚBLICAS "
+        "nos termos do Art. 140 da Lei 14.133/2021, com conhecimento em engenharia civil "
+        "e legislação de responsabilidade técnica (CREA/CAU). Avalie as condições de recebimento "
+        "provisório e definitivo da obra com base nas informações fornecidas. "
+        "Verifique ART/RRT de conclusão, conformidade com projeto executivo, medição final, "
+        "as-built, ausência de vícios aparentes e período de observação. Emita parecer motivado. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+})
 
 _CONDICOES_POR_TIPO: types.MappingProxyType = types.MappingProxyType({
     "servico": {
@@ -101,31 +119,6 @@ _ESTRUTURA_PARECER = """{
 }"""
 
 
-def _chamar_anthropic(prompt: str, api_key: str, modelo: str, sistema: str) -> str:
-    corpo = json.dumps({
-        "model": modelo,
-        "max_tokens": 4000,
-        "system": sistema,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=corpo,
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        raw_bytes = resp.read()
-    try:
-        dados = json.loads(raw_bytes.decode("utf-8"))
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
-    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
-
-
 def analisar(
     tipo_objeto: str,
     dados_entrega: dict,
@@ -170,7 +163,7 @@ def analisar(
     partes.append(f"\nRetorne a análise no formato JSON:\n{_ESTRUTURA_PARECER}")
 
     try:
-        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA)
+        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto])
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
