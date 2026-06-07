@@ -1157,6 +1157,7 @@ with aba7:
                 st.session_state["tr_tipo_selecionado"] = _tipo_tr
                 st.session_state["tr_nome"] = _arq_tr[0].name if _arq_tr else "TR"
                 st.session_state.pop("tr_pdf", None)
+                st.session_state.pop("tr_pdf_falhou", None)
             except ValueError as e:
                 st.error(str(e))
             except RuntimeError as e:
@@ -1177,7 +1178,7 @@ with aba7:
         st.subheader(f"{_icone_adeq_tr.get(_adeq_tr, '⚪')} Adequação Geral: {_safe_md(_adeq_tr)}")
 
         _dims_tr = _pr_tr.get("dimensoes") or {}
-        _labels_tr = relatorio_tr._LABEL_DIMENSAO_POR_TIPO.get(_tipo_tr_saved, {})
+        _labels_tr = relatorio_tr.LABEL_DIMENSAO_POR_TIPO.get(_tipo_tr_saved, {})
         _ic_st_tr = {"ok": "✅", "alerta": "⚠️", "critico": "❌"}
         for _ch_tr, _lb_tr in _labels_tr.items():
             _d_tr = _dims_tr.get(_ch_tr) or {}
@@ -1204,10 +1205,11 @@ with aba7:
                 if _bl_tr:
                     st.write(f"• {_safe_md(_bl_tr)}")
 
-        if "tr_pdf" not in st.session_state:
+        if "tr_pdf" not in st.session_state and not st.session_state.get("tr_pdf_falhou"):
             try:
                 st.session_state["tr_pdf"] = relatorio_tr.gerar_pdf(_nome_tr, _tipo_tr_saved, _pr_tr)
             except Exception as _e_tr:
+                st.session_state["tr_pdf_falhou"] = True
                 st.error(f"Erro ao gerar PDF: {_e_tr}")
         if "tr_pdf" in st.session_state:
             st.download_button(

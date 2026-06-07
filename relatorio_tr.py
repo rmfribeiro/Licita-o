@@ -53,7 +53,7 @@ _LABEL_DIMENSAO_TIC = {
     "estimativa_preco":     "Estimativa de Preços",
 }
 
-_LABEL_DIMENSAO_POR_TIPO = {
+LABEL_DIMENSAO_POR_TIPO = {
     "servico": _LABEL_DIMENSAO_SERVICO,
     "bem":     _LABEL_DIMENSAO_BEM,
     "tic":     _LABEL_DIMENSAO_TIC,
@@ -122,7 +122,7 @@ def gerar_pdf(
 
     # Análise por dimensão
     story.append(Paragraph("Análise por Dimensão", _ESTILO_H2))
-    label_map = _LABEL_DIMENSAO_POR_TIPO.get(tipo_objeto, {})
+    label_map = LABEL_DIMENSAO_POR_TIPO.get(tipo_objeto, {})
     dims = parecer.get("dimensoes") or {}
     for chave, label in label_map.items():
         dim = dims.get(chave) or {}
