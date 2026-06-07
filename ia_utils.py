@@ -11,6 +11,12 @@ COR_STATUS_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
     "critico": "#C0392B",
 })
 
+COR_ADEQUACAO_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "ADEQUADO":               COR_STATUS_HEX["ok"],
+    "ADEQUADO COM RESSALVAS": "#F39C12",
+    "INADEQUADO":             COR_STATUS_HEX["critico"],
+})
+
 
 def as_list(v) -> list:
     return v if isinstance(v, list) else []

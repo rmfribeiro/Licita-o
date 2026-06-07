@@ -9,13 +9,9 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, COR_ADEQUACAO_HEX as _COR_ADEQUACAO_HEX
 
-_COR_ADEQUACAO = {
-    "ADEQUADO":               colors.HexColor(_COR_STATUS["ok"]),
-    "ADEQUADO COM RESSALVAS": colors.HexColor("#F39C12"),
-    "INADEQUADO":             colors.HexColor(_COR_STATUS["critico"]),
-}
+_COR_ADEQUACAO = {k: colors.HexColor(v) for k, v in _COR_ADEQUACAO_HEX.items()}
 
 _LABEL_DIMENSAO = {
     "descricao_necessidade":       "Descrição da Necessidade",

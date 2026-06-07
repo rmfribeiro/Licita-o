@@ -10,13 +10,9 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, COR_ADEQUACAO_HEX as _COR_ADEQUACAO_HEX
 
-_COR_ADEQUACAO = {
-    "ADEQUADO":               colors.HexColor(_COR_STATUS["ok"]),
-    "ADEQUADO COM RESSALVAS": colors.HexColor("#F39C12"),
-    "INADEQUADO":             colors.HexColor(_COR_STATUS["critico"]),
-}
+_COR_ADEQUACAO = {k: colors.HexColor(v) for k, v in _COR_ADEQUACAO_HEX.items()}
 
 _LABEL_DIMENSAO_SERVICO = {
     "descricao_objeto":         "Descrição do Objeto",
@@ -137,19 +133,19 @@ def gerar_pdf(
     story.append(Spacer(1, 0.3*cm))
 
     # Pontos críticos
-    criticos = parecer.get("pontos_criticos") or []
+    criticos = [p for p in (parecer.get("pontos_criticos") or []) if p]
     if criticos:
         story.append(Paragraph("Pontos Críticos", _ESTILO_H2))
         for i, ponto in enumerate(criticos, 1):
-            story.append(Paragraph(f"{i}. {html.escape(str(ponto or ''))}", _ESTILO_CORPO))
+            story.append(Paragraph(f"{i}. {html.escape(str(ponto))}", _ESTILO_CORPO))
         story.append(Spacer(1, 0.3*cm))
 
     # Recomendações
-    recs = parecer.get("recomendacoes") or []
+    recs = [r for r in (parecer.get("recomendacoes") or []) if r]
     if recs:
         story.append(Paragraph("Recomendações ao Gestor", _ESTILO_H2))
         for i, rec in enumerate(recs, 1):
-            story.append(Paragraph(f"{i}. {html.escape(str(rec or ''))}", _ESTILO_CORPO))
+            story.append(Paragraph(f"{i}. {html.escape(str(rec))}", _ESTILO_CORPO))
         story.append(Spacer(1, 0.3*cm))
 
     # Base legal
