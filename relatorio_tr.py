@@ -112,7 +112,10 @@ def gerar_pdf(
     t_adeq.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), cor),
         ("ALIGN",      (0, 0), (-1, -1), "CENTER"),
-        ("PADDING",    (0, 0), (-1, -1), 10),
+        ("TOPPADDING",    (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
     ]))
     story.append(t_adeq)
     story.append(Spacer(1, 0.4*cm))
