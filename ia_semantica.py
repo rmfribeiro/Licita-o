@@ -15,8 +15,8 @@ Uso:
     from ia_semantica import gerar_pareceres
     achados = gerar_pareceres(texto_edital, regras, "base_juridica.json")
 """
-import os, json, re, uuid, urllib.request, urllib.error
-from ia_utils import extrair_json as _extrair_json
+import os, json, re, uuid, urllib.error
+from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
 MODELO_PADRAO = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 MAX_CHARS_EDITAL    = 50_000   # teto total enviado ao modelo
@@ -128,30 +128,6 @@ def montar_prompt(texto_edital, regras_semanticas, rag):
     )
     return usuario
 
-def _chamar_anthropic(prompt, api_key, modelo, max_tokens=8000):
-    corpo = json.dumps({
-        "model": modelo,
-        "max_tokens": max_tokens,
-        "system": SISTEMA,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=corpo,
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        raw_bytes = resp.read()
-    try:
-        dados = json.loads(raw_bytes.decode("utf-8"))
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
-    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
-
 
 def _normalizar_achados(achados):
     """Valida e normaliza a saida do LLM: descarta itens malformados, forca os
@@ -196,7 +172,7 @@ def gerar_pareceres(texto_edital, regras, base_juridica_path,
         return []
     prompt = montar_prompt(texto_edital, regras_sem, rag)
     try:
-        bruto = _chamar_anthropic(prompt, api_key, modelo)
+        bruto = _chamar_anthropic(prompt, api_key, modelo, SISTEMA, max_tokens=8000)
         dados = _extrair_json(bruto)
     except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc

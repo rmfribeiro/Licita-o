@@ -2,7 +2,6 @@ from __future__ import annotations
 import json
 import os
 import types
-import urllib.request
 import urllib.error
 import logging
 try:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 import types
 import urllib.error
-import urllib.request
 
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic, safe_float as _safe_float
 

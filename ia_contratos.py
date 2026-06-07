@@ -3,7 +3,6 @@ import json
 import logging
 import types
 import urllib.error
-import urllib.request
 
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
