@@ -90,6 +90,8 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     parecer_val = {
         "DEFERIVEL":               "DEFERÍVEL",
         "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+        "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
+        "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
         "INDEFERIVEL":             "INDEFERÍVEL",
     }.get(parecer_val, parecer_val)
     cor_badge = _COR_PARECER.get(parecer_val, colors.grey)

@@ -186,4 +186,10 @@ def analisar(
             f"recebeu {type(qualitativo).__name__}"
         )
 
+    _NORM_RECV = {"APTO COM RESSALVA": "APTO COM RESSALVAS"}
+    for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
+        _b = qualitativo.get(_bk)
+        if isinstance(_b, dict):
+            _p = str(_b.get("parecer") or "INAPTO").strip().upper()
+            _b["parecer"] = _NORM_RECV.get(_p, _p)
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}

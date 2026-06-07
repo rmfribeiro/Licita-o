@@ -615,6 +615,9 @@ with aba5:
 
         if st.button("Gerar Avaliação", type="primary", key="btn_pi_etapa2"):
             if not _api_key_pi:
+                for _k in ("pi_respostas", "pi_parecer", "pi_pdf"):
+                    st.session_state.pop(_k, None)
+                st.session_state["pi_etapa"] = 2
                 st.error(
                     "ANTHROPIC_API_KEY não configurada — "
                     "configure via variável de ambiente ou secrets.toml."
@@ -744,6 +747,46 @@ with aba5:
                 mime="application/pdf",
             )
 
+def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
+    _bloco = (pr.get(bloco_key) or {})
+    _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
+    _pval = {
+        "APTO COM RESSALVA": "APTO COM RESSALVAS",
+    }.get(_pval, _pval)
+    st.markdown(
+        f"<div style='background:{cores.get(_pval, '#888888')};"
+        f"padding:12px;border-radius:8px;color:white;font-size:16px;"
+        f"font-weight:bold;text-align:center'>"
+        f"{icones.get(_pval, '⚪')} {html.escape(_pval)}</div>",
+        unsafe_allow_html=True,
+    )
+    st.caption(titulo)
+    _sint = str(_bloco.get("sintese") or "")
+    if _sint:
+        st.info(_safe_md(_sint))
+    _conds = _bloco.get("condicoes")
+    _conds = _conds if isinstance(_conds, list) else []
+    if _conds:
+        st.markdown("**Condições Verificadas:**")
+        _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
+        for _cond in _conds:
+            if not isinstance(_cond, dict) or not _cond:
+                continue
+            _st_c = str(_cond.get("status") or "AUSENTE").strip().upper()
+            _ic_c = _icone_cond.get(_st_c, "ℹ️")
+            _obs_c = " ".join(str(_cond.get("observacao") or "").split())
+            _desc_c = " ".join(str(_cond.get("descricao") or "").split())
+            _linha_c = f"{_ic_c} **{_safe_md(_desc_c)}**"
+            if _obs_c:
+                _linha_c += f" — {_safe_md(_obs_c)}"
+            st.markdown(_linha_c)
+    _pends = _bloco.get("pendencias")
+    _pends = _pends if isinstance(_pends, list) else []
+    for _p in _pends:
+        if _p:
+            st.warning(_safe_md(_p))
+
+
 with aba6:
     st.subheader("Monitor de Contratos")
     _sub_aba_alt, _sub_aba_recv = st.tabs([
@@ -852,6 +895,8 @@ with aba6:
             _parecer_val_cont = {
                 "DEFERIVEL":               "DEFERÍVEL",
                 "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+                "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
+                "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
                 "INDEFERIVEL":             "INDEFERÍVEL",
             }.get(_parecer_val_cont, _parecer_val_cont)
             _icone_parecer_cont = {
@@ -933,45 +978,6 @@ with aba6:
                 )
 
     with _sub_aba_recv:
-        def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
-            _bloco = (pr.get(bloco_key) or {})
-            _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
-            _pval = {
-                "APTO COM RESSALVA": "APTO COM RESSALVAS",
-            }.get(_pval, _pval)
-            st.markdown(
-                f"<div style='background:{cores.get(_pval, '#888888')};"
-                f"padding:12px;border-radius:8px;color:white;font-size:16px;"
-                f"font-weight:bold;text-align:center'>"
-                f"{icones.get(_pval, '⚪')} {html.escape(_pval)}</div>",
-                unsafe_allow_html=True,
-            )
-            st.caption(titulo)
-            _sint = str(_bloco.get("sintese") or "")
-            if _sint:
-                st.info(_safe_md(_sint))
-            _conds = _bloco.get("condicoes")
-            _conds = _conds if isinstance(_conds, list) else []
-            if _conds:
-                st.markdown("**Condições Verificadas:**")
-                _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
-                for _cond in _conds:
-                    if not isinstance(_cond, dict) or not _cond:
-                        continue
-                    _st_c = str(_cond.get("status") or "AUSENTE").strip().upper()
-                    _ic_c = _icone_cond.get(_st_c, "ℹ️")
-                    _obs_c = " ".join(str(_cond.get("observacao") or "").split())
-                    _desc_c = " ".join(str(_cond.get("descricao") or "").split())
-                    _linha_c = f"{_ic_c} **{_safe_md(_desc_c)}**"
-                    if _obs_c:
-                        _linha_c += f" — {_safe_md(_obs_c)}"
-                    st.markdown(_linha_c)
-            _pends = _bloco.get("pendencias")
-            _pends = _pends if isinstance(_pends, list) else []
-            for _p in _pends:
-                if _p:
-                    st.warning(_safe_md(_p))
-
         st.subheader("Recebimento Contratual")
         st.caption("Art. 140, I e II — Lei 14.133/2021")
 
@@ -1209,8 +1215,10 @@ with aba7:
             try:
                 st.session_state["tr_pdf"] = relatorio_tr.gerar_pdf(_nome_tr, _tipo_tr_saved, _pr_tr)
             except Exception as _e_tr:
-                st.session_state["tr_pdf_falhou"] = True
+                st.session_state["tr_pdf_falhou"] = str(_e_tr)
                 st.error(f"Erro ao gerar PDF: {_e_tr}")
+        if st.session_state.get("tr_pdf_falhou") and "tr_pdf" not in st.session_state:
+            st.warning(f"PDF indisponível ({st.session_state['tr_pdf_falhou']}). Reanalise o TR para tentar novamente.")
         if "tr_pdf" in st.session_state:
             st.download_button(
                 label="Baixar Relatório PDF",

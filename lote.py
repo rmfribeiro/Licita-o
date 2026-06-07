@@ -26,7 +26,8 @@ MANIFESTO = [
 ]
 
 def carregar_regras():
-    return json.load(open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8"))["regras"]
+    with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as f:
+        return json.load(f)["regras"]
 
 def auditar(pdf, pareceres, regras):
     texto, paginas = extrair_texto(pdf)

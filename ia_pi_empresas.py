@@ -69,6 +69,12 @@ _VALORES_RESPOSTA: types.MappingProxyType[str, int] = types.MappingProxyType({
     "Implementado": 100,
 })
 
+_TEXTO_POR_VALOR: types.MappingProxyType[int, str] = types.MappingProxyType({
+    0:   "Não existe",
+    50:  "Parcialmente",
+    100: "Implementado",
+})
+
 # Level names match ia_integridade._MATURIDADE_ORDEM — update both if levels change.
 _MATURIDADE_FAIXAS: tuple[tuple[float, str], ...] = (
     (75.0, "CONSOLIDADO"),
@@ -76,6 +82,10 @@ _MATURIDADE_FAIXAS: tuple[tuple[float, str], ...] = (
     (25.0, "INICIAL"),
     (0.0,  "INEXISTENTE"),
 )
+
+if set(PESOS_DIMENSAO) != set(DIMENSOES_PI):
+    _missing = set(DIMENSOES_PI) - set(PESOS_DIMENSAO)
+    raise RuntimeError(f"PESOS_DIMENSAO não cobre todas as dimensões de DIMENSOES_PI: {_missing}")
 
 
 def nivel_maturidade(score: float) -> str:
@@ -187,7 +197,7 @@ def avaliar(
         )
         for p in params:
             valor = scores["por_parametro"][p]
-            resp_txt = {0: "Não existe", 50: "Parcialmente", 100: "Implementado"}.get(valor, str(valor))
+            resp_txt = _TEXTO_POR_VALOR.get(valor, str(valor))
             partes.append(f"- {QUESTOES_PI[p]} → {resp_txt} ({valor}/100)")
 
     if texto_docs:

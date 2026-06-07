@@ -2,7 +2,7 @@ from __future__ import annotations
 import types
 import urllib.error
 
-from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
+from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic, safe_float as _safe_float
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -106,7 +106,7 @@ def analisar(
         f"Número do Contrato: {dados_contrato.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_contrato.get('objeto') or 'não informado'}",
         f"Data de Assinatura: {dados_contrato.get('data_assinatura') or 'não informada'}",
-        f"Valor Atual: R$ {float(dados_contrato.get('valor_atual') or 0):.2f}",
+        f"Valor Atual: R$ {_safe_float(dados_contrato.get('valor_atual')):.2f}",
         f"\nRequisitos legais a verificar para {TIPOS_ALTERACAO[tipo]}:",
     ]
     for i, req in enumerate(REQUISITOS_POR_TIPO[tipo], 1):
@@ -153,4 +153,12 @@ def analisar(
             f"recebeu {type(qualitativo).__name__}"
         )
 
+    _pval = str(qualitativo.get("parecer") or "INDEFERÍVEL").strip().upper()
+    qualitativo["parecer"] = {
+        "DEFERIVEL":               "DEFERÍVEL",
+        "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+        "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
+        "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
+        "INDEFERIVEL":             "INDEFERÍVEL",
+    }.get(_pval, _pval)
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}

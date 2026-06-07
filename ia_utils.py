@@ -101,6 +101,11 @@ def extrair_json(texto: str) -> dict:
         err_pos = exc2.pos  # captura antes de PEP 3110 deletar exc2
 
     # Try 3: trunca no ponto de erro e fecha delimitadores na ordem correta.
+    # Só tenta se err_pos > 2 — posições menores não têm conteúdo recuperável
+    # (e.g. err_pos=1 produziria '{}' vazio silenciosamente para '{bad json}').
+    if err_pos is None or err_pos <= 2:
+        raise ValueError("Resposta sem JSON reconhecível após tentativas de reparo")
+
     # Usa stack string-aware para não contar { e [ dentro de strings.
     trunc = cleaned[:err_pos]
     stack: list[str] = []
