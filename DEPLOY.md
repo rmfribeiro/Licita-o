@@ -1,58 +1,108 @@
-# Publicar o demo web (sem engenheiro)
+# Publicar o IA-Licita no Streamlit Community Cloud
 
-Objetivo: deixar uma página online onde o cliente sobe um edital e vê a auditoria. Usa o **Streamlit Community Cloud** (gratuito). Leva ~30 minutos na primeira vez.
+Publicação gratuita com atualizações automáticas a cada push no GitHub.
+Leva ~5 minutos na primeira vez; atualizações subsequentes são automáticas.
 
-## Antes de começar
-Você vai precisar de:
-- Uma conta no **GitHub** (gratuita) — github.com
-- Uma conta no **Streamlit Community Cloud** (gratuita) — share.streamlit.io (entra com o GitHub)
-- (Opcional, recomendado) uma **chave de API da Anthropic** para a análise por IA — console.anthropic.com
+## Pré-requisitos
 
-## Passo a passo
+| Recurso | Gratuito? | Onde obter |
+|---|---|---|
+| Conta GitHub | ✓ | github.com |
+| Conta Streamlit Community Cloud | ✓ | share.streamlit.io (login com GitHub) |
+| Chave Anthropic API | Paga por uso | console.anthropic.com/settings/keys |
+| Chave CGU API (opcional) | ✓ | portaldatransparencia.gov.br/api-de-dados |
 
-### 1. Subir os arquivos para um repositório no GitHub
-Crie um repositório novo (pode ser privado) e coloque nele **todos** estes arquivos da pasta `iautora_licita`:
+## 1. Fazer push do código para GitHub
 
-```
-app.py
-analisador.py
-rag.py
-ia_semantica.py
-regras_14133.json
-base_juridica.json
-branding.json
-branding.py
-requirements.txt
+No terminal, na raiz do projeto:
+
+```bash
+git -c credential.helper= push origin main
 ```
 
-(Os demais arquivos — geradores de parecer, lote, etc. — não são necessários para o demo, mas não atrapalham.)
+Verifique em `https://github.com/rmfribeiro/Licita-o` que os commits chegaram.
 
-### 2. Conectar no Streamlit
-1. Entre em **share.streamlit.io** com sua conta GitHub.
-2. Clique em **"Create app"** / "New app".
-3. Selecione o repositório, o branch (`main`) e, em "Main file path", escreva **`app.py`**.
+## 2. Conectar ou atualizar no Streamlit Community Cloud
 
-### 3. Configurar a chave de API (opcional, para a IA)
-1. Na tela do app, abra **"Advanced settings"** (ou depois em "Settings → Secrets").
-2. Cole:
-   ```
-   ANTHROPIC_API_KEY = "sua-chave-aqui"
-   ```
-3. Salve.
+### Se for o primeiro deploy:
 
-> Sem a chave, o app funciona normalmente, mas só com a camada de regras (sem a leitura semântica por IA).
+1. Acesse **share.streamlit.io** e faça login com GitHub.
+2. Clique em **"Create app"**.
+3. Selecione:
+   - **Repository:** `rmfribeiro/Licita-o`
+   - **Branch:** `main`
+   - **Main file path:** `app.py`
+   - **Python version:** `3.11`
+4. Abra **"Advanced settings"** antes de clicar em Deploy.
+5. No campo **Secrets**, cole o conteúdo abaixo (substituindo com seus valores reais):
 
-### 4. Publicar
-Clique em **"Deploy"**. Em 1–2 minutos o app fica no ar, com um endereço público (algo como `https://seu-app.streamlit.app`) que você pode mandar ao cliente ou abrir na reunião.
+```toml
+ANTHROPIC_API_KEY = "sk-ant-api03-..."
+APP_PASSWORD = "senha-de-acesso"
+CGU_API_KEY = "chave-do-portal-da-transparencia"
+```
 
-## Atualizar o app depois
-Qualquer mudança que você fizer nos arquivos do GitHub (por exemplo, editar `branding.json` com sua marca, ou ajustar regras) é publicada automaticamente em segundos.
+6. Clique em **"Deploy"**. Em 1–3 minutos o app estará disponível em `https://seu-app.streamlit.app`.
 
-## Custos
-- GitHub e Streamlit Community Cloud: **gratuitos**.
-- API de IA: paga por uso, **centavos por edital** (só quando a análise por IA é usada).
+### Se o app já estava no ar (atualização):
 
-## Segurança e limites (importante)
-- Este é um **demo de validação**, não um produto de produção. Não use com dados sigilosos sem revisão.
-- Para virar produto de verdade (vários usuários, autenticação, escala, hospedagem dedicada, hardening), aí sim entra trabalho de engenharia — mas só vale a pena depois que o cliente disser "sim".
-- Mantenha a ressalva visível: ferramenta de apoio, não substitui parecer jurídico.
+O Streamlit Cloud detecta o push automaticamente e faz o redeploy em ~1 minuto.
+Se precisar adicionar ou alterar segredos:
+
+1. Acesse seu app no Streamlit Cloud.
+2. Clique nos três pontos (⋮) no canto superior direito → **"Settings"**.
+3. Seção **"Secrets"** — edite e salve.
+4. O app reinicia automaticamente.
+
+## 3. Variáveis de segredo (Secrets)
+
+| Segredo | Obrigatório? | Efeito se ausente |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Para análise por IA | App abre mas análise IA desabilitada |
+| `APP_PASSWORD` | Não | App fica público (sem senha de acesso) |
+| `CGU_API_KEY` | Para DDI completo | Consultas CGU ficam desabilitadas |
+
+Veja `.streamlit/secrets.toml.example` para o template completo.
+
+## 4. Configuração de upload
+
+O arquivo `.streamlit/config.toml` já define `maxUploadSize = 200` (200 MB).
+Nenhuma configuração extra é necessária para editais grandes.
+
+## 5. Atualizar o app depois
+
+```bash
+# Edite os arquivos, então:
+git add <arquivos>
+git commit -m "descrição da mudança"
+git -c credential.helper= push origin main
+```
+
+O Streamlit Cloud detecta o push e faz redeploy automático em ~1 minuto.
+
+## 6. Rodar localmente (desenvolvimento)
+
+```bash
+pip install -r requirements-dev.txt
+
+# Crie .streamlit/secrets.toml a partir do template:
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# Edite .streamlit/secrets.toml com suas chaves reais
+
+streamlit run app.py
+```
+
+Acesse `http://localhost:8501`.
+
+## 7. Custos estimados
+
+| Item | Custo |
+|---|---|
+| GitHub + Streamlit Community Cloud | Gratuito |
+| Análise IA por edital (Claude Haiku) | ~R$ 0,01–0,05 por edital |
+| DDI com consultas CGU | Gratuito (API pública) |
+
+## Aviso de uso
+
+Ferramenta de apoio à decisão — não substitui parecer jurídico.
+Os apontamentos devem ser confirmados por profissional habilitado.

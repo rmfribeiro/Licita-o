@@ -33,17 +33,23 @@ Ferramenta de auditoria automática de editais de licitação pública com base 
 ```bash
 git clone https://github.com/rmfribeiro/Licita-o.git
 cd Licita-o
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # inclui pytest para rodar os testes
+```
+
+### Rodar os testes
+
+```bash
+python3 -m pytest tests/ -v
 ```
 
 ### Executar
 
 ```bash
-# Sem IA (só regras automáticas)
-streamlit run app.py
+# Configure os segredos locais (chaves de API, senha)
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# Edite .streamlit/secrets.toml com seus valores reais
 
-# Com IA
-ANTHROPIC_API_KEY="sk-ant-..." streamlit run app.py
+streamlit run app.py
 ```
 
 Acesse `http://localhost:8501`, envie um PDF e aguarde o resultado.
@@ -53,15 +59,32 @@ Acesse `http://localhost:8501`, envie um PDF e aguarde o resultado.
 ## Estrutura
 
 ```
-app.py              — Interface Streamlit
-analisador.py       — Motor de regras e cálculo de risco
-ia_semantica.py     — Integração com API Anthropic (Claude)
-rag.py              — Busca semântica nos artigos da lei
-branding.py         — Logo e identidade visual
-regras_14133.json   — 30 regras da Lei 14.133/2021
-base_juridica.json  — Artigos da lei para fundamentos legais
-requirements.txt    — Dependências Python
-DEPLOY.md           — Instruções para publicar no Streamlit Cloud
+app.py                    — Interface Streamlit (6 abas)
+analisador.py             — Motor de regras e cálculo de risco de edital
+ia_semantica.py           — Análise semântica de edital (Claude)
+ia_utils.py               — Utilitários compartilhados: API Anthropic, helpers
+ia_integridade.py         — Diagnóstico de integridade do processo licitatório
+ia_etp.py                 — Análise do Estudo Técnico Preliminar (ETP)
+ia_ddi.py                 — Due Diligence de Integridade do licitante
+ia_contratos.py           — Análise de alterações contratuais (reajuste/repactuação/reequilíbrio)
+ia_recebimento.py         — Monitor de Recebimento Contratual (Art. 140 Lei 14.133/2021)
+ia_pi_empresas.py         — Avaliação de Programa de Integridade
+ddi_consultas.py          — Consultas CGU: CEIS, CNEP, Pro-Ética, CNPJ
+etp_extrator.py           — Extração de texto de ETP em PDF/DOCX
+rag.py                    — Busca semântica nos artigos da lei
+branding.py               — Logo e identidade visual
+relatorio_contratos.py    — PDF de alterações contratuais
+relatorio_ddi.py          — PDF de Due Diligence de Integridade
+relatorio_etp.py          — PDF de análise de ETP
+relatorio_integridade.py  — PDF de diagnóstico de integridade
+relatorio_pi_empresas.py  — PDF de avaliação de PI
+relatorio_recebimento.py  — PDF de recebimento contratual
+regras_14133.json         — Checklist de regras da Lei 14.133/2021
+base_juridica.json        — Artigos da lei para fundamentos legais
+branding.json             — Configuração de marca (nome, logo, cores)
+requirements.txt          — Dependências de produção
+requirements-dev.txt      — Dependências de desenvolvimento (pytest)
+DEPLOY.md                 — Guia de publicação no Streamlit Community Cloud
 ```
 
 ---

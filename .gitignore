@@ -28,3 +28,7 @@ relatorio_*.html
 # Logs e temporários
 *.log
 *.tmp
+
+# Secrets locais (NUNCA commitar)
+.streamlit/secrets.toml
+secrets.toml
