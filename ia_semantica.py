@@ -7,7 +7,7 @@ Substitui o stub do prototipo: monta o prompt ancorado nos artigos recuperados
 pelo RAG, chama a API de um LLM e devolve os achados estruturados em JSON.
 
 - Modelo configuravel (padrao: Claude Sonnet).
-- Sem dependencias externas: usa urllib para a chamada HTTP.
+- Chamada HTTP via ia_utils.chamar_anthropic (sem urllib direto neste modulo).
 - Se nao houver chave de API (ANTHROPIC_API_KEY) ou rede, levanta excecao para
   o chamador cair no modo offline (--pareceres).
 
@@ -173,11 +173,20 @@ def gerar_pareceres(texto_edital, regras, base_juridica_path,
     prompt = montar_prompt(texto_edital, regras_sem, rag)
     try:
         bruto = _chamar_anthropic(prompt, api_key, modelo, SISTEMA, max_tokens=8000)
-        dados = _extrair_json(bruto)
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
+    except urllib.error.HTTPError as exc:
+        _body = ""
+        try:
+            _body = exc.read().decode("utf-8", errors="replace")
+        except (OSError, IOError):
+            pass
+        raise RuntimeError(f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}") from exc
+    except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-    except (ValueError, Exception) as exc:
-        raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    try:
+        dados = _extrair_json(bruto)
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
     achados = _normalizar_achados(dados.get("achados", []) if isinstance(dados, dict) else [])
     return achados
 
