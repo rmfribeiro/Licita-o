@@ -9,7 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl as _fmt_brl
 
 _COR_RISCO = {
     "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
@@ -45,10 +45,6 @@ _ESTILO_BADGE   = ParagraphStyle("ddi_badge",  parent=_estilos_base["Normal"], f
 def _fmt_cnpj(cnpj: str) -> str:
     c = cnpj.replace(".", "").replace("/", "").replace("-", "")
     return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}" if len(c) == 14 else cnpj
-
-
-def _fmt_brl(valor: float) -> str:
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer: dict) -> bytes:

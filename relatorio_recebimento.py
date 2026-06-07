@@ -40,6 +40,7 @@ _ESTILO_COND_MAP = {
 
 def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
     parecer_val = str(bloco.get("parecer") or "INAPTO").strip().upper()
+    parecer_val = {"APTO COM RESSALVA": "APTO COM RESSALVAS"}.get(parecer_val, parecer_val)
     cor_badge = _COR_PARECER.get(parecer_val, colors.grey)
 
     story.append(Paragraph(titulo, _ESTILO_H2))

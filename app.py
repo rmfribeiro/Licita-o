@@ -128,14 +128,9 @@ with aba1:
             caminho = tmp.name
         try:
             if not os.environ.get("ANTHROPIC_API_KEY"):
-                try:
-                    _val = st.secrets.get("ANTHROPIC_API_KEY")
-                    if _val:
-                        os.environ["ANTHROPIC_API_KEY"] = str(_val)
-                except _SecretsNotFound:
-                    pass
-                except Exception as _e:
-                    st.warning(f"Erro ao carregar chave de API: {_e}")
+                _resolved = _get_api_key()
+                if _resolved:
+                    os.environ["ANTHROPIC_API_KEY"] = _resolved
 
             with st.spinner("Analisando o edital…"):
                 texto, paginas = A.extrair_texto(caminho)

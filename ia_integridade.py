@@ -139,7 +139,6 @@ def diagnosticar(
 
     try:
         bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000)
-        parecer = _extrair_json(bruto)
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
@@ -149,8 +148,11 @@ def diagnosticar(
         raise RuntimeError(f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}") from exc
     except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-    except Exception as exc:
-        raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    try:
+        parecer = _extrair_json(bruto)
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
 
     if not isinstance(parecer, dict):
         raise RuntimeError(

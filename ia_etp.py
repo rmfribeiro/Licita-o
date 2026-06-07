@@ -3,7 +3,7 @@ import json
 import re
 import urllib.request
 import urllib.error
-from ia_utils import extrair_json as _extrair_json
+from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 _ADEQ_VALIDOS = {"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"}
@@ -33,31 +33,6 @@ _ESTRUTURA_PARECER = """{
 }"""
 
 
-def _chamar_anthropic(prompt: str, api_key: str, modelo: str) -> str:
-    corpo = json.dumps({
-        "model": modelo,
-        "max_tokens": 3000,
-        "system": _SISTEMA,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=corpo,
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        raw_bytes = resp.read()
-    try:
-        dados = json.loads(raw_bytes.decode("utf-8"))
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não é JSON válido: {exc}") from exc
-    return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
-
-
 def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict:
     prompt = (
         f"Analise o seguinte Estudo Técnico Preliminar (ETP) e documentos complementares:\n\n"
@@ -65,7 +40,7 @@ def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict
         f"Retorne o parecer de auditoria no formato:\n{_ESTRUTURA_PARECER}"
     )
     try:
-        bruto = _chamar_anthropic(prompt, api_key, modelo)
+        bruto = _chamar_anthropic(prompt, api_key, modelo, _SISTEMA, max_tokens=3000)
         parecer = _extrair_json(bruto)
     except urllib.error.HTTPError as exc:
         _body = ""
