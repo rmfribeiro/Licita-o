@@ -3,7 +3,6 @@ import json
 import logging
 import types
 import urllib.error
-import urllib.request
 
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
@@ -200,7 +199,6 @@ def avaliar(
 
     try:
         bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA)
-        qualitativo = _extrair_json(bruto)
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
@@ -212,8 +210,11 @@ def avaliar(
         ) from exc
     except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-    except Exception as exc:
-        raise RuntimeError(f"Resposta inesperada da API: {exc}") from exc
+
+    try:
+        qualitativo = _extrair_json(bruto)
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
 
     if not isinstance(qualitativo, dict):
         raise RuntimeError(

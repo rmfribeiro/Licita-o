@@ -1,5 +1,4 @@
 from __future__ import annotations
-import re
 import urllib.error
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
