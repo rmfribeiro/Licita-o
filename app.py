@@ -1154,8 +1154,9 @@ with aba7:
                     _parecer_tr = ia_tr.analisar_tr(_texto_tr, _tipo_tr, _api_key_tr, _modelo_tr)
                 st.session_state["tr_parecer"] = _parecer_tr
                 st.session_state["tr_avisos"] = _avisos_tr
-                st.session_state["tr_tipo"] = _tipo_tr
+                st.session_state["tr_tipo_selecionado"] = _tipo_tr
                 st.session_state["tr_nome"] = _arq_tr[0].name if _arq_tr else "TR"
+                st.session_state.pop("tr_pdf", None)
             except ValueError as e:
                 st.error(str(e))
             except RuntimeError as e:
@@ -1164,7 +1165,7 @@ with aba7:
     if "tr_parecer" in st.session_state:
         _pr_tr = st.session_state["tr_parecer"]
         _av_tr = st.session_state["tr_avisos"]
-        _tipo_tr_saved = st.session_state["tr_tipo"]
+        _tipo_tr_saved = st.session_state["tr_tipo_selecionado"]
         _nome_tr = st.session_state["tr_nome"]
 
         for _aviso in _av_tr:
@@ -1203,14 +1204,16 @@ with aba7:
                 if _bl_tr:
                     st.write(f"• {_safe_md(_bl_tr)}")
 
-        try:
-            _pdf_tr = relatorio_tr.gerar_pdf(_nome_tr, _tipo_tr_saved, _pr_tr)
+        if "tr_pdf" not in st.session_state:
+            try:
+                st.session_state["tr_pdf"] = relatorio_tr.gerar_pdf(_nome_tr, _tipo_tr_saved, _pr_tr)
+            except Exception as _e_tr:
+                st.error(f"Erro ao gerar PDF: {_e_tr}")
+        if "tr_pdf" in st.session_state:
             st.download_button(
                 label="Baixar Relatório PDF",
-                data=_pdf_tr,
+                data=st.session_state["tr_pdf"],
                 file_name="TR_auditoria.pdf",
                 mime="application/pdf",
                 key="tr_download",
             )
-        except Exception as _e_tr:
-            st.error(f"Erro ao gerar PDF: {_e_tr}")
