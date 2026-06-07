@@ -85,6 +85,11 @@ class TestAnalisarTr:
         assert "pontos_criticos" in resultado
         assert "recomendacoes" in resultado
         assert "base_legal" in resultado
+        assert set(resultado["dimensoes"].keys()) == {
+            "descricao_objeto", "fundamentacao", "requisitos_tecnicos",
+            "modelo_execucao", "modelo_gestao", "criterio_medicao",
+            "criterio_julgamento", "estimativa_preco", "qualificacao_habilitacao",
+        }
 
     @patch("ia_utils.urllib.request.urlopen")
     def test_retorna_estrutura_correta_bem(self, mock_urlopen):
@@ -95,6 +100,11 @@ class TestAnalisarTr:
         assert "pontos_criticos" in resultado
         assert "recomendacoes" in resultado
         assert "base_legal" in resultado
+        assert set(resultado["dimensoes"].keys()) == {
+            "especificacao_tecnica", "justificativa_quantidade", "qualificacao_tecnica",
+            "garantia_assistencia", "condicoes_entrega", "criterio_julgamento",
+            "estimativa_preco", "sustentabilidade",
+        }
 
     @patch("ia_utils.urllib.request.urlopen")
     def test_retorna_estrutura_correta_tic(self, mock_urlopen):
@@ -105,6 +115,19 @@ class TestAnalisarTr:
         assert "pontos_criticos" in resultado
         assert "recomendacoes" in resultado
         assert "base_legal" in resultado
+        assert set(resultado["dimensoes"].keys()) == {
+            "alinhamento_pdtic", "analise_viabilidade", "solucao_ti",
+            "criterios_aceite_ans", "equipe_tecnica", "seguranca_lgpd",
+            "modelo_execucao", "transicao_contratual", "estimativa_preco",
+        }
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_base_legal_vazia_recebe_fallback(self, mock_urlopen):
+        parecer_sem_base = {**_parecer_servico(), "base_legal": []}
+        mock_urlopen.return_value = _mock_urlopen(parecer_sem_base)
+        resultado = ia_tr.analisar_tr("Texto", "servico", "sk-test")
+        assert len(resultado["base_legal"]) > 0
+        assert any("81/2022" in item for item in resultado["base_legal"])
 
     def test_tipo_invalido_levanta_value_error(self):
         with pytest.raises(ValueError, match="Tipo de objeto inválido"):
