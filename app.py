@@ -28,6 +28,8 @@ import ia_recebimento
 import relatorio_recebimento
 import ia_tr
 import relatorio_tr
+import ia_sancoes
+import relatorio_sancoes
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -93,7 +95,7 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3, aba4, aba5, aba6, aba7 = st.tabs([
+aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
@@ -101,6 +103,7 @@ aba1, aba2, aba3, aba4, aba5, aba6, aba7 = st.tabs([
     "🏢 Avaliação de PI",
     "⚖️ Alterações Contratuais",
     "📝 Auditoria de TR",
+    "⚖️ Dosimetria de Sanções",
 ])
 
 with aba1:
@@ -1218,4 +1221,234 @@ with aba7:
                 file_name="TR_auditoria.pdf",
                 mime="application/pdf",
                 key="tr_download",
+            )
+
+with aba8:
+    st.subheader("Dosimetria de Sanções Administrativas")
+    st.caption("Arts. 156-159 e 178 — Lei 14.133/2021")
+
+    _api_key_sanc = _get_api_key()
+    _modelo_sanc = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+    _col_sanc1, _col_sanc2 = st.columns(2)
+    with _col_sanc1:
+        _cnpj_sanc = st.text_input(
+            "CNPJ do Fornecedor",
+            placeholder="00000000000000",
+            key="sanc_cnpj",
+        )
+        _contrato_sanc = st.text_input(
+            "Número do Contrato",
+            placeholder="001/2024",
+            key="sanc_contrato",
+        )
+        _valor_sanc = st.number_input(
+            "Valor do Contrato (R$)",
+            min_value=0.0,
+            value=0.0,
+            step=1000.0,
+            format="%.2f",
+            key="sanc_valor",
+        )
+    with _col_sanc2:
+        _reincidencia_sanc = st.radio(
+            "Reincidência do Fornecedor?",
+            list(ia_sancoes.REINCIDENCIA_OPCOES.keys()),
+            horizontal=True,
+            key="sanc_reincidencia",
+        )
+        _autoridade_sanc = st.text_input(
+            "Autoridade Competente",
+            placeholder="ex: Secretário Municipal de Obras",
+            key="sanc_autoridade",
+        )
+        _orgao_sanc = st.text_input(
+            "Órgão / Entidade",
+            placeholder="ex: Prefeitura de São Paulo",
+            key="sanc_orgao",
+        )
+
+    _arq_sanc = st.file_uploader(
+        "Envie o relatório / termo de ocorrência (PDF ou DOCX)",
+        type=["pdf", "docx"],
+        accept_multiple_files=True,
+        key="sanc_arquivo",
+    )
+
+    if st.button(
+        "Analisar Infração",
+        type="primary",
+        key="btn_sanc",
+        disabled=not _arq_sanc,
+    ):
+        if not _api_key_sanc:
+            st.error(
+                "ANTHROPIC_API_KEY não configurada — "
+                "configure via variável de ambiente ou secrets.toml."
+            )
+        else:
+            try:
+                with st.spinner(
+                    "Analisando infração e gerando dosimetria (pode levar 2-3 minutos)..."
+                ):
+                    _texto_sanc, _avisos_sanc = etp_extrator.extrair_texto(_arq_sanc)
+                    if not _texto_sanc.strip():
+                        st.warning(
+                            "Não foi possível extrair texto do documento. "
+                            "Verifique se o arquivo não é uma imagem sem OCR."
+                        )
+                        st.stop()
+
+                    _dados_sanc = {
+                        "cnpj":            _cnpj_sanc,
+                        "numero_contrato": _contrato_sanc,
+                        "valor_contrato":  _valor_sanc,
+                        "reincidencia":    _reincidencia_sanc,
+                        "autoridade":      _autoridade_sanc,
+                        "orgao":           _orgao_sanc,
+                    }
+
+                    _parecer_sanc = ia_sancoes.analisar_dosimetria(
+                        _dados_sanc, _texto_sanc, _api_key_sanc, _modelo_sanc
+                    )
+
+                    _minuta_sanc = ""
+                    try:
+                        _minuta_sanc = ia_sancoes.gerar_minuta(
+                            _parecer_sanc, _dados_sanc, _api_key_sanc, _modelo_sanc
+                        )
+                    except (ValueError, RuntimeError) as _e_minuta:
+                        st.warning(
+                            f"Minuta não pôde ser gerada ({_e_minuta}). "
+                            "O parecer de dosimetria está disponível normalmente."
+                        )
+
+                    st.session_state["sanc_parecer"]    = _parecer_sanc
+                    st.session_state["sanc_minuta"]     = _minuta_sanc
+                    st.session_state["sanc_dados"]      = _dados_sanc
+                    st.session_state["sanc_avisos"]     = _avisos_sanc
+                    st.session_state.pop("sanc_pdf", None)
+                    st.session_state.pop("sanc_pdf_falhou", None)
+            except (ValueError, RuntimeError) as _e_sanc:
+                st.error(str(_e_sanc))
+
+    if "sanc_parecer" in st.session_state:
+        _pr_sanc   = st.session_state["sanc_parecer"]
+        _min_sanc  = st.session_state["sanc_minuta"]
+        _dad_sanc  = st.session_state["sanc_dados"]
+        _av_sanc   = st.session_state["sanc_avisos"]
+
+        for _aviso_sanc in _av_sanc:
+            st.warning(_safe_md(_aviso_sanc))
+
+        st.divider()
+
+        _enq_sanc  = _pr_sanc.get("enquadramento") or {}
+        _dos_sanc  = _pr_sanc.get("dosimetria") or {}
+        _alerta_sanc = _pr_sanc.get("alerta_criminal") or {}
+        _tipo_sanc = str(_enq_sanc.get("tipo_sancao") or "multa")
+        _label_sanc = ia_sancoes.LABEL_SANCAO.get(_tipo_sanc, _tipo_sanc.title())
+
+        _icone_sanc = {
+            "advertencia":  "🟡",
+            "multa":        "🟠",
+            "impedimento":  "🔴",
+            "inidoneidade": "⛔",
+        }.get(_tipo_sanc, "⚪")
+
+        _cor_badge_sanc = {
+            "advertencia":  "#F39C12",
+            "multa":        "#E67E22",
+            "impedimento":  "#C0392B",
+            "inidoneidade": "#8E44AD",
+        }.get(_tipo_sanc, "#888888")
+
+        st.markdown(
+            f"<div style='background:{_cor_badge_sanc};padding:16px;border-radius:8px;"
+            f"color:white;font-size:20px;font-weight:bold;text-align:center'>"
+            f"{_icone_sanc} {html.escape(_label_sanc.upper())}</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            f"Enquadramento: {_safe_md(_enq_sanc.get('artigo') or '')} — "
+            f"{_safe_md(_enq_sanc.get('justificativa') or '')}"
+        )
+        st.divider()
+
+        _fatos_sanc = str(_pr_sanc.get("fatos_apurados") or "—")
+        st.info(f"**Fatos Apurados:** {_safe_md(_fatos_sanc)}")
+
+        _condutas_sanc = _pr_sanc.get("condutas_identificadas") or []
+        if _condutas_sanc and isinstance(_condutas_sanc, list):
+            st.markdown("**Condutas Identificadas:**")
+            for _c_sanc in _condutas_sanc:
+                if _c_sanc:
+                    st.markdown(f"• {_safe_md(_c_sanc)}")
+
+        st.divider()
+        st.markdown("**Dosimetria**")
+        _nivel_sanc = str(_dos_sanc.get("nivel_gravidade") or "MÉDIO").strip().upper()
+        _cor_nivel_sanc = {"LEVE": "#27AE60", "MÉDIO": "#F39C12", "GRAVE": "#C0392B"}.get(
+            _nivel_sanc, "#888888"
+        )
+        st.markdown(
+            f"<span style='background:{_cor_nivel_sanc};color:white;padding:4px 10px;"
+            f"border-radius:4px;font-weight:bold'>{html.escape(_nivel_sanc)}</span>",
+            unsafe_allow_html=True,
+        )
+
+        _agrav_sanc = [str(a) for a in (_dos_sanc.get("agravantes") or []) if a]
+        _aten_sanc  = [str(a) for a in (_dos_sanc.get("atenuantes") or []) if a]
+
+        _linhas_dos_sanc = [["Campo", "Valor"]]
+        _linhas_dos_sanc.append(["Nível de Gravidade", _nivel_sanc])
+        _linhas_dos_sanc.append(["Agravantes", ", ".join(_agrav_sanc) or "—"])
+        _linhas_dos_sanc.append(["Atenuantes", ", ".join(_aten_sanc) or "—"])
+        if _tipo_sanc == "multa":
+            _pct_sanc = _dos_sanc.get("percentual_multa") or 0.5
+            _val_sanc = _dos_sanc.get("valor_multa_estimado") or 0.0
+            _linhas_dos_sanc.append(["% da Multa", f"{_pct_sanc:.1f}%"])
+            _linhas_dos_sanc.append(["Valor Estimado", f"R$ {_val_sanc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")])
+        elif _tipo_sanc in ("impedimento", "inidoneidade"):
+            _prazo_sanc = _dos_sanc.get("prazo_sancao")
+            _linhas_dos_sanc.append(["Prazo", f"{_prazo_sanc} ano(s)" if _prazo_sanc else "—"])
+
+        st.table(_linhas_dos_sanc)
+
+        if _alerta_sanc.get("configura_crime"):
+            st.error(
+                f"⚠️ **ALERTA CRIMINAL — Art. 178, Lei 14.133/2021**\n\n"
+                f"**Artigo:** {_safe_md(_alerta_sanc.get('artigo_178') or '—')}\n\n"
+                f"**Conduta:** {_safe_md(_alerta_sanc.get('descricao_conduta') or '—')}\n\n"
+                f"**Recomendação:** {_safe_md(_alerta_sanc.get('recomendacao') or '—')}"
+            )
+
+        with st.expander("Base Legal"):
+            for _bl_sanc in (_pr_sanc.get("base_legal") or []):
+                if _bl_sanc:
+                    st.write(f"• {_safe_md(_bl_sanc)}")
+
+        if _min_sanc:
+            with st.expander("Minuta do Ato Administrativo"):
+                st.text(_min_sanc)
+
+        if "sanc_pdf" not in st.session_state and not st.session_state.get("sanc_pdf_falhou"):
+            try:
+                st.session_state["sanc_pdf"] = relatorio_sancoes.gerar_pdf(
+                    _dad_sanc, _pr_sanc, _min_sanc
+                )
+            except Exception as _e_sanc_pdf:
+                st.session_state["sanc_pdf_falhou"] = str(_e_sanc_pdf) or "Erro desconhecido"
+        if st.session_state.get("sanc_pdf_falhou") and "sanc_pdf" not in st.session_state:
+            st.warning(
+                f"PDF indisponível ({st.session_state['sanc_pdf_falhou']}). "
+                "Reanalise para tentar novamente."
+            )
+        if "sanc_pdf" in st.session_state:
+            st.download_button(
+                label="⬇️ Baixar Relatório PDF",
+                data=st.session_state["sanc_pdf"],
+                file_name="sancoes_dosimetria.pdf",
+                mime="application/pdf",
+                key="sanc_download",
             )
