@@ -548,24 +548,35 @@ with aba5:
     _modelo_pi = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
 
     # ── Etapa 1: Identificação ─────────────────────────────────────────────
-    st.markdown("### Etapa 1 — Identificação da Empresa")
-    _col_cnpj, _col_hip = st.columns([2, 3])
-    _cnpj_pi = _col_cnpj.text_input("CNPJ da empresa", key="pi_cnpj_input",
-                                     placeholder="00.000.000/0000-00")
-    _hip_opcoes = {k: v for k, v in ia_pi_empresas.HIPOTESES.items()}
+    st.markdown("### Etapa 1 — Identificação da Entidade")
+    _col_cnpj, _col_tipo = st.columns([2, 3])
+    _cnpj_pi = _col_cnpj.text_input(
+        "CNPJ da entidade", key="pi_cnpj_input", placeholder="00.000.000/0000-00"
+    )
+    _tipo_opcoes = list(ia_pi_empresas.TIPOS_ENTIDADE.keys())
+    _tipo_labels = list(ia_pi_empresas.TIPOS_ENTIDADE.values())
+    _tipo_idx = _col_tipo.selectbox(
+        "Tipo de Entidade",
+        options=range(len(_tipo_opcoes)),
+        format_func=lambda i: _tipo_labels[i],
+        key="pi_tipo_select",
+    )
+    _tipo_entidade_pi = _tipo_opcoes[_tipo_idx]
+
+    _hip_opcoes = dict(ia_pi_empresas.HIPOTESES_POR_TIPO[_tipo_entidade_pi])
     _hip_chaves = list(_hip_opcoes.keys())
-    _hip_labels = list(_hip_opcoes.values())
-    _hip_idx = _col_hip.selectbox(
+    _hip_labels_pi = list(_hip_opcoes.values())
+    _hip_idx = st.selectbox(
         "Hipótese legal",
         options=range(len(_hip_chaves)),
-        format_func=lambda i: _hip_labels[i],
+        format_func=lambda i: _hip_labels_pi[i],
         key="pi_hipotese_select",
     )
     _hipotese_pi = _hip_chaves[_hip_idx]
 
     if st.button("Consultar empresa", key="btn_pi_etapa1", disabled=not _cnpj_pi):
         for _k in ("pi_etapa", "pi_dados", "pi_cnpj", "pi_hipotese",
-                   "pi_respostas", "pi_parecer", "pi_pdf"):
+                   "pi_tipo_entidade", "pi_respostas", "pi_parecer", "pi_pdf"):
             st.session_state.pop(_k, None)
         try:
             with st.spinner("Consultando Receita Federal..."):
@@ -573,6 +584,7 @@ with aba5:
             st.session_state["pi_dados"] = _dados_pi
             st.session_state["pi_cnpj"] = _dados_pi["cnpj"]
             st.session_state["pi_hipotese"] = _hipotese_pi
+            st.session_state["pi_tipo_entidade"] = _tipo_entidade_pi
             st.session_state["pi_etapa"] = 2
         except ValueError as _e:
             st.error(str(_e))
@@ -646,6 +658,9 @@ with aba5:
                             _texto_pi,
                             _api_key_pi,
                             _modelo_pi,
+                            tipo_entidade=st.session_state.get(
+                                "pi_tipo_entidade", "empresa_privada"
+                            ),
                         )
                     st.session_state["pi_respostas"] = _respostas_pi
                     st.session_state["pi_parecer"] = _parecer_pi
@@ -657,6 +672,9 @@ with aba5:
                             razao_social=_razao_pi,
                             hipotese=st.session_state["pi_hipotese"],
                             parecer=_parecer_pi,
+                            tipo_entidade=st.session_state.get(
+                                "pi_tipo_entidade", "empresa_privada"
+                            ),
                         )
                     except Exception as _pdf_e:
                         st.session_state.pop("pi_pdf", None)
@@ -674,6 +692,10 @@ with aba5:
 
         st.divider()
         st.markdown("### Resultado da Avaliação")
+        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(
+            st.session_state.get("pi_tipo_entidade", "empresa_privada"), "Empresa Privada"
+        )
+        st.caption(f"Tipo de Entidade: {_tipo_label_pi}")
 
         _nivel_pi = str(_sc_pi.get("nivel") or "INEXISTENTE").strip().upper()
         _score_pi = _sc_pi.get("geral", 0.0)

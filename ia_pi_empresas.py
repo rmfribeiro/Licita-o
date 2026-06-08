@@ -73,8 +73,6 @@ HIPOTESES_POR_TIPO: types.MappingProxyType[str, types.MappingProxyType] = types.
     }),
 })
 
-HIPOTESES = HIPOTESES_POR_TIPO["empresa_privada"]  # alias temporário — removido na Task 3
-
 PESOS_DIMENSAO: types.MappingProxyType[str, float] = types.MappingProxyType({
     "comprometimento_alta_direcao": 0.20,
     "analise_riscos":               0.15,
