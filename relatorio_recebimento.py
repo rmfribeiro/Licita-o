@@ -11,7 +11,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float
-from ia_recebimento import TIPOS_OBJETO
+from ia_recebimento import TIPOS_OBJETO, NORM_PARECER_RECV as _NORM_PARECER_RECV
 
 _COR_PARECER = {
     "APTO":               colors.HexColor(_COR_STATUS["ok"]),
@@ -40,7 +40,7 @@ _ESTILO_COND_MAP = {
 
 def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
     parecer_val = str(bloco.get("parecer") or "INAPTO").strip().upper()
-    parecer_val = {"APTO COM RESSALVA": "APTO COM RESSALVAS"}.get(parecer_val, parecer_val)
+    parecer_val = _NORM_PARECER_RECV.get(parecer_val, parecer_val)
     cor_badge = _COR_PARECER.get(parecer_val, colors.grey)
 
     story.append(Paragraph(titulo, _ESTILO_H2))

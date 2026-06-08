@@ -10,7 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float
-from ia_contratos import TIPOS_ALTERACAO
+from ia_contratos import TIPOS_ALTERACAO, NORM_PARECER_CONT as _NORM_PARECER_CONT
 
 _COR_PARECER = {
     "DEFERÍVEL":               colors.HexColor(_COR_STATUS["ok"]),
@@ -87,13 +87,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
 
     # Badge do parecer
     parecer_val = str(parecer.get("parecer") or "INDEFERÍVEL").strip().upper()
-    parecer_val = {
-        "DEFERIVEL":               "DEFERÍVEL",
-        "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
-        "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
-        "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
-        "INDEFERIVEL":             "INDEFERÍVEL",
-    }.get(parecer_val, parecer_val)
+    parecer_val = _NORM_PARECER_CONT.get(parecer_val, parecer_val)
     cor_badge = _COR_PARECER.get(parecer_val, colors.grey)
     story.append(Paragraph("Parecer Conclusivo", _ESTILO_H2))
     t_badge = Table(

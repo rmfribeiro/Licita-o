@@ -48,6 +48,15 @@ PARECER_OPTIONS: types.MappingProxyType[str, str] = types.MappingProxyType({
     "INDEFERÍVEL":             "INDEFERÍVEL",
 })
 
+# Normalização canônica de aliases de parecer — importável por app.py e relatorio_contratos.py
+NORM_PARECER_CONT: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "DEFERIVEL":               "DEFERÍVEL",
+    "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
+    "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
+    "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
+    "INDEFERIVEL":             "INDEFERÍVEL",
+})
+
 _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "reajuste": (
         "Você é um consultor jurídico especialista em contratos administrativos brasileiros. "
@@ -154,11 +163,5 @@ def analisar(
         )
 
     _pval = str(qualitativo.get("parecer") or "INDEFERÍVEL").strip().upper()
-    qualitativo["parecer"] = {
-        "DEFERIVEL":               "DEFERÍVEL",
-        "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
-        "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
-        "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
-        "INDEFERIVEL":             "INDEFERÍVEL",
-    }.get(_pval, _pval)
+    qualitativo["parecer"] = NORM_PARECER_CONT.get(_pval, _pval)
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}

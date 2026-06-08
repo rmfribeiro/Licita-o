@@ -615,9 +615,7 @@ with aba5:
 
         if st.button("Gerar Avaliação", type="primary", key="btn_pi_etapa2"):
             if not _api_key_pi:
-                for _k in ("pi_respostas", "pi_parecer", "pi_pdf"):
-                    st.session_state.pop(_k, None)
-                st.session_state["pi_etapa"] = 2
+                st.session_state["pi_etapa"] = 2  # oculta bloco de resultado de etapa anterior
                 st.error(
                     "ANTHROPIC_API_KEY não configurada — "
                     "configure via variável de ambiente ou secrets.toml."
@@ -665,7 +663,10 @@ with aba5:
 
     # ── Etapa 3: Resultado ─────────────────────────────────────────────────
     if st.session_state.get("pi_etapa", 0) >= 3:
-        _pr_pi = st.session_state["pi_parecer"]
+        _pr_pi = st.session_state.get("pi_parecer") or {}
+        if not _pr_pi:
+            st.error("Resultado da avaliação não encontrado. Por favor, refaça a análise.")
+            st.stop()
         _sc_pi = _pr_pi.get("scores") or {}
 
         st.divider()
@@ -750,9 +751,7 @@ with aba5:
 def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
     _bloco = (pr.get(bloco_key) or {})
     _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
-    _pval = {
-        "APTO COM RESSALVA": "APTO COM RESSALVAS",
-    }.get(_pval, _pval)
+    _pval = ia_recebimento.NORM_PARECER_RECV.get(_pval, _pval)
     st.markdown(
         f"<div style='background:{cores.get(_pval, '#888888')};"
         f"padding:12px;border-radius:8px;color:white;font-size:16px;"
@@ -892,13 +891,7 @@ with aba6:
 
             st.divider()
             _parecer_val_cont = str(_pr_cont.get("parecer") or "INDEFERÍVEL").strip().upper()
-            _parecer_val_cont = {
-                "DEFERIVEL":               "DEFERÍVEL",
-                "DEFERIVEL COM RESSALVAS": "DEFERÍVEL COM RESSALVAS",
-                "DEFERIVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
-                "DEFERÍVEL COM RESSALVA":  "DEFERÍVEL COM RESSALVAS",
-                "INDEFERIVEL":             "INDEFERÍVEL",
-            }.get(_parecer_val_cont, _parecer_val_cont)
+            _parecer_val_cont = ia_contratos.NORM_PARECER_CONT.get(_parecer_val_cont, _parecer_val_cont)
             _icone_parecer_cont = {
                 "DEFERÍVEL":               "🟢",
                 "DEFERÍVEL COM RESSALVAS": "🟡",
@@ -1215,8 +1208,7 @@ with aba7:
             try:
                 st.session_state["tr_pdf"] = relatorio_tr.gerar_pdf(_nome_tr, _tipo_tr_saved, _pr_tr)
             except Exception as _e_tr:
-                st.session_state["tr_pdf_falhou"] = str(_e_tr)
-                st.error(f"Erro ao gerar PDF: {_e_tr}")
+                st.session_state["tr_pdf_falhou"] = str(_e_tr) or "Erro desconhecido"
         if st.session_state.get("tr_pdf_falhou") and "tr_pdf" not in st.session_state:
             st.warning(f"PDF indisponível ({st.session_state['tr_pdf_falhou']}). Reanalise o TR para tentar novamente.")
         if "tr_pdf" in st.session_state:

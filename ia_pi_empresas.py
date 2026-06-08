@@ -83,9 +83,14 @@ _MATURIDADE_FAIXAS: tuple[tuple[float, str], ...] = (
     (0.0,  "INEXISTENTE"),
 )
 
-if set(PESOS_DIMENSAO) != set(DIMENSOES_PI):
-    _missing = set(DIMENSOES_PI) - set(PESOS_DIMENSAO)
-    raise RuntimeError(f"PESOS_DIMENSAO não cobre todas as dimensões de DIMENSOES_PI: {_missing}")
+if set(DIMENSOES_PI) != set(PESOS_DIMENSAO):
+    _d = set(DIMENSOES_PI) - set(PESOS_DIMENSAO)
+    _e = set(PESOS_DIMENSAO) - set(DIMENSOES_PI)
+    raise RuntimeError(
+        "PESOS_DIMENSAO e DIMENSOES_PI dessincronizados"
+        + (f" — faltando em PESOS_DIMENSAO: {_d}" if _d else "")
+        + (f" — excedente em PESOS_DIMENSAO: {_e}" if _e else "")
+    )
 
 
 def nivel_maturidade(score: float) -> str:

@@ -132,7 +132,11 @@ def extrair_json(texto: str) -> dict:
         closer = {"[": "]", "{": "}"}
         closing = ('"' if in_string else "") + "".join(closer[c] for c in reversed(stack))
         try:
-            return json.loads(trunc + closing)
+            _repaired = json.loads(trunc + closing)
+            # Rejeita resultado vazio ou não-dict — conteúdo recuperável produz sempre um dict com chaves
+            if not isinstance(_repaired, dict) or not _repaired:
+                raise ValueError("Resposta sem JSON reconhecível após tentativas de reparo")
+            return _repaired
         except json.JSONDecodeError:
             pass
 
