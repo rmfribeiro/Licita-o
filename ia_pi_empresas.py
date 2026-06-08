@@ -49,11 +49,31 @@ QUESTOES_PI: types.MappingProxyType[str, str] = types.MappingProxyType({
     "p17": "Relatório periódico do programa publicado ou disponível para consulta",
 })
 
-HIPOTESES: types.MappingProxyType[str, str] = types.MappingProxyType({
-    "grande_vulto": "Grande Vulto (Decreto 12.304/2024, Art. 4º)",
-    "desempate":    "Desempate por PI (Lei 14.133/2021, Art. 60, IV)",
-    "reabilitacao": "Reabilitação de Fornecedor (Lei 14.133/2021, Art. 163, Par. Único)",
+TIPOS_ENTIDADE: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "empresa_privada":       "Empresa Privada",
+    "administracao_publica": "Administração Pública",
+    "osc":                   "Organização da Sociedade Civil (OSC)",
 })
+
+HIPOTESES_POR_TIPO: types.MappingProxyType[str, types.MappingProxyType] = types.MappingProxyType({
+    "empresa_privada": types.MappingProxyType({
+        "grande_vulto":  "Grande Vulto (Decreto 12.304/2024, Art. 4º)",
+        "desempate":     "Desempate por PI (Lei 14.133/2021, Art. 60, IV)",
+        "reabilitacao":  "Reabilitação de Fornecedor (Lei 14.133/2021, Art. 163, Par. Único)",
+    }),
+    "administracao_publica": types.MappingProxyType({
+        "grande_vulto": "Contratação de Grande Vulto (Decreto 12.304/2024, Art. 4º)",
+        "convenio":     "Convênio ou Transferência Voluntária",
+        "cooperacao":   "Cooperação Técnica Internacional",
+    }),
+    "osc": types.MappingProxyType({
+        "termo_fomento":     "Termo de Fomento (Lei 13.019/2014, Art. 16)",
+        "termo_colaboracao": "Termo de Colaboração (Lei 13.019/2014, Art. 16)",
+        "acordo_cooperacao": "Acordo de Cooperação (Lei 13.019/2014, Art. 16)",
+    }),
+})
+
+HIPOTESES = HIPOTESES_POR_TIPO["empresa_privada"]  # alias temporário — removido na Task 3
 
 PESOS_DIMENSAO: types.MappingProxyType[str, float] = types.MappingProxyType({
     "comprometimento_alta_direcao": 0.20,
@@ -122,14 +142,32 @@ def calcular_scores(respostas: dict) -> dict:
     }
 
 
-_SISTEMA = (
-    "Você é um consultor sênior especialista em Programas de Integridade para empresas "
-    "privadas e organismos que contratam com a Administração Pública brasileira. "
-    "Avalie o Programa de Integridade da empresa com base nas respostas do questionário "
-    "e nos documentos fornecidos, à luz do Decreto 12.304/2024, da Lei 12.846/2013 "
-    "(art. 7º, IV) e da Lei 14.133/2021. "
-    "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
-)
+_SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "empresa_privada": (
+        "Você é um consultor sênior especialista em Programas de Integridade para empresas "
+        "privadas e organismos que contratam com a Administração Pública brasileira. "
+        "Avalie o Programa de Integridade da empresa com base nas respostas do questionário "
+        "e nos documentos fornecidos, à luz do Decreto 12.304/2024 (Art. 1º, I), da "
+        "Lei 12.846/2013 (art. 7º, IV) e da Lei 14.133/2021. "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+    "administracao_publica": (
+        "Você é um consultor sênior especialista em Programas de Integridade para órgãos e "
+        "entidades da Administração Pública brasileira. "
+        "Avalie o Programa de Integridade do órgão ou entidade com base nas respostas do "
+        "questionário e nos documentos fornecidos, à luz do Decreto 12.304/2024 (Art. 1º, II) "
+        "e da Lei 12.846/2013 (art. 7º, IV). "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+    "osc": (
+        "Você é um consultor sênior especialista em Programas de Integridade para Organizações "
+        "da Sociedade Civil (OSC) nos termos da Lei 13.019/2014. "
+        "Avalie o Programa de Integridade da OSC com base nas respostas do questionário "
+        "e nos documentos fornecidos, à luz do Decreto 12.304/2024 (Art. 1º, III), da "
+        "Lei 13.019/2014 e da Lei 12.846/2013 (art. 7º, IV). "
+        "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    ),
+})
 
 _ESTRUTURA_PARECER = """{
   "dimensoes": {
@@ -189,7 +227,9 @@ def avaliar(
     texto_docs: str | None,
     api_key: str,
     modelo: str = _MODELO_PADRAO,
+    tipo_entidade: str = "empresa_privada",
 ) -> dict:
+    _sistema = _SISTEMA_POR_TIPO[tipo_entidade]
     scores = calcular_scores(respostas)
 
     partes = [
@@ -211,7 +251,7 @@ def avaliar(
     partes.append(f"\nRetorne a análise qualitativa no formato:\n{_ESTRUTURA_PARECER}")
 
     try:
-        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA)
+        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _sistema)
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
@@ -236,6 +276,7 @@ def avaliar(
 
     return {
         **qualitativo,
-        "scores":   scores,
-        "hipotese": hipotese,
+        "scores":        scores,
+        "hipotese":      hipotese,
+        "tipo_entidade": tipo_entidade,
     }

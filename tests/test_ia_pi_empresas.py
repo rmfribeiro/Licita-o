@@ -226,3 +226,69 @@ class TestAvaliar:
         with patch("urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError):
                 ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
+
+
+class TestTiposEHipoteses:
+    def test_hipoteses_por_tipo_tem_tres_tipos(self):
+        assert set(ia_pi_empresas.HIPOTESES_POR_TIPO.keys()) == {
+            "empresa_privada", "administracao_publica", "osc"
+        }
+
+    def test_cada_tipo_tem_pelo_menos_tres_hipoteses(self):
+        for tipo, hipoteses in ia_pi_empresas.HIPOTESES_POR_TIPO.items():
+            assert len(hipoteses) >= 3, f"{tipo} tem menos de 3 hipóteses"
+
+    def test_tipos_entidade_tem_tres_chaves(self):
+        assert set(ia_pi_empresas.TIPOS_ENTIDADE.keys()) == {
+            "empresa_privada", "administracao_publica", "osc"
+        }
+
+
+class TestAvaliarTipoEntidade:
+    def test_tipo_administracao_publica_usa_sistema_correto(self):
+        respostas = {p: "Implementado" for p in ia_pi_empresas.QUESTOES_PI}
+        qualitativo = _qualitativo_mock()
+        with patch(
+            "ia_pi_empresas._chamar_anthropic",
+            return_value=json.dumps(qualitativo),
+        ) as mock_call:
+            ia_pi_empresas.avaliar(
+                respostas, "grande_vulto", None, "key",
+                tipo_entidade="administracao_publica",
+            )
+        sistema = mock_call.call_args[0][3]
+        assert "Administração Pública" in sistema
+
+    def test_tipo_osc_usa_sistema_correto(self):
+        respostas = {p: "Implementado" for p in ia_pi_empresas.QUESTOES_PI}
+        qualitativo = _qualitativo_mock()
+        with patch(
+            "ia_pi_empresas._chamar_anthropic",
+            return_value=json.dumps(qualitativo),
+        ) as mock_call:
+            ia_pi_empresas.avaliar(
+                respostas, "termo_fomento", None, "key",
+                tipo_entidade="osc",
+            )
+        sistema = mock_call.call_args[0][3]
+        assert "OSC" in sistema
+
+    def test_tipo_entidade_gravado_no_resultado(self):
+        respostas = {p: "Implementado" for p in ia_pi_empresas.QUESTOES_PI}
+        with patch(
+            "urllib.request.urlopen",
+            return_value=_mock_urlopen(_qualitativo_mock()),
+        ):
+            resultado = ia_pi_empresas.avaliar(
+                respostas, "grande_vulto", None, "key",
+                tipo_entidade="administracao_publica",
+            )
+        assert resultado["tipo_entidade"] == "administracao_publica"
+
+    def test_tipo_desconhecido_levanta_key_error(self):
+        respostas = {p: "Não existe" for p in ia_pi_empresas.QUESTOES_PI}
+        with pytest.raises(KeyError):
+            ia_pi_empresas.avaliar(
+                respostas, "grande_vulto", None, "key",
+                tipo_entidade="tipo_invalido",
+            )
