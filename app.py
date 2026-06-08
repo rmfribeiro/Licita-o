@@ -1287,6 +1287,10 @@ with aba8:
                 "configure via variável de ambiente ou secrets.toml."
             )
         else:
+            if _valor_sanc == 0.0:
+                st.warning(
+                    "Valor do contrato não informado — a estimativa monetária da multa não será calculada."
+                )
             try:
                 with st.spinner(
                     "Analisando infração e gerando dosimetria (pode levar 2-3 minutos)..."
@@ -1324,7 +1328,10 @@ with aba8:
                     st.session_state.pop("sanc_pdf", None)
                     st.session_state.pop("sanc_pdf_falhou", None)
             except (ValueError, RuntimeError) as _e_sanc:
-                st.error(str(_e_sanc))
+                _msg_sanc = str(_e_sanc)
+                if "texto extraível" in _msg_sanc:
+                    _msg_sanc += " Verifique se o arquivo não é uma imagem sem OCR."
+                st.error(_msg_sanc)
 
     if "sanc_parecer" in st.session_state:
         _pr_sanc   = st.session_state["sanc_parecer"]
@@ -1402,7 +1409,8 @@ with aba8:
             _pct_sanc = _dos_sanc.get("percentual_multa") or 0.5
             _val_sanc = _dos_sanc.get("valor_multa_estimado") or 0.0
             _linhas_dos_sanc.append(["% da Multa", f"{_pct_sanc:.1f}%"])
-            _linhas_dos_sanc.append(["Valor Estimado", f"R$ {_val_sanc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")])
+            if _val_sanc > 0:
+                _linhas_dos_sanc.append(["Valor Estimado", f"R$ {_val_sanc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")])
         elif _tipo_sanc in ("impedimento", "inidoneidade"):
             _prazo_sanc = _dos_sanc.get("prazo_sancao")
             _linhas_dos_sanc.append(["Prazo", f"{_prazo_sanc} ano(s)" if _prazo_sanc else "—"])

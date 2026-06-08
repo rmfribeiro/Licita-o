@@ -100,6 +100,8 @@ def _normalizar(parecer: dict, valor_contrato: float) -> dict:
         else:
             # Sem valor de contrato: zera estimativa para não exibir alucinação do LLM
             dos["valor_multa_estimado"] = 0.0
+    else:
+        dos.pop("valor_multa_estimado", None)
 
     alerta = parecer.get("alerta_criminal") or {}
     alerta["configura_crime"] = bool(alerta.get("configura_crime"))
@@ -211,10 +213,12 @@ def gerar_minuta(
     ]
 
     if tipo == "multa":
-        partes.append(
-            f"Percentual da multa: {dos.get('percentual_multa') or 0.5}% "
-            f"({_fmt_brl(_safe_float(dos.get('valor_multa_estimado')))} estimado)"
-        )
+        _pct_m = dos.get("percentual_multa") or 0.5
+        _val_est = _safe_float(dos.get("valor_multa_estimado"))
+        _linha_multa = f"Percentual da multa: {_pct_m}%"
+        if _val_est > 0:
+            _linha_multa += f" ({_fmt_brl(_val_est)} estimado)"
+        partes.append(_linha_multa)
     elif tipo in ("impedimento", "inidoneidade"):
         _prazo = dos.get("prazo_sancao")
         if _prazo:

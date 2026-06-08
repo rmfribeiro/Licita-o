@@ -161,7 +161,8 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         pct = _safe_float(dos.get("percentual_multa"))
         val = _safe_float(dos.get("valor_multa_estimado"))
         linhas_dos.append(["% da Multa", f"{pct:.1f}%"])
-        linhas_dos.append(["Valor Estimado", _fmt_brl(val)])
+        if val > 0:
+            linhas_dos.append(["Valor Estimado", _fmt_brl(val)])
     elif tipo in ("impedimento", "inidoneidade"):
         prazo = dos.get("prazo_sancao")
         linhas_dos.append(["Prazo da Sanção", f"{prazo} ano(s)" if prazo else "—"])

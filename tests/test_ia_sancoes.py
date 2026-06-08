@@ -139,6 +139,21 @@ class TestNormalizacao:
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["dosimetria"]["nivel_gravidade"] == "MÉDIO"
 
+    def test_valor_contrato_zero_zera_estimativa_multa(self):
+        parecer = {**_parecer_api_mock()}
+        dados = {**_dados_formulario_mock(), "valor_contrato": 0.0}
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(dados, None, "key")
+        assert r["dosimetria"]["valor_multa_estimado"] == 0.0
+
+    def test_tipo_nao_multa_remove_valor_multa_estimado(self):
+        parecer = {**_parecer_api_mock()}
+        parecer["enquadramento"] = {**parecer["enquadramento"], "tipo_sancao": "advertencia"}
+        parecer["dosimetria"] = {**parecer["dosimetria"], "valor_multa_estimado": 99999.0}
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+        assert "valor_multa_estimado" not in r["dosimetria"]
+
 
 class TestAnalisarDosimetria:
     def test_retorna_dict_com_chaves_obrigatorias(self):
