@@ -93,3 +93,44 @@ class TestGerarPdf:
         )
         assert isinstance(pdf, bytes)
         assert len(pdf) > 1000
+
+
+class TestGerarPdfTipoEntidade:
+    def test_pdf_administracao_publica_retorna_bytes(self):
+        parecer = _parecer_minimo()
+        pdf = relatorio_pi_empresas.gerar_pdf(
+            cnpj="00394460000141",
+            razao_social="MINISTERIO DA FAZENDA",
+            hipotese="grande_vulto",
+            parecer=parecer,
+            tipo_entidade="administracao_publica",
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+        assert pdf[:4] == b"%PDF"
+
+    def test_pdf_osc_retorna_bytes(self):
+        parecer = _parecer_minimo()
+        pdf = relatorio_pi_empresas.gerar_pdf(
+            cnpj="11222333000181",
+            razao_social="ASSOCIACAO TESTE",
+            hipotese="termo_fomento",
+            parecer=parecer,
+            tipo_entidade="osc",
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+        assert pdf[:4] == b"%PDF"
+
+    def test_pdf_empresa_privada_com_parametro_explicito_retorna_bytes(self):
+        parecer = _parecer_minimo()
+        pdf = relatorio_pi_empresas.gerar_pdf(
+            cnpj="11222333000181",
+            razao_social="EMPRESA TESTE LTDA",
+            hipotese="grande_vulto",
+            parecer=parecer,
+            tipo_entidade="empresa_privada",
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+        assert pdf[:4] == b"%PDF"

@@ -10,7 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_integridade import COR_MATURIDADE_HEX as _COR_MATURIDADE_HEX
-from ia_pi_empresas import DIMENSOES_PI, HIPOTESES, QUESTOES_PI
+from ia_pi_empresas import DIMENSOES_PI, HIPOTESES_POR_TIPO, QUESTOES_PI, TIPOS_ENTIDADE
 
 _COR_MATURIDADE = {k: colors.HexColor(v) for k, v in _COR_MATURIDADE_HEX.items()}
 
@@ -28,7 +28,13 @@ def _fmt_cnpj(cnpj: str) -> str:
     return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}" if len(c) == 14 else cnpj
 
 
-def gerar_pdf(cnpj: str, razao_social: str, hipotese: str, parecer: dict) -> bytes:
+def gerar_pdf(
+    cnpj: str,
+    razao_social: str,
+    hipotese: str,
+    parecer: dict,
+    tipo_entidade: str = "empresa_privada",
+) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
@@ -45,10 +51,13 @@ def gerar_pdf(cnpj: str, razao_social: str, hipotese: str, parecer: dict) -> byt
 
     # Identificação
     story.append(Paragraph("Identificação da Empresa", _ESTILO_H2))
+    _label_tipo = TIPOS_ENTIDADE.get(tipo_entidade, tipo_entidade)
+    _label_hip  = (HIPOTESES_POR_TIPO.get(tipo_entidade) or {}).get(hipotese, hipotese)
     linhas_id = [
-        ["Razão Social", html.escape(str(razao_social or "-"))],
-        ["CNPJ", _fmt_cnpj(cnpj)],
-        ["Hipótese Avaliada", html.escape(str(HIPOTESES.get(hipotese, hipotese)))],
+        ["Razão Social",     html.escape(str(razao_social or "-"))],
+        ["CNPJ",             _fmt_cnpj(cnpj)],
+        ["Tipo de Entidade", html.escape(_label_tipo)],
+        ["Hipótese Avaliada", html.escape(str(_label_hip))],
     ]
     t_id = Table(linhas_id, colWidths=[5*cm, 12*cm])
     t_id.setStyle(TableStyle([
