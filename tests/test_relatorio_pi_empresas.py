@@ -134,3 +134,27 @@ class TestGerarPdfTipoEntidade:
         assert isinstance(pdf, bytes)
         assert len(pdf) > 1000
         assert pdf[:4] == b"%PDF"
+
+    def test_tipo_entidade_desconhecido_nao_levanta_excecao(self):
+        parecer = _parecer_minimo()
+        pdf = relatorio_pi_empresas.gerar_pdf(
+            cnpj="11222333000181",
+            razao_social="ENTIDADE TESTE",
+            hipotese="qualquer_hipotese",
+            parecer=parecer,
+            tipo_entidade="tipo_invalido",
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+
+    def test_hipotese_incompativel_com_tipo_nao_levanta_excecao(self):
+        parecer = _parecer_minimo()
+        pdf = relatorio_pi_empresas.gerar_pdf(
+            cnpj="00394460000141",
+            razao_social="ORGAO PUBLICO",
+            hipotese="termo_fomento",  # OSC hypothesis used with administracao_publica
+            parecer=parecer,
+            tipo_entidade="administracao_publica",
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
