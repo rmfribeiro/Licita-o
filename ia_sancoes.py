@@ -97,6 +97,9 @@ def _normalizar(parecer: dict, valor_contrato: float) -> dict:
             dos["valor_multa_estimado"] = round(
                 valor_contrato * dos["percentual_multa"] / 100, 2
             )
+        else:
+            # Sem valor de contrato: zera estimativa para não exibir alucinação do LLM
+            dos["valor_multa_estimado"] = 0.0
 
     alerta = parecer.get("alerta_criminal") or {}
     alerta["configura_crime"] = bool(alerta.get("configura_crime"))

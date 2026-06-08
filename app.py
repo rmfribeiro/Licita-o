@@ -1292,12 +1292,6 @@ with aba8:
                     "Analisando infração e gerando dosimetria (pode levar 2-3 minutos)..."
                 ):
                     _texto_sanc, _avisos_sanc = etp_extrator.extrair_texto(_arq_sanc)
-                    if not _texto_sanc.strip():
-                        st.warning(
-                            "Não foi possível extrair texto do documento. "
-                            "Verifique se o arquivo não é uma imagem sem OCR."
-                        )
-                        st.stop()
 
                     _dados_sanc = {
                         "cnpj":            _cnpj_sanc,
