@@ -214,7 +214,7 @@ def gerar_minuta(
 
     if tipo == "multa":
         _pct_m = dos.get("percentual_multa") or 0.5
-        _val_est = _safe_float(dos.get("valor_multa_estimado"))
+        _val_est = _safe_float(dos.get("valor_multa_estimado") or 0)
         _linha_multa = f"Percentual da multa: {_pct_m}%"
         if _val_est > 0:
             _linha_multa += f" ({_fmt_brl(_val_est)} estimado)"

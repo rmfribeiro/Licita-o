@@ -1287,10 +1287,6 @@ with aba8:
                 "configure via variável de ambiente ou secrets.toml."
             )
         else:
-            if _valor_sanc == 0.0:
-                st.warning(
-                    "Valor do contrato não informado — a estimativa monetária da multa não será calculada."
-                )
             try:
                 with st.spinner(
                     "Analisando infração e gerando dosimetria (pode levar 2-3 minutos)..."
@@ -1329,7 +1325,7 @@ with aba8:
                     st.session_state.pop("sanc_pdf_falhou", None)
             except (ValueError, RuntimeError) as _e_sanc:
                 _msg_sanc = str(_e_sanc)
-                if "texto extraível" in _msg_sanc:
+                if isinstance(_e_sanc, ValueError):
                     _msg_sanc += " Verifique se o arquivo não é uma imagem sem OCR."
                 st.error(_msg_sanc)
 
@@ -1348,6 +1344,10 @@ with aba8:
         _dos_sanc  = _pr_sanc.get("dosimetria") or {}
         _alerta_sanc = _pr_sanc.get("alerta_criminal") or {}
         _tipo_sanc = str(_enq_sanc.get("tipo_sancao") or "multa")
+        if _tipo_sanc == "multa" and not (_dad_sanc.get("valor_contrato") or 0):
+            st.warning(
+                "Valor do contrato não informado — a estimativa monetária da multa não foi calculada."
+            )
         _label_sanc = ia_sancoes.LABEL_SANCAO.get(_tipo_sanc, _tipo_sanc.title())
 
         _icone_sanc = {
