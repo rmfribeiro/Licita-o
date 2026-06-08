@@ -1345,7 +1345,7 @@ with aba8:
         _alerta_sanc = _pr_sanc.get("alerta_criminal") or {}
         _tipo_sanc = str(_enq_sanc.get("tipo_sancao") or "multa")
         if _tipo_sanc == "multa" and not (_dad_sanc.get("valor_contrato") or 0):
-            st.warning(
+            st.info(
                 "Valor do contrato não informado — a estimativa monetária da multa não foi calculada."
             )
         _label_sanc = ia_sancoes.LABEL_SANCAO.get(_tipo_sanc, _tipo_sanc.title())
