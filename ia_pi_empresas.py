@@ -233,7 +233,7 @@ def avaliar(
     scores = calcular_scores(respostas)
 
     partes = [
-        f"Avaliação do Programa de Integridade — Hipótese: {HIPOTESES.get(hipotese, hipotese)}\n"
+        f"Avaliação do Programa de Integridade — Hipótese: {HIPOTESES_POR_TIPO[tipo_entidade].get(hipotese, hipotese)}\n"
         f"Score geral calculado: {scores['geral']}/100 ({scores['nivel']})\n"
     ]
     for dim_key, (dim_label, params) in DIMENSOES_PI.items():
