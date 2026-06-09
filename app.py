@@ -1739,7 +1739,7 @@ with aba9:
                         st.session_state.pop("reab_pdf_requerimento", None)
                         st.warning(f"Minuta do requerimento indisponível: {_e_pdf}")
 
-                except (ValueError, RuntimeError) as _e:
+                except Exception as _e:
                     st.error(str(_e))
 
     # ── Etapa 3: Resultado ────────────────────────────────────────────────────
@@ -1747,56 +1747,55 @@ with aba9:
         _pr3_reab = st.session_state.get("reab_parecer") or {}
         if not _pr3_reab:
             st.error("Resultado não encontrado. Por favor, refaça a análise.")
-            st.stop()
+        else:
+            st.divider()
+            st.markdown("### Resultado da Análise de Elegibilidade")
 
-        st.divider()
-        st.markdown("### Resultado da Análise de Elegibilidade")
+            _pval_reab = str(_pr3_reab.get("parecer") or "INELEGÍVEL").strip().upper()
+            _icone_reab = {
+                "ELEGÍVEL":               "🟢",
+                "ELEGÍVEL COM RESSALVAS": "🟡",
+                "INELEGÍVEL":             "🔴",
+            }
+            st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
 
-        _pval_reab = str(_pr3_reab.get("parecer") or "INELEGÍVEL").strip().upper()
-        _icone_reab = {
-            "ELEGÍVEL":               "🟢",
-            "ELEGÍVEL COM RESSALVAS": "🟡",
-            "INELEGÍVEL":             "🔴",
-        }
-        st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
+            _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []
+            _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—"}
+            for _c in _conds_reab:
+                if not _c:
+                    continue
+                _st_c = str(_c.get("status") or "AUSENTE").strip().upper()
+                _ic_c = _ic_st_reab.get(_st_c, "ℹ️")
+                with st.expander(
+                    f"{_ic_c} Condição {_safe_md(_c.get('numero','?'))}: "
+                    f"{_safe_md(_c.get('descricao',''))}"
+                ):
+                    st.write(_safe_md(_c.get("observacao") or "—"))
 
-        _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []
-        _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—"}
-        for _c in _conds_reab:
-            if not _c:
-                continue
-            _st_c = str(_c.get("status") or "AUSENTE").strip().upper()
-            _ic_c = _ic_st_reab.get(_st_c, "ℹ️")
-            with st.expander(
-                f"{_ic_c} Condição {_safe_md(_c.get('numero','?'))}: "
-                f"{_safe_md(_c.get('descricao',''))}"
-            ):
-                st.write(_safe_md(_c.get("observacao") or "—"))
+            if _pr3_reab.get("sintese"):
+                st.info(_safe_md(_pr3_reab["sintese"]))
 
-        if _pr3_reab.get("sintese"):
-            st.info(_safe_md(_pr3_reab["sintese"]))
+            with st.expander("Base Legal"):
+                for _bl in (_pr3_reab.get("base_legal") or []):
+                    if _bl:
+                        st.write(f"• {_safe_md(_bl)}")
 
-        with st.expander("Base Legal"):
-            for _bl in (_pr3_reab.get("base_legal") or []):
-                if _bl:
-                    st.write(f"• {_safe_md(_bl)}")
-
-        _col_dl1, _col_dl2 = st.columns(2)
-        with _col_dl1:
-            if "reab_pdf_tecnico" in st.session_state:
-                st.download_button(
-                    label="⬇ Relatório Técnico (PDF)",
-                    data=st.session_state["reab_pdf_tecnico"],
-                    file_name="reabilitacao_relatorio_tecnico.pdf",
-                    mime="application/pdf",
-                    key="reab_dl_tecnico",
-                )
-        with _col_dl2:
-            if "reab_pdf_requerimento" in st.session_state:
-                st.download_button(
-                    label="⬇ Minuta do Requerimento (PDF)",
-                    data=st.session_state["reab_pdf_requerimento"],
-                    file_name="reabilitacao_minuta_requerimento.pdf",
-                    mime="application/pdf",
-                    key="reab_dl_requerimento",
-                )
+            _col_dl1, _col_dl2 = st.columns(2)
+            with _col_dl1:
+                if "reab_pdf_tecnico" in st.session_state:
+                    st.download_button(
+                        label="⬇ Relatório Técnico (PDF)",
+                        data=st.session_state["reab_pdf_tecnico"],
+                        file_name="reabilitacao_relatorio_tecnico.pdf",
+                        mime="application/pdf",
+                        key="reab_dl_tecnico",
+                    )
+            with _col_dl2:
+                if "reab_pdf_requerimento" in st.session_state:
+                    st.download_button(
+                        label="⬇ Minuta do Requerimento (PDF)",
+                        data=st.session_state["reab_pdf_requerimento"],
+                        file_name="reabilitacao_minuta_requerimento.pdf",
+                        mime="application/pdf",
+                        key="reab_dl_requerimento",
+                    )
