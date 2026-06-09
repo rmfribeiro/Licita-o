@@ -30,6 +30,8 @@ import ia_tr
 import relatorio_tr
 import ia_sancoes
 import relatorio_sancoes
+import ia_reabilitacao
+import relatorio_reabilitacao
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -95,7 +97,7 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8 = st.tabs([
+aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
@@ -104,6 +106,7 @@ aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8 = st.tabs([
     "⚖️ Alterações Contratuais",
     "📝 Auditoria de TR",
     "⚖️ Dosimetria de Sanções",
+    "🔄 Reabilitação de Fornecedor",
 ])
 
 with aba1:
@@ -1478,3 +1481,322 @@ with aba8:
                 mime="application/pdf",
                 key="sanc_download",
             )
+
+with aba9:
+    st.subheader("Reabilitação de Fornecedor")
+    st.caption("Art. 163, Par. Único, Lei 14.133/2021")
+
+    _api_key_reab = _get_api_key()
+    _modelo_reab  = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
+
+    # ── Etapa 1: Identificação e Dados da Sanção ─────────────────────────────
+    _col_reab1, _col_reab2 = st.columns(2)
+    with _col_reab1:
+        _cnpj_reab = st.text_input(
+            "CNPJ do Fornecedor",
+            placeholder="00.000.000/0000-00",
+            key="reab_cnpj_input",
+        )
+    with _col_reab2:
+        _tipo_sancao_opcoes = list(ia_reabilitacao.TIPOS_SANCAO.keys())
+        _tipo_sancao_labels = list(ia_reabilitacao.TIPOS_SANCAO.values())
+        _tipo_sancao_idx    = st.selectbox(
+            "Tipo de Sanção",
+            options=range(len(_tipo_sancao_opcoes)),
+            format_func=lambda i: _tipo_sancao_labels[i],
+            key="reab_tipo_sancao_select",
+        )
+    _tipo_sancao_reab = _tipo_sancao_opcoes[_tipo_sancao_idx]
+
+    _col_reab3, _col_reab4 = st.columns(2)
+    with _col_reab3:
+        _data_sancao_reab = st.date_input(
+            "Data de aplicação da sanção",
+            value=None,
+            key="reab_data_sancao",
+        )
+    with _col_reab4:
+        _orgao_reab = st.text_input(
+            "Órgão/Entidade sancionadora",
+            placeholder="Ex.: Ministério da Gestão",
+            key="reab_orgao",
+        )
+
+    _multa_aplicada_reab = st.radio(
+        "Multa foi aplicada?",
+        options=["Não", "Sim"],
+        horizontal=True,
+        key="reab_multa_aplicada",
+    ) == "Sim"
+
+    _multa_valor_reab = 0.0
+    _multa_quitada_reab = False
+    if _multa_aplicada_reab:
+        _col_mv, _col_mq = st.columns(2)
+        with _col_mv:
+            _multa_valor_reab = st.number_input(
+                "Valor da multa (R$)",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+                format="%.2f",
+                key="reab_multa_valor",
+            )
+        with _col_mq:
+            _multa_quitada_reab = st.radio(
+                "Multa quitada?",
+                options=["Não", "Sim"],
+                horizontal=True,
+                key="reab_multa_quitada",
+            ) == "Sim"
+
+    _conds_ato_reab = st.text_area(
+        "Condições definidas no ato punitivo (Condição IV)",
+        placeholder="Descreva as condições impostas pelo ato que aplicou a sanção...",
+        key="reab_conds_ato",
+    )
+
+    if st.button(
+        "Verificar Elegibilidade →",
+        type="primary",
+        key="btn_reab_etapa1",
+        disabled=not _cnpj_reab,
+    ):
+        for _k in ("reab_etapa", "reab_dados_empresa", "reab_prazo",
+                   "reab_dados_sancao", "reab_respostas", "reab_parecer",
+                   "reab_pdf_tecnico", "reab_pdf_requerimento"):
+            st.session_state.pop(_k, None)
+        try:
+            with st.spinner("Consultando CEIS/CNEP..."):
+                _dados_empresa_reab = ddi_consultas.consultar(_cnpj_reab, 0.0)
+            _dados_sancao_reab = {
+                "tipo_sancao":            _tipo_sancao_reab,
+                "data_aplicacao":         _data_sancao_reab,
+                "orgao":                  _orgao_reab,
+                "multa_aplicada":         _multa_aplicada_reab,
+                "multa_valor":            _multa_valor_reab,
+                "multa_quitada":          _multa_quitada_reab,
+                "condicoes_ato_punitivo": _conds_ato_reab,
+            }
+            _prazo_reab = None
+            if _data_sancao_reab:
+                _prazo_reab = ia_reabilitacao.calcular_prazo(
+                    _tipo_sancao_reab, _data_sancao_reab
+                )
+            st.session_state["reab_dados_empresa"] = _dados_empresa_reab
+            st.session_state["reab_dados_sancao"]  = _dados_sancao_reab
+            st.session_state["reab_prazo"]          = _prazo_reab
+            st.session_state["reab_etapa"]          = 2
+        except ValueError as _e:
+            st.error(str(_e))
+        except Exception as _e:
+            st.error(f"Erro ao consultar: {_e}")
+
+    # Resultado CEIS/CNEP (Etapa 1)
+    if st.session_state.get("reab_etapa", 0) >= 2:
+        _de_reab = st.session_state["reab_dados_empresa"]
+        _ds_reab = st.session_state["reab_dados_sancao"]
+        _pr_reab = st.session_state.get("reab_prazo")
+
+        st.divider()
+        st.markdown(
+            f"**Empresa:** {_safe_md(_de_reab.get('razao_social') or '-')} &nbsp;|&nbsp; "
+            f"**CNPJ:** {_safe_md(_de_reab.get('cnpj') or '-')} &nbsp;|&nbsp; "
+            f"**Situação:** {_safe_md(_de_reab.get('situacao') or '-')}"
+        )
+
+        _ceis_reab = _de_reab.get("ceis") or []
+        _cnep_reab = _de_reab.get("cnep") or []
+        if _ceis_reab:
+            with st.expander(f"CEIS — {len(_ceis_reab)} registro(s)"):
+                for _r in _ceis_reab:
+                    st.write(
+                        f"• **{_safe_md(_r.get('orgaoSancionador',''))}** — "
+                        f"{_safe_md(_r.get('fundamentacaoLegal',''))} — "
+                        f"Situação: {_safe_md(_r.get('situacaoAtual',''))}"
+                    )
+        else:
+            st.info("Nenhum registro encontrado no CEIS para este CNPJ.")
+
+        if _cnep_reab:
+            with st.expander(f"CNEP — {len(_cnep_reab)} registro(s)"):
+                for _r in _cnep_reab:
+                    st.write(
+                        f"• **{_safe_md(_r.get('orgaoSancionador',''))}** — "
+                        f"{_safe_md(_r.get('tipoPenalidade',''))} — "
+                        f"Situação: {_safe_md(_r.get('situacaoAtual',''))}"
+                    )
+
+        # ── Etapa 2: Questionário ──────────────────────────────────────────
+        st.divider()
+        st.markdown("### Etapa 2 — Avaliação das Condições (Art. 163, Par. Único)")
+
+        if _pr_reab:
+            if _pr_reab["atendido"]:
+                st.success(
+                    f"✅ **Condição III — Prazo mínimo: Decorrido** — "
+                    f"{_pr_reab['anos_decorridos']}a {_pr_reab['meses_decorridos']}m "
+                    f"(mínimo: {_pr_reab['prazo_minimo_anos']} ano(s))"
+                )
+            else:
+                st.error(
+                    f"❌ **Condição III — Prazo mínimo: NÃO decorrido** — "
+                    f"Decorrido: {_pr_reab['anos_decorridos']}a {_pr_reab['meses_decorridos']}m. "
+                    f"Mínimo exigido: {_pr_reab['prazo_minimo_anos']} ano(s). "
+                    "Reabilitação ainda não é possível."
+                )
+        else:
+            st.warning("Data de aplicação não informada — prazo não calculado.")
+
+        _reparacao_reab = st.radio(
+            "Condição I — Reparação integral do dano à Administração:",
+            options=["Sim (integral)", "Parcial", "Não", "N.A. (sem dano apurado)"],
+            horizontal=True,
+            key="reab_reparacao",
+        )
+        _reparacao_desc_reab = st.text_input(
+            "Descrição/comprovação da reparação:",
+            placeholder="Ex.: ressarcimento comprovado via depósito identificado",
+            key="reab_reparacao_desc",
+        )
+        _cond_ato_cumpridas_reab = st.radio(
+            "Condição IV — Condições do ato punitivo foram cumpridas?",
+            options=["Sim", "Parcial", "Não", "N.A. (sem condições no ato)"],
+            horizontal=True,
+            key="reab_cond_ato_cumpridas",
+        )
+        _analise_juridica_reab = st.radio(
+            "Condição V — Análise jurídica prévia:",
+            options=["Realizada", "Em andamento", "Não realizada"],
+            horizontal=True,
+            key="reab_analise_juridica",
+        )
+
+        _arqs_reab = st.file_uploader(
+            "Documentos comprobatórios (opcional — PDF/DOCX)",
+            type=["pdf", "docx"],
+            accept_multiple_files=True,
+            key="reab_docs",
+        )
+
+        if st.button(
+            "Analisar Elegibilidade →",
+            type="primary",
+            key="btn_reab_etapa2",
+        ):
+            if not _api_key_reab:
+                st.error(
+                    "ANTHROPIC_API_KEY não configurada — "
+                    "configure via variável de ambiente ou secrets.toml."
+                )
+            else:
+                try:
+                    _texto_reab = None
+                    _avisos_reab = []
+                    if _arqs_reab:
+                        with st.spinner("Extraindo documentos..."):
+                            _texto_reab, _avisos_reab = etp_extrator.extrair_texto(_arqs_reab)
+                    for _av in _avisos_reab:
+                        st.warning(_safe_md(_av))
+
+                    _respostas_reab = {
+                        "reparacao":           _reparacao_reab,
+                        "reparacao_descricao": _reparacao_desc_reab,
+                        "cond_ato_cumpridas":  _cond_ato_cumpridas_reab,
+                        "analise_juridica":    _analise_juridica_reab,
+                    }
+                    with st.spinner("Analisando elegibilidade com IA..."):
+                        _parecer_reab = ia_reabilitacao.analisar(
+                            _ds_reab["tipo_sancao"],
+                            _de_reab,
+                            _ds_reab,
+                            _respostas_reab,
+                            _texto_reab,
+                            _api_key_reab,
+                            _modelo_reab,
+                        )
+                    st.session_state["reab_respostas"]  = _respostas_reab
+                    st.session_state["reab_parecer"]    = _parecer_reab
+                    st.session_state["reab_etapa"]      = 3
+
+                    try:
+                        st.session_state["reab_pdf_tecnico"] = (
+                            relatorio_reabilitacao.gerar_relatorio_tecnico(
+                                _de_reab["cnpj"], _de_reab, _ds_reab, _parecer_reab
+                            )
+                        )
+                    except Exception as _e_pdf:
+                        st.session_state.pop("reab_pdf_tecnico", None)
+                        st.warning(f"Relatório técnico indisponível: {_e_pdf}")
+
+                    try:
+                        st.session_state["reab_pdf_requerimento"] = (
+                            relatorio_reabilitacao.gerar_minuta_requerimento(
+                                _de_reab["cnpj"], _de_reab, _ds_reab, _parecer_reab
+                            )
+                        )
+                    except Exception as _e_pdf:
+                        st.session_state.pop("reab_pdf_requerimento", None)
+                        st.warning(f"Minuta do requerimento indisponível: {_e_pdf}")
+
+                except (ValueError, RuntimeError) as _e:
+                    st.error(str(_e))
+
+    # ── Etapa 3: Resultado ────────────────────────────────────────────────────
+    if st.session_state.get("reab_etapa", 0) >= 3:
+        _pr3_reab = st.session_state.get("reab_parecer") or {}
+        if not _pr3_reab:
+            st.error("Resultado não encontrado. Por favor, refaça a análise.")
+            st.stop()
+
+        st.divider()
+        st.markdown("### Resultado da Análise de Elegibilidade")
+
+        _pval_reab = str(_pr3_reab.get("parecer") or "INELEGÍVEL").strip().upper()
+        _icone_reab = {
+            "ELEGÍVEL":               "🟢",
+            "ELEGÍVEL COM RESSALVAS": "🟡",
+            "INELEGÍVEL":             "🔴",
+        }
+        st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
+
+        _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []
+        _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—"}
+        for _c in _conds_reab:
+            if not _c:
+                continue
+            _st_c = str(_c.get("status") or "AUSENTE").strip().upper()
+            _ic_c = _ic_st_reab.get(_st_c, "ℹ️")
+            with st.expander(
+                f"{_ic_c} Condição {_safe_md(_c.get('numero','?'))}: "
+                f"{_safe_md(_c.get('descricao',''))}"
+            ):
+                st.write(_safe_md(_c.get("observacao") or "—"))
+
+        if _pr3_reab.get("sintese"):
+            st.info(_safe_md(_pr3_reab["sintese"]))
+
+        with st.expander("Base Legal"):
+            for _bl in (_pr3_reab.get("base_legal") or []):
+                if _bl:
+                    st.write(f"• {_safe_md(_bl)}")
+
+        _col_dl1, _col_dl2 = st.columns(2)
+        with _col_dl1:
+            if "reab_pdf_tecnico" in st.session_state:
+                st.download_button(
+                    label="⬇ Relatório Técnico (PDF)",
+                    data=st.session_state["reab_pdf_tecnico"],
+                    file_name="reabilitacao_relatorio_tecnico.pdf",
+                    mime="application/pdf",
+                    key="reab_dl_tecnico",
+                )
+        with _col_dl2:
+            if "reab_pdf_requerimento" in st.session_state:
+                st.download_button(
+                    label="⬇ Minuta do Requerimento (PDF)",
+                    data=st.session_state["reab_pdf_requerimento"],
+                    file_name="reabilitacao_minuta_requerimento.pdf",
+                    mime="application/pdf",
+                    key="reab_dl_requerimento",
+                )
