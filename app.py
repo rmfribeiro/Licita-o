@@ -656,7 +656,7 @@ with aba5:
                                 "Documentos muito extensos: apenas os primeiros 30 000 "
                                 "caracteres serão analisados."
                             )
-                        _tipo_pi = st.session_state.get("pi_tipo_entidade", "empresa_privada")
+                        _tipo_pi = _tipo_entidade_pi
                         _parecer_pi = ia_pi_empresas.avaliar(
                             _respostas_pi,
                             st.session_state["pi_hipotese"],
@@ -693,8 +693,7 @@ with aba5:
 
         st.divider()
         st.markdown("### Resultado da Avaliação")
-        _k_tipo_pi = st.session_state.get("pi_tipo_entidade", "empresa_privada")
-        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(_k_tipo_pi, _k_tipo_pi)
+        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(_tipo_entidade_pi, _tipo_entidade_pi)
         st.caption(f"Tipo de Entidade: {_tipo_label_pi}")
 
         _nivel_pi = str(_sc_pi.get("nivel") or "INEXISTENTE").strip().upper()

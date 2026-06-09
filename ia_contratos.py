@@ -110,13 +110,14 @@ def analisar(
             f"Tipo de alteração inválido: '{tipo}'. Esperado: {list(TIPOS_ALTERACAO)}"
         )
 
-    _val_atual = _safe_float(dados_contrato.get('valor_atual'))
+    _raw_val_atual = dados_contrato.get('valor_atual')
+    _val_atual = _safe_float(_raw_val_atual)
     partes = [
         f"Análise de Pedido de Alteração Contratual — {TIPOS_ALTERACAO[tipo]}\n",
         f"Número do Contrato: {dados_contrato.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_contrato.get('objeto') or 'não informado'}",
         f"Data de Assinatura: {dados_contrato.get('data_assinatura') or 'não informada'}",
-        f"Valor Atual: {'não informado' if _val_atual == 0.0 else f'R$ {_val_atual:.2f}'}",
+        f"Valor Atual: {'não informado' if _raw_val_atual is None else f'R$ {_val_atual:.2f}'}",
         f"\nRequisitos legais a verificar para {TIPOS_ALTERACAO[tipo]}:",
     ]
     for i, req in enumerate(REQUISITOS_POR_TIPO[tipo], 1):

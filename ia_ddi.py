@@ -45,7 +45,7 @@ def _aplicar_piso(dados: dict, fid: dict | None = None) -> str:
     if isinstance(dados.get("cnep"), list) and any(r.get("situacaoAtual") == "Ativo" for r in dados["cnep"]):
         piso = _risco_max(piso, "MÉDIO")
 
-    if dados.get("situacao", "").upper() in ("SUSPENSA", "BAIXADA", "INAPTA"):
+    if (dados.get("situacao") or "").upper() in ("SUSPENSA", "BAIXADA", "INAPTA"):
         piso = _risco_max(piso, "MÉDIO")
 
     if dados.get("grande_vulto"):
