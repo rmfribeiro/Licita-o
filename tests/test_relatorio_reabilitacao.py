@@ -59,3 +59,40 @@ class TestGerarRelatorioTecnico:
         )
         assert isinstance(pdf, bytes)
         assert len(pdf) > 2000
+
+
+class TestGerarMinutaRequerimento:
+    def test_retorna_bytes_nao_vazios(self):
+        pdf = relatorio_reabilitacao.gerar_minuta_requerimento(
+            "11222333000181", _dados_empresa(), _dados_sancao(), _parecer_elegivel()
+        )
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 2000
+
+    def test_comeca_com_magic_bytes_pdf(self):
+        pdf = relatorio_reabilitacao.gerar_minuta_requerimento(
+            "11222333000181", _dados_empresa(), _dados_sancao(), _parecer_elegivel()
+        )
+        assert pdf[:4] == b"%PDF"
+
+    def test_tipo_impedimento_menciona_art_156_iii(self):
+        import pdfplumber, io
+        pdf = relatorio_reabilitacao.gerar_minuta_requerimento(
+            "11222333000181", _dados_empresa(), _dados_sancao("impedimento"), _parecer_elegivel()
+        )
+        texto = ""
+        with pdfplumber.open(io.BytesIO(pdf)) as doc:
+            for pg in doc.pages:
+                texto += pg.extract_text() or ""
+        assert "156" in texto
+
+    def test_tipo_inidoneidade_menciona_art_156_iv(self):
+        import pdfplumber, io
+        pdf = relatorio_reabilitacao.gerar_minuta_requerimento(
+            "11222333000181", _dados_empresa(), _dados_sancao("inidoneidade"), _parecer_elegivel()
+        )
+        texto = ""
+        with pdfplumber.open(io.BytesIO(pdf)) as doc:
+            for pg in doc.pages:
+                texto += pg.extract_text() or ""
+        assert "156" in texto
