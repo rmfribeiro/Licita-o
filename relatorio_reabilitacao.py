@@ -139,7 +139,7 @@ def gerar_minuta_requerimento(
     cnpj: str,
     dados_empresa: dict,
     dados_sancao: dict,
-    parecer: dict,
+    parecer: dict,  # accepted for API symmetry with gerar_relatorio_tecnico; not used
 ) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(

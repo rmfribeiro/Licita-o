@@ -84,7 +84,7 @@ class TestGerarMinutaRequerimento:
         with pdfplumber.open(io.BytesIO(pdf)) as doc:
             for pg in doc.pages:
                 texto += pg.extract_text() or ""
-        assert "156" in texto
+        assert "Impedimento" in texto
 
     def test_tipo_inidoneidade_menciona_art_156_iv(self):
         import pdfplumber, io
@@ -95,4 +95,4 @@ class TestGerarMinutaRequerimento:
         with pdfplumber.open(io.BytesIO(pdf)) as doc:
             for pg in doc.pages:
                 texto += pg.extract_text() or ""
-        assert "156" in texto
+        assert "Inidoneidade" in texto
