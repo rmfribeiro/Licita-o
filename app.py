@@ -570,11 +570,11 @@ with aba5:
         "Hipótese legal",
         options=range(len(_hip_chaves)),
         format_func=lambda i: _hip_labels_pi[i],
-        key="pi_hipotese_select",
+        key=f"pi_hipotese_select_{_tipo_entidade_pi}",
     )
     _hipotese_pi = _hip_chaves[_hip_idx]
 
-    if st.button("Consultar empresa", key="btn_pi_etapa1", disabled=not _cnpj_pi):
+    if st.button("Consultar entidade", key="btn_pi_etapa1", disabled=not _cnpj_pi):
         for _k in ("pi_etapa", "pi_dados", "pi_cnpj", "pi_hipotese",
                    "pi_tipo_entidade", "pi_respostas", "pi_parecer", "pi_pdf"):
             st.session_state.pop(_k, None)
