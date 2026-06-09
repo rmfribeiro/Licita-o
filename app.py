@@ -563,7 +563,7 @@ with aba5:
     )
     _tipo_entidade_pi = _tipo_opcoes[_tipo_idx]
 
-    _hip_opcoes = dict(ia_pi_empresas.HIPOTESES_POR_TIPO[_tipo_entidade_pi])
+    _hip_opcoes = dict(ia_pi_empresas.HIPOTESES_POR_TIPO.get(_tipo_entidade_pi) or {})
     _hip_chaves = list(_hip_opcoes.keys())
     _hip_labels_pi = list(_hip_opcoes.values())
     _hip_idx = st.selectbox(
@@ -598,7 +598,11 @@ with aba5:
                    f"CNPJ: {st.session_state['pi_cnpj']} — "
                    f"Situação: {_d_pi.get('situacao') or '-'} — "
                    f"Porte: {_d_pi.get('porte') or '-'}")
-        if _hip_pi == "grande_vulto" and "GRANDE" not in str(_d_pi.get("porte") or "").upper():
+        if (
+            _hip_pi == "grande_vulto"
+            and st.session_state.get("pi_tipo_entidade", "empresa_privada") == "empresa_privada"
+            and "GRANDE" not in str(_d_pi.get("porte") or "").upper()
+        ):
             st.warning(
                 "⚠️ PI obrigatório somente para contratos > R$ 239M (grande vulto). "
                 "Confirme o enquadramento antes de prosseguir."
@@ -652,15 +656,14 @@ with aba5:
                                 "Documentos muito extensos: apenas os primeiros 30 000 "
                                 "caracteres serão analisados."
                             )
+                        _tipo_pi = st.session_state.get("pi_tipo_entidade", "empresa_privada")
                         _parecer_pi = ia_pi_empresas.avaliar(
                             _respostas_pi,
                             st.session_state["pi_hipotese"],
                             _texto_pi,
                             _api_key_pi,
                             _modelo_pi,
-                            tipo_entidade=st.session_state.get(
-                                "pi_tipo_entidade", "empresa_privada"
-                            ),
+                            tipo_entidade=_tipo_pi,
                         )
                     st.session_state["pi_respostas"] = _respostas_pi
                     st.session_state["pi_parecer"] = _parecer_pi
@@ -672,9 +675,7 @@ with aba5:
                             razao_social=_razao_pi,
                             hipotese=st.session_state["pi_hipotese"],
                             parecer=_parecer_pi,
-                            tipo_entidade=st.session_state.get(
-                                "pi_tipo_entidade", "empresa_privada"
-                            ),
+                            tipo_entidade=_tipo_pi,
                         )
                     except Exception as _pdf_e:
                         st.session_state.pop("pi_pdf", None)
@@ -692,9 +693,8 @@ with aba5:
 
         st.divider()
         st.markdown("### Resultado da Avaliação")
-        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(
-            st.session_state.get("pi_tipo_entidade", "empresa_privada"), "Empresa Privada"
-        )
+        _k_tipo_pi = st.session_state.get("pi_tipo_entidade", "empresa_privada")
+        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(_k_tipo_pi, _k_tipo_pi)
         st.caption(f"Tipo de Entidade: {_tipo_label_pi}")
 
         _nivel_pi = str(_sc_pi.get("nivel") or "INEXISTENTE").strip().upper()

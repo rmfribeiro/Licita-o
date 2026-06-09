@@ -51,7 +51,7 @@ def gerar_pdf(
 
     # Identificação
     _label_tipo = TIPOS_ENTIDADE.get(tipo_entidade, tipo_entidade)
-    story.append(Paragraph(f"Identificação da {_label_tipo}", _ESTILO_H2))
+    story.append(Paragraph(f"Identificação da {html.escape(_label_tipo)}", _ESTILO_H2))
     _label_hip  = (HIPOTESES_POR_TIPO.get(tipo_entidade) or {}).get(hipotese, hipotese)
     linhas_id = [
         ["Razão Social",     html.escape(str(razao_social or "-"))],

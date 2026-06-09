@@ -285,9 +285,9 @@ class TestAvaliarTipoEntidade:
             )
         assert resultado["tipo_entidade"] == "administracao_publica"
 
-    def test_tipo_desconhecido_levanta_key_error(self):
+    def test_tipo_desconhecido_levanta_runtime_error(self):
         respostas = {p: "Não existe" for p in ia_pi_empresas.QUESTOES_PI}
-        with pytest.raises(KeyError):
+        with pytest.raises(RuntimeError, match="tipo_entidade desconhecido"):
             ia_pi_empresas.avaliar(
                 respostas, "grande_vulto", None, "key",
                 tipo_entidade="tipo_invalido",

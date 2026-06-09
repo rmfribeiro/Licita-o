@@ -167,6 +167,15 @@ _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
     ),
 })
 
+if set(TIPOS_ENTIDADE) != set(HIPOTESES_POR_TIPO) or set(TIPOS_ENTIDADE) != set(_SISTEMA_POR_TIPO):
+    _falta_hip = set(TIPOS_ENTIDADE) - set(HIPOTESES_POR_TIPO)
+    _falta_sis = set(TIPOS_ENTIDADE) - set(_SISTEMA_POR_TIPO)
+    raise RuntimeError(
+        "TIPOS_ENTIDADE, HIPOTESES_POR_TIPO e _SISTEMA_POR_TIPO dessincronizados"
+        + (f" — faltando em HIPOTESES_POR_TIPO: {_falta_hip}" if _falta_hip else "")
+        + (f" — faltando em _SISTEMA_POR_TIPO: {_falta_sis}" if _falta_sis else "")
+    )
+
 _ESTRUTURA_PARECER = """{
   "dimensoes": {
     "comprometimento_alta_direcao": {
@@ -227,7 +236,9 @@ def avaliar(
     modelo: str = _MODELO_PADRAO,
     tipo_entidade: str = "empresa_privada",
 ) -> dict:
-    _sistema = _SISTEMA_POR_TIPO[tipo_entidade]
+    _sistema = _SISTEMA_POR_TIPO.get(tipo_entidade)
+    if _sistema is None:
+        raise RuntimeError(f"tipo_entidade desconhecido: '{tipo_entidade}'")
     scores = calcular_scores(respostas)
 
     partes = [
