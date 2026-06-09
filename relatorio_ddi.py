@@ -65,13 +65,13 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     # Identificação
     story.append(Paragraph("Identificação do Licitante", _ESTILO_H2))
     linhas_id = [
-        ["Razão Social", dados.get("razao_social", "-")],
-        ["CNPJ", _fmt_cnpj(cnpj)],
-        ["Situação Cadastral", dados.get("situacao", "-")],
-        ["Porte", dados.get("porte", "-")],
-        ["CNAE Principal", dados.get("cnae", "-")],
-        ["Data de Abertura", dados.get("data_abertura", "-")],
-        ["Valor do Contrato", _fmt_brl(valor_contrato)],
+        ["Razão Social",            html.escape(str(dados.get("razao_social") or "-"))],
+        ["CNPJ",                    _fmt_cnpj(cnpj)],
+        ["Situação Cadastral",      html.escape(str(dados.get("situacao") or "-"))],
+        ["Porte",                   html.escape(str(dados.get("porte") or "-"))],
+        ["CNAE Principal",          html.escape(str(dados.get("cnae") or "-"))],
+        ["Data de Abertura",        html.escape(str(dados.get("data_abertura") or "-"))],
+        ["Valor do Contrato",       _fmt_brl(valor_contrato)],
         ["Grande Vulto (> R$ 239M)", "Sim" if dados.get("grande_vulto") else "Não"],
     ]
     t = Table(linhas_id, colWidths=[5*cm, 12*cm])
@@ -96,12 +96,12 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         story.append(Spacer(1, 0.3*cm))
 
     # Índice de risco
-    risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
-    risco = {"MÉDIO": "MEDIO"}.get(risco, risco)
-    cor_risco = _COR_RISCO.get(risco, colors.grey)
+    risco_display = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
+    risco_key = {"MÉDIO": "MEDIO"}.get(risco_display, risco_display)
+    cor_risco = _COR_RISCO.get(risco_key, colors.grey)
     story.append(Paragraph("Índice de Risco Geral", _ESTILO_H2))
     t_risco = Table(
-        [[Paragraph(f"<b>{html.escape(str(risco))}</b>", _ESTILO_BADGE)]],
+        [[Paragraph(f"<b>{html.escape(risco_display)}</b>", _ESTILO_BADGE)]],
         colWidths=[17*cm]
     )
     t_risco.setStyle(TableStyle([
@@ -118,7 +118,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     for chave, label in _LABEL_DIMENSAO.items():
         dim = dims.get(chave) or {}
         status = (dim.get("status") or "ok").lower()
-        cor = _COR_STATUS.get(status, "#000000")
+        cor = html.escape(_COR_STATUS.get(status, "#000000"))
         icone = {"ok": "OK", "alerta": "ALERTA", "critico": "CRITICO"}.get(status, "-")
         story.append(Paragraph(
             f"<font color='{cor}'><b>[{icone}] {html.escape(label)}</b></font>: {html.escape(str(dim.get('descricao') or '-'))}",
@@ -138,7 +138,8 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
     # FID
     story.append(Paragraph("Formulário de Integridade e Diligência (FID)", _ESTILO_H2))
     linhas_fid = [["Critério", "Resposta"]] + [
-        [_PERGUNTAS_FID.get(k, k), v] for k, v in fid.items()
+        [html.escape(str(_PERGUNTAS_FID.get(k, k))), html.escape(str(v or "-"))]
+        for k, v in fid.items()
     ]
     t_fid = Table(linhas_fid, colWidths=[12*cm, 5*cm])
     t_fid.setStyle(TableStyle([

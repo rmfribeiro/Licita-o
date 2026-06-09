@@ -39,10 +39,10 @@ def _risco_max(a: str, b: str) -> str:
 def _aplicar_piso(dados: dict, fid: dict | None = None) -> str:
     piso = "SEM RISCO IDENTIFICADO"
 
-    if dados.get("ceis") and any(r.get("situacaoAtual") == "Ativo" for r in dados["ceis"]):
+    if isinstance(dados.get("ceis"), list) and any(r.get("situacaoAtual") == "Ativo" for r in dados["ceis"]):
         piso = _risco_max(piso, "ALTO")
 
-    if dados.get("cnep") and any(r.get("situacaoAtual") == "Ativo" for r in dados["cnep"]):
+    if isinstance(dados.get("cnep"), list) and any(r.get("situacaoAtual") == "Ativo" for r in dados["cnep"]):
         piso = _risco_max(piso, "MÉDIO")
 
     if dados.get("situacao", "").upper() in ("SUSPENSA", "BAIXADA", "INAPTA"):

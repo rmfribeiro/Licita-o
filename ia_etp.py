@@ -31,6 +31,8 @@ _ESTRUTURA_PARECER = """{
 
 
 def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict:
+    if not texto or not texto.strip():
+        raise ValueError("Texto do ETP está vazio — faça o upload de um arquivo com conteúdo.")
     prompt = (
         f"Analise o seguinte Estudo Técnico Preliminar (ETP) e documentos complementares:\n\n"
         f"{texto}\n\n"
