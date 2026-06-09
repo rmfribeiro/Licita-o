@@ -225,6 +225,9 @@ with aba2:
         if len(cnpj_limpo) != 14:
             st.error("Informe o CNPJ com 14 digitos numericos.")
         else:
+            for _k in ("ddi_etapa", "ddi_parecer", "ddi_fid", "ddi_dados", "ddi_cnpj", "ddi_valor",
+                       "ddi_q1", "ddi_q2", "ddi_q3", "ddi_q4", "ddi_q5", "ddi_pro_etica_manual"):
+                st.session_state.pop(_k, None)
             try:
                 with st.spinner("Consultando Receita Federal, CEIS, CNEP e Empresa Pro-Etica..."):
                     dados = ddi_consultas.consultar(cnpj_limpo, valor_input)
@@ -582,6 +585,9 @@ with aba5:
         for _k in ("pi_etapa", "pi_dados", "pi_cnpj", "pi_hipotese",
                    "pi_tipo_entidade", "pi_respostas", "pi_parecer", "pi_pdf"):
             st.session_state.pop(_k, None)
+        for _p in ia_pi_empresas.QUESTOES_PI:
+            st.session_state.pop(f"pi_{_p}", None)
+        st.session_state.pop("pi_docs", None)
         try:
             with st.spinner("Consultando Receita Federal..."):
                 _dados_pi = ddi_consultas.consultar(_cnpj_pi, 0.0)
