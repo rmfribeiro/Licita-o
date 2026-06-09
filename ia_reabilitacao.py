@@ -25,6 +25,8 @@ PARECER_OPTIONS: types.MappingProxyType[str, str] = types.MappingProxyType({
 NORM_PARECER_REAB: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ELEGIVEL":               "ELEGÍVEL",
     "ELEGIVEL COM RESSALVAS": "ELEGÍVEL COM RESSALVAS",
+    "ELEGIVEL COM RESSALVA":  "ELEGÍVEL COM RESSALVAS",
+    "ELEGÍVEL COM RESSALVA":  "ELEGÍVEL COM RESSALVAS",
     "INELEGIVEL":             "INELEGÍVEL",
 })
 

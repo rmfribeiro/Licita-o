@@ -1,6 +1,9 @@
 from __future__ import annotations
+import json
 import pytest
+import urllib.error
 from datetime import date
+from unittest.mock import patch, MagicMock
 import ia_reabilitacao
 
 
@@ -61,11 +64,6 @@ class TestCalcularPrazo:
     def test_tipo_invalido_levanta_value_error(self):
         with pytest.raises(ValueError, match="tipo_sancao inválido"):
             ia_reabilitacao.calcular_prazo("inexistente", date(2024, 1, 1))
-
-
-import json
-import urllib.error
-from unittest.mock import patch, MagicMock
 
 
 def _dados_empresa_mock() -> dict:
@@ -192,6 +190,14 @@ class TestAnalisar:
         )
         with patch("urllib.request.urlopen", side_effect=err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
+                ia_reabilitacao.analisar(
+                    "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
+                )
+
+    def test_url_error_levanta_runtime_error(self):
+        err = urllib.error.URLError("Connection refused")
+        with patch("urllib.request.urlopen", side_effect=err):
+            with pytest.raises(RuntimeError):
                 ia_reabilitacao.analisar(
                     "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
                 )
