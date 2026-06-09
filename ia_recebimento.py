@@ -134,14 +134,13 @@ def analisar(
         )
 
     conds = _CONDICOES_POR_TIPO[tipo_objeto]
-    _raw_val_recv = dados_entrega.get('valor_contrato')
-    _val_recv = _safe_float(_raw_val_recv)
+    _val_recv = _safe_float(dados_entrega.get('valor_contrato'))
     partes = [
         f"Análise de Recebimento Contratual — {TIPOS_OBJETO[tipo_objeto]}\n",
         f"Número do Contrato: {dados_entrega.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_entrega.get('objeto') or 'não informado'}",
         f"Data de Entrega/Conclusão: {dados_entrega.get('data_entrega') or 'não informada'}",
-        f"Valor do Contrato: {'não informado' if _raw_val_recv is None else f'R$ {_val_recv:.2f}'}",
+        f"Valor do Contrato: {'não informado' if _val_recv == 0.0 else f'R$ {_val_recv:.2f}'}",
         f"Descrição do que foi entregue/executado:\n{dados_entrega.get('descricao_entrega') or 'não informado'}",
     ]
     nao_conf = dados_entrega.get("nao_conformidades")

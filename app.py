@@ -667,6 +667,7 @@ with aba5:
                         )
                     st.session_state["pi_respostas"] = _respostas_pi
                     st.session_state["pi_parecer"] = _parecer_pi
+                    st.session_state["pi_tipo_entidade"] = _tipo_pi
                     st.session_state["pi_etapa"] = 3
                     _razao_pi = st.session_state["pi_dados"].get("razao_social") or ""
                     try:
@@ -693,7 +694,9 @@ with aba5:
 
         st.divider()
         st.markdown("### Resultado da Avaliação")
-        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(_tipo_entidade_pi, _tipo_entidade_pi)
+        _tipo_label_pi = ia_pi_empresas.TIPOS_ENTIDADE.get(
+            st.session_state.get("pi_tipo_entidade", _tipo_entidade_pi), _tipo_entidade_pi
+        )
         st.caption(f"Tipo de Entidade: {_tipo_label_pi}")
 
         _nivel_pi = str(_sc_pi.get("nivel") or "INEXISTENTE").strip().upper()
