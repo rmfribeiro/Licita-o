@@ -1,11 +1,6 @@
 from __future__ import annotations
 import types
-import urllib.error
 from datetime import date
-
-from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
-
-_MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
 TIPOS_SANCAO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "impedimento":  "Impedimento de Licitar e Contratar (Art. 156, III)",

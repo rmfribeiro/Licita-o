@@ -24,6 +24,11 @@ class TestConstantes:
         assert isinstance(ia_reabilitacao.PARECER_OPTIONS, types.MappingProxyType)
         assert isinstance(ia_reabilitacao.NORM_PARECER_REAB, types.MappingProxyType)
 
+    def test_norm_parecer_reab_mapeia_para_canonico(self):
+        assert ia_reabilitacao.NORM_PARECER_REAB["ELEGIVEL"] == "ELEGÍVEL"
+        assert ia_reabilitacao.NORM_PARECER_REAB["ELEGIVEL COM RESSALVAS"] == "ELEGÍVEL COM RESSALVAS"
+        assert ia_reabilitacao.NORM_PARECER_REAB["INELEGIVEL"] == "INELEGÍVEL"
+
 
 class TestCalcularPrazo:
     def test_prazo_atendido_impedimento_2_anos(self):
