@@ -65,6 +65,14 @@ class TestCalcularPrazo:
         with pytest.raises(ValueError, match="tipo_sancao inválido"):
             ia_reabilitacao.calcular_prazo("inexistente", date(2024, 1, 1))
 
+    def test_prazo_mes_final_fevereiro(self):
+        # Sanção em 31/jan; referência = 28/fev = exatamente 1 mês completo.
+        r = ia_reabilitacao.calcular_prazo(
+            "impedimento", date(2025, 1, 31), data_referencia=date(2025, 2, 28)
+        )
+        assert r["meses_decorridos"] == 1
+        assert r["anos_decorridos"] == 0
+
 
 def _dados_empresa_mock() -> dict:
     return {
@@ -201,3 +209,22 @@ class TestAnalisar:
                 ia_reabilitacao.analisar(
                     "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
                 )
+
+    def test_data_aplicacao_string_iso_dispara_guarda_de_prazo(self):
+        # String ISO deve ser convertida para date e a guarda deve bloquear sem chamar a API.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "2025-06-01",  # string ISO, apenas 1 ano atrás
+        }
+        with patch("urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"

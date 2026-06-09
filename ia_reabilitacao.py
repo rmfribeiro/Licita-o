@@ -1,4 +1,5 @@
 from __future__ import annotations
+import calendar
 import types
 import urllib.error
 from datetime import date
@@ -45,7 +46,8 @@ def calcular_prazo(
 
     anos = hoje.year - data_aplicacao.year
     meses = hoje.month - data_aplicacao.month
-    if hoje.day < data_aplicacao.day:
+    _last_day = calendar.monthrange(hoje.year, hoje.month)[1]
+    if hoje.day < min(data_aplicacao.day, _last_day):
         meses -= 1
     if meses < 0:
         anos -= 1
@@ -91,6 +93,7 @@ def analisar(
     texto_docs: str | None,
     api_key: str,
     modelo: str = _MODELO_PADRAO,
+    data_referencia: date | None = None,
 ) -> dict:
     if tipo_sancao not in TIPOS_SANCAO:
         raise ValueError(
@@ -99,14 +102,20 @@ def analisar(
 
     # Guarda de prazo: retorna INELEGÍVEL sem chamar a IA
     _data_apl = dados_sancao.get("data_aplicacao")
+    if isinstance(_data_apl, str):
+        try:
+            _data_apl = date.fromisoformat(_data_apl)
+        except ValueError:
+            _data_apl = None
     if isinstance(_data_apl, date):
-        _prazo = calcular_prazo(tipo_sancao, _data_apl)
+        _prazo = calcular_prazo(tipo_sancao, _data_apl, data_referencia)
         if not _prazo["atendido"]:
             _min = _prazo["prazo_minimo_anos"]
             _a = _prazo["anos_decorridos"]
             _m = _prazo["meses_decorridos"]
+            _pval_inelegivel = NORM_PARECER_REAB.get("INELEGÍVEL", "INELEGÍVEL")
             return {
-                "parecer": "INELEGÍVEL",
+                "parecer": _pval_inelegivel,
                 "condicoes_avaliadas": [{
                     "numero": "III",
                     "descricao": "Transcurso do prazo mínimo",
@@ -128,7 +137,7 @@ def analisar(
     _tipo_label    = TIPOS_SANCAO[tipo_sancao]
     _multa_apl     = dados_sancao.get("multa_aplicada", False)
     _multa_quit    = dados_sancao.get("multa_quitada",  False)
-    _multa_valor   = dados_sancao.get("multa_valor") or 0.0
+    _multa_valor   = dados_sancao.get("multa_valor")
 
     partes = [
         f"Análise de Pedido de Reabilitação — {_tipo_label}\n",
@@ -144,7 +153,7 @@ def analisar(
     ]
     if _multa_apl:
         partes.append(
-            f"  Valor: {'não informado' if not _multa_valor else f'R$ {float(_multa_valor):.2f}'}"
+            f"  Valor: {'não informado' if _multa_valor is None else f'R$ {float(_multa_valor):.2f}'}"
         )
         partes.append(f"  Multa quitada: {'Sim' if _multa_quit else 'Não'}")
 

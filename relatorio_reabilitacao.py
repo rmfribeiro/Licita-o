@@ -11,10 +11,7 @@ from reportlab.platypus import (
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS
 
-_LABEL_SANCAO = {
-    "impedimento":  "Impedimento de Licitar e Contratar (Art. 156, III)",
-    "inidoneidade": "Declaração de Inidoneidade (Art. 156, IV)",
-}
+from ia_reabilitacao import TIPOS_SANCAO as _LABEL_SANCAO
 
 _COR_PARECER = {
     "ELEGÍVEL":               colors.HexColor(_COR_STATUS["ok"]),

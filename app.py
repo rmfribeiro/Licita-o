@@ -5,6 +5,7 @@ Sobe um edital em PDF e mostra a auditoria na hora. Para publicar, ver DEPLOY.md
 Rodar localmente:  streamlit run app.py
 """
 import os, io, json, html, tempfile
+from datetime import date as _date_today
 import streamlit as st
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
@@ -1564,7 +1565,11 @@ with aba9:
     ):
         for _k in ("reab_etapa", "reab_dados_empresa", "reab_prazo",
                    "reab_dados_sancao", "reab_respostas", "reab_parecer",
-                   "reab_pdf_tecnico", "reab_pdf_requerimento"):
+                   "reab_pdf_tecnico", "reab_pdf_requerimento",
+                   "reab_data_referencia",
+                   "reab_reparacao", "reab_reparacao_desc",
+                   "reab_cond_ato_cumpridas", "reab_analise_juridica",
+                   "reab_docs"):
             st.session_state.pop(_k, None)
         try:
             with st.spinner("Consultando CEIS/CNEP..."):
@@ -1578,15 +1583,17 @@ with aba9:
                 "multa_quitada":          _multa_quitada_reab,
                 "condicoes_ato_punitivo": _conds_ato_reab,
             }
+            _data_ref_reab = _date_today.today()
             _prazo_reab = None
             if _data_sancao_reab:
                 _prazo_reab = ia_reabilitacao.calcular_prazo(
-                    _tipo_sancao_reab, _data_sancao_reab
+                    _tipo_sancao_reab, _data_sancao_reab, _data_ref_reab
                 )
-            st.session_state["reab_dados_empresa"] = _dados_empresa_reab
-            st.session_state["reab_dados_sancao"]  = _dados_sancao_reab
-            st.session_state["reab_prazo"]          = _prazo_reab
-            st.session_state["reab_etapa"]          = 2
+            st.session_state["reab_dados_empresa"]   = _dados_empresa_reab
+            st.session_state["reab_dados_sancao"]    = _dados_sancao_reab
+            st.session_state["reab_prazo"]           = _prazo_reab
+            st.session_state["reab_data_referencia"] = _data_ref_reab
+            st.session_state["reab_etapa"]           = 2
         except ValueError as _e:
             st.error(str(_e))
         except Exception as _e:
@@ -1714,6 +1721,7 @@ with aba9:
                             _texto_reab,
                             _api_key_reab,
                             _modelo_reab,
+                            data_referencia=st.session_state.get("reab_data_referencia"),
                         )
                     st.session_state["reab_respostas"]  = _respostas_reab
                     st.session_state["reab_parecer"]    = _parecer_reab
@@ -1740,7 +1748,10 @@ with aba9:
                         st.warning(f"Minuta do requerimento indisponível: {_e_pdf}")
 
                 except Exception as _e:
-                    st.error(str(_e))
+                    _msg = str(_e)
+                    if isinstance(_e, ValueError):
+                        _msg += " Verifique se o arquivo não é uma imagem sem OCR."
+                    st.error(_msg)
 
     # ── Etapa 3: Resultado ────────────────────────────────────────────────────
     if st.session_state.get("reab_etapa", 0) >= 3:
