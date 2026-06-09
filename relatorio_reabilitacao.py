@@ -22,13 +22,6 @@ _COR_PARECER = {
     "INELEGÍVEL":             colors.HexColor(_COR_STATUS["critico"]),
 }
 
-_STATUS_ICONE = {
-    "ATENDIDA": "ATENDIDA",
-    "PARCIAL":  "PARCIAL",
-    "AUSENTE":  "AUSENTE",
-    "N.A.":     "N.A.",
-}
-
 _estilos    = getSampleStyleSheet()
 _TITULO     = ParagraphStyle("reab_titulo", parent=_estilos["Title"],   fontSize=16, spaceAfter=4)
 _H1         = ParagraphStyle("reab_h1",     parent=_estilos["Heading1"])
@@ -66,7 +59,7 @@ def gerar_relatorio_tecnico(
 
     story.append(Paragraph("Identificação do Fornecedor", _H2))
     _tipo_key   = str(dados_sancao.get("tipo_sancao") or "")
-    _tipo_label = _LABEL_SANCAO.get(_tipo_key, html.escape(_tipo_key))
+    _tipo_label = _LABEL_SANCAO.get(_tipo_key, _tipo_key)
     linhas_id = [
         ["Razão Social",      html.escape(str(dados_empresa.get("razao_social") or "-"))],
         ["CNPJ",              _fmt_cnpj(cnpj)],
@@ -105,7 +98,7 @@ def gerar_relatorio_tecnico(
         if not cond:
             continue
         _st = str(cond.get("status") or "AUSENTE").strip().upper()
-        _ic = _STATUS_ICONE.get(_st, _st)
+        _ic = _st
         story.append(Paragraph(
             f"<b>Condição {html.escape(str(cond.get('numero') or ''))}: </b>"
             f"{html.escape(str(cond.get('descricao') or ''))} — {html.escape(_ic)}",
