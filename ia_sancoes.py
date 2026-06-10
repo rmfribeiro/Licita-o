@@ -75,7 +75,7 @@ _ESTRUTURA_PARECER = """{
 }"""
 
 
-def _normalizar(parecer: dict, valor_contrato: float) -> dict:
+def _normalizar(parecer: dict, valor_contrato: float | None) -> dict:
     enq = parecer.get("enquadramento") or {}
     _tipo = str(enq.get("tipo_sancao") or "multa").strip().lower()
     if _tipo not in TIPOS_SANCAO:
@@ -91,7 +91,7 @@ def _normalizar(parecer: dict, valor_contrato: float) -> dict:
     if _tipo == "multa":
         _pct = _safe_float(dos.get("percentual_multa") or 0.5)
         dos["percentual_multa"] = max(0.5, min(30.0, _pct))
-        if valor_contrato > 0:
+        if valor_contrato is not None:
             dos["valor_multa_estimado"] = round(
                 valor_contrato * dos["percentual_multa"] / 100, 2
             )
@@ -118,14 +118,15 @@ def analisar_dosimetria(
 ) -> dict:
     cnpj = str(dados_formulario.get("cnpj") or "")
     numero_contrato = str(dados_formulario.get("numero_contrato") or "não informado")
-    valor_contrato = _safe_float(dados_formulario.get("valor_contrato"))
+    _val_contrato_raw = dados_formulario.get("valor_contrato")
+    valor_contrato = _safe_float(_val_contrato_raw) if _val_contrato_raw is not None else None
     reincidencia = str(dados_formulario.get("reincidencia") or "Não verificado")
 
     partes = [
         "Análise de Dosimetria de Sanção Administrativa — Lei 14.133/2021\n",
         f"CNPJ do Fornecedor: {cnpj}",
         f"Número do Contrato: {numero_contrato}",
-        f"Valor do Contrato: {_fmt_brl(valor_contrato)}",
+        f"Valor do Contrato: {'não informado' if valor_contrato is None else _fmt_brl(valor_contrato)}",
         f"Reincidência do Fornecedor: {reincidencia}",
     ]
     if reincidencia == "Sim":
@@ -166,7 +167,8 @@ def gerar_minuta(
     orgao = str(dados_formulario.get("orgao") or "Órgão/Entidade")
     cnpj = str(dados_formulario.get("cnpj") or "")
     numero_contrato = str(dados_formulario.get("numero_contrato") or "não informado")
-    valor_contrato = _safe_float(dados_formulario.get("valor_contrato"))
+    _val_contrato_raw = dados_formulario.get("valor_contrato")
+    valor_contrato = _safe_float(_val_contrato_raw) if _val_contrato_raw is not None else None
 
     partes = [
         "Redija a MINUTA DO ATO ADMINISTRATIVO de aplicação de sanção, "
@@ -175,7 +177,7 @@ def gerar_minuta(
         f"Autoridade competente: {autoridade}",
         f"CNPJ do Fornecedor Apenado: {cnpj}",
         f"Número do Contrato: {numero_contrato}",
-        f"Valor do Contrato: {_fmt_brl(valor_contrato)}",
+        f"Valor do Contrato: {'não informado' if valor_contrato is None else _fmt_brl(valor_contrato)}",
         f"\nSanção aplicada: {label_sancao}",
         f"Artigo de enquadramento: {enq.get('artigo') or 'Art. 156, Lei 14.133/2021'}",
         f"Justificativa: {enq.get('justificativa') or ''}",
