@@ -74,10 +74,14 @@ def gerar_mapa_precos(
                     cots_dict[_k] = _p
                 else:
                     try:
-                        if float(_p) < float(cots_dict[_k]):
-                            cots_dict[_k] = _p
+                        _p_f = float(_p)
+                        try:
+                            if _p_f < float(cots_dict[_k]):
+                                cots_dict[_k] = _p
+                        except (ValueError, TypeError):
+                            cots_dict[_k] = _p  # existing is non-numeric, new is numeric
                     except (ValueError, TypeError):
-                        pass
+                        pass  # new is non-numeric, keep existing
         excluidas_precos: set = {
             e["preco"] for e in (item.get("cotacoes_excluidas") or [])
             if e.get("preco") is not None
