@@ -14,6 +14,7 @@ from ia_utils import (
     as_list as _as_list,
     fmt_brl as _fmt_brl,
     safe_float as _safe_float,
+    fmt_brl_opcional as _fmt_brl_opcional,
 )
 from ia_sancoes import LABEL_SANCAO as _LABEL_SANCAO
 
@@ -80,11 +81,10 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
 
     # ── Identificação ────────────────────────────────────────────────────────
     story.append(Paragraph("Identificação", _ESTILO_H2))
-    _val_contrato = dados_formulario.get("valor_contrato")
     linhas_id = [
         ["CNPJ do Fornecedor",     html.escape(_fmt_cnpj(str(dados_formulario.get("cnpj") or "-")))],
         ["Número do Contrato",     html.escape(str(dados_formulario.get("numero_contrato") or "-"))],
-        ["Valor do Contrato",      "-" if _val_contrato is None else _fmt_brl(_safe_float(_val_contrato))],
+        ["Valor do Contrato",      _fmt_brl_opcional(dados_formulario.get("valor_contrato"))],
         ["Reincidência",           html.escape(str(dados_formulario.get("reincidencia") or "-"))],
         ["Órgão/Entidade",         html.escape(str(dados_formulario.get("orgao") or "-"))],
         ["Autoridade Competente",  html.escape(str(dados_formulario.get("autoridade") or "-"))],

@@ -888,7 +888,7 @@ with aba6:
                     "numero_contrato": _num_cont or "não informado",
                     "objeto": _objeto_cont or "não informado",
                     "data_assinatura": _data_cont or "não informada",
-                    "valor_atual": _valor_cont,
+                    "valor_atual": _valor_cont or None,
                 }
                 try:
                     with st.spinner(
@@ -1070,7 +1070,7 @@ with aba6:
                     "data_entrega": _data_recv or "não informada",
                     "descricao_entrega": _desc_recv,
                     "nao_conformidades": _nao_conf_recv or "",
-                    "valor_contrato": _valor_recv,
+                    "valor_contrato": _valor_recv or None,
                 }
                 try:
                     with st.spinner(
@@ -1334,7 +1334,7 @@ with aba8:
                     _dados_sanc = {
                         "cnpj":            _cnpj_sanc,
                         "numero_contrato": _contrato_sanc,
-                        "valor_contrato":  _valor_sanc,
+                        "valor_contrato":  _valor_sanc or None,
                         "reincidencia":    _reincidencia_sanc,
                         "autoridade":      _autoridade_sanc,
                         "orgao":           _orgao_sanc,

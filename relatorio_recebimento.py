@@ -10,7 +10,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float, fmt_brl_opcional as _fmt_brl_opcional
 from ia_recebimento import TIPOS_OBJETO, NORM_PARECER_RECV as _NORM_PARECER_RECV
 
 _COR_PARECER = {
@@ -106,12 +106,11 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
 
     story.append(Paragraph("Identificação do Contrato", _ESTILO_H2))
     tipo_label = TIPOS_OBJETO.get(tipo_objeto, tipo_objeto)
-    _val_contrato = dados_entrega.get("valor_contrato")
     linhas_id = [
         ["Número do Contrato",        html.escape(str(dados_entrega.get("numero_contrato") or "-"))],
         ["Objeto",                    html.escape(str(dados_entrega.get("objeto") or "-"))],
         ["Data de Entrega/Conclusão", html.escape(str(dados_entrega.get("data_entrega") or "-"))],
-        ["Valor do Contrato",         "-" if _val_contrato is None else _fmt_brl(_safe_float(_val_contrato))],
+        ["Valor do Contrato",         _fmt_brl_opcional(dados_entrega.get("valor_contrato"))],
         ["Tipo de Objeto",            html.escape(tipo_label)],
     ]
     t_id = Table(linhas_id, colWidths=[5 * cm, 12 * cm])

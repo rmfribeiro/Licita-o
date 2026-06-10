@@ -148,14 +148,15 @@ class TestNormalizacao:
 
     def test_valor_contrato_ausente_zera_estimativa_multa(self):
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
-        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_sancoes.analisar_dosimetria(dados, None, "key")
         assert r["dosimetria"]["valor_multa_estimado"] == 0.0
 
     def test_valor_contrato_ausente_prompt_contem_nao_informado(self):
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
-        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_open:
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_open:
             ia_sancoes.analisar_dosimetria(dados, None, "key")
+        mock_open.assert_called_once()
         corpo = json.loads(mock_open.call_args.args[0].data.decode("utf-8"))
         assert "não informado" in corpo["messages"][0]["content"]
 
@@ -243,3 +244,11 @@ class TestGerarMinuta:
         with patch("urllib.request.urlopen", side_effect=http_err):
             with pytest.raises(RuntimeError, match="HTTP 500"):
                 ia_sancoes.gerar_minuta(_parecer_api_mock(), _dados_formulario_mock(), "key")
+
+    def test_valor_contrato_ausente_prompt_contem_nao_informado(self):
+        dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_minuta_api_mock())) as mock_open:
+            ia_sancoes.gerar_minuta(_parecer_api_mock(), dados, "key")
+        mock_open.assert_called_once()
+        corpo = json.loads(mock_open.call_args.args[0].data.decode("utf-8"))
+        assert "não informado" in corpo["messages"][0]["content"]
