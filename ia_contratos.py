@@ -114,7 +114,7 @@ def analisar(
         f"Número do Contrato: {dados_contrato.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_contrato.get('objeto') or 'não informado'}",
         f"Data de Assinatura: {dados_contrato.get('data_assinatura') or 'não informada'}",
-        f"Valor Atual: {'não informado' if _val_atual == 0.0 else _fmt_brl(_val_atual)}",
+        f"Valor Atual: {'não informado' if dados_contrato.get('valor_atual') is None else _fmt_brl(_val_atual)}",
         f"\nRequisitos legais a verificar para {TIPOS_ALTERACAO[tipo]}:",
     ]
     for i, req in enumerate(REQUISITOS_POR_TIPO[tipo], 1):

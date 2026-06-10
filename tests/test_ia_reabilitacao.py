@@ -139,7 +139,7 @@ class TestAnalisar:
             **_dados_sancao_mock("inidoneidade"),
             "data_aplicacao": date(2025, 6, 8),  # apenas 1 ano atrás, precisa 3
         }
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
             r = ia_reabilitacao.analisar(
                 "inidoneidade", _dados_empresa_mock(), dados_sancao, _respostas_mock(), None, "key"
             )
@@ -147,7 +147,7 @@ class TestAnalisar:
         assert r["parecer"] == "INELEGÍVEL"
 
     def test_retorna_elegivel_com_api_mock(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_reabilitacao.analisar(
                 "impedimento",
                 _dados_empresa_mock(),
@@ -162,7 +162,7 @@ class TestAnalisar:
 
     def test_alias_sem_acento_normalizado(self):
         payload = {**_parecer_api_mock(), "parecer": "ELEGIVEL"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(payload)):
             r = ia_reabilitacao.analisar(
                 "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
             )
@@ -173,7 +173,7 @@ class TestAnalisar:
         cm = MagicMock()
         cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
         cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=cm):
             with pytest.raises(RuntimeError, match="JSON válido"):
                 ia_reabilitacao.analisar(
                     "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
@@ -184,7 +184,7 @@ class TestAnalisar:
         cm = MagicMock()
         cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=payload)))
         cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=cm):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_reabilitacao.analisar(
                     "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
@@ -196,7 +196,7 @@ class TestAnalisar:
             code=401, msg="Unauthorized", hdrs=None,
             fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid"}')),
         )
-        with patch("urllib.request.urlopen", side_effect=err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
                 ia_reabilitacao.analisar(
                     "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
@@ -204,7 +204,7 @@ class TestAnalisar:
 
     def test_url_error_levanta_runtime_error(self):
         err = urllib.error.URLError("Connection refused")
-        with patch("urllib.request.urlopen", side_effect=err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=err):
             with pytest.raises(RuntimeError):
                 ia_reabilitacao.analisar(
                     "impedimento", _dados_empresa_mock(), _dados_sancao_mock(), _respostas_mock(), None, "key"
@@ -216,7 +216,7 @@ class TestAnalisar:
             **_dados_sancao_mock("inidoneidade"),
             "data_aplicacao": "2025-06-01",  # string ISO, apenas 1 ano atrás
         }
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
             r = ia_reabilitacao.analisar(
                 "inidoneidade",
                 _dados_empresa_mock(),

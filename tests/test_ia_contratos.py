@@ -146,7 +146,7 @@ class TestAnalisar:
                 read=MagicMock(return_value=b'{"error":"invalid key"}')
             ),
         )
-        with patch("urllib.request.urlopen", side_effect=http_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=http_err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_invalida"
@@ -154,7 +154,7 @@ class TestAnalisar:
 
     def test_url_error_levanta_runtime_error(self):
         url_err = urllib.error.URLError(reason="Connection refused")
-        with patch("urllib.request.urlopen", side_effect=url_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=url_err):
             with pytest.raises(RuntimeError):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
@@ -169,7 +169,7 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
@@ -184,7 +184,7 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
@@ -207,7 +207,7 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=b"<html>Bad Gateway</html>"))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="não é JSON válido"):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"

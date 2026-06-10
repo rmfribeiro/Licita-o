@@ -105,13 +105,13 @@ class TestAnalisar:
             ia_recebimento.analisar("inexistente", {}, None, "key")
 
     def test_retorno_tem_recebimento_provisorio_e_definitivo(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         assert "recebimento_provisorio" in r
         assert "recebimento_definitivo" in r
 
     def test_cada_bloco_tem_campos_obrigatorios(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         for bloco_key in ("recebimento_provisorio", "recebimento_definitivo"):
             bloco = r[bloco_key]
@@ -122,28 +122,28 @@ class TestAnalisar:
 
     def test_tipo_objeto_local_prevalece(self):
         api_result = {**_parecer_api_mock(), "tipo_objeto": "bem"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         assert r["tipo_objeto"] == "servico"
 
     def test_dados_entrega_preservados(self):
         dados = _dados_entrega_mock()
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_recebimento.analisar("servico", dados, None, "key")
         assert r["dados_entrega"] == dados
 
     def test_tipo_bem_funciona(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_recebimento.analisar("bem", _dados_entrega_mock(), None, "key")
         assert isinstance(r, dict)
 
     def test_tipo_obra_funciona(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_recebimento.analisar("obra", _dados_entrega_mock(), None, "key")
         assert isinstance(r, dict)
 
     def test_com_texto_docs_nao_levanta(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_recebimento.analisar(
                 "servico", _dados_entrega_mock(), "Texto do relatório fiscal", "key"
             )
@@ -155,12 +155,12 @@ class TestAnalisar:
             code=401, msg="Unauthorized", hdrs=None,
             fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid key"}')),
         )
-        with patch("urllib.request.urlopen", side_effect=http_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=http_err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
                 ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key_invalida")
 
     def test_url_error_levanta_runtime_error(self):
-        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
             with pytest.raises(RuntimeError):
                 ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
 
@@ -170,7 +170,7 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=b"<html>Bad Gateway</html>"))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="não é JSON válido"):
                 ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
 
@@ -181,7 +181,7 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
 
@@ -192,7 +192,7 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError):
                 ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
 
@@ -205,6 +205,6 @@ class TestAnalisar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         assert "recebimento_provisorio" in r
