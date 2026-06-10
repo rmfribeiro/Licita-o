@@ -9,7 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl as _fmt_brl
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
 
 _COR_PESQUISA = {
     "VÁLIDA":        colors.HexColor(_COR_STATUS["ok"]),
@@ -85,10 +85,10 @@ def gerar_mapa_precos(
                 nota_num += 1
                 celulas_forn.append(f"EXC.{tag}")
             else:
-                celulas_forn.append(_fmt_brl(preco))
+                celulas_forn.append(_fmt_brl_opcional(preco))
 
-        ref_str = _fmt_brl(item["preco_referencia"]) if item.get("preco_referencia") is not None else "INSUF."
-        sub_str = _fmt_brl(item["subtotal_estimado"]) if item.get("subtotal_estimado") is not None else "—"
+        ref_str = _fmt_brl_opcional(item.get("preco_referencia"), default="INSUF.")
+        sub_str = _fmt_brl_opcional(item.get("subtotal_estimado"), default="—")
         qtd_str = str(item.get("quantidade_estimada") or "—")
 
         linhas.append([
@@ -98,7 +98,7 @@ def gerar_mapa_precos(
             qtd_str,
         ] + celulas_forn + [ref_str, sub_str])
 
-    total_str = _fmt_brl(valor_total_estimado) if valor_total_estimado is not None else "—"
+    total_str = _fmt_brl_opcional(valor_total_estimado, default="—")
     linhas.append(
         ["", "VALOR TOTAL ESTIMADO", "", ""] + [""] * len(fornecedores) + ["", total_str]
     )
@@ -188,7 +188,7 @@ def gerar_relatorio_pesquisa(
         story.append(Paragraph(f"<b>Item {item['item_id']}: {desc}</b> ({un})", _CORPO))
         if item.get("preco_referencia") is not None:
             story.append(Paragraph(
-                f"Preço de referência: {_fmt_brl(item['preco_referencia'])}/{un} — "
+                f"Preço de referência: {_fmt_brl_opcional(item['preco_referencia'])}/{un} — "
                 f"{len(item.get('cotacoes_validas', []))} cotação(ões) válida(s)",
                 _CORPO,
             ))
@@ -224,7 +224,7 @@ def gerar_relatorio_pesquisa(
 
     if valor_total_estimado is not None:
         story.append(Paragraph("6. Valor Total Estimado", _H2))
-        story.append(Paragraph(f"<b>{_fmt_brl(valor_total_estimado)}</b>", _CORPO))
+        story.append(Paragraph(f"<b>{_fmt_brl_opcional(valor_total_estimado)}</b>", _CORPO))
         story.append(Spacer(1, 0.3*cm))
 
     story.append(Paragraph(

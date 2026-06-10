@@ -68,9 +68,13 @@ class TestAplicarPiso:
         assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
 
     def test_grande_vulto_none_nao_aciona_piso_pi(self):
-        dados = {**_dados_base(), "grande_vulto": None, "pro_etica": False}
+        dados = {**_dados_base(), "grande_vulto": None}
         fid = {"q1": "Não", "q2": "Não", "q3": "Não", "q4": "Não", "q5": "Não"}
         assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
+
+    def test_grande_vulto_true_fid_none_resulta_medio(self):
+        dados = {**_dados_base(), "grande_vulto": True, "pro_etica": False}
+        assert ia_ddi._aplicar_piso(dados) == "MÉDIO"
 
 
 
@@ -99,6 +103,23 @@ def _parecer_ia_mock():
 
 
 class TestAnalisar:
+    @patch('ia_utils.urllib.request.urlopen')
+    def test_grande_vulto_none_nao_quebra_analisar(self, mock_urlopen):
+        resposta = _json.dumps({
+            "content": [{"text": _json.dumps(_parecer_ia_mock())}]
+        }).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=resposta)))
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_cm
+
+        dados = {**_dados_base(), "grande_vulto": None}
+        fid = {"q1": "Sim", "q2": "Sim", "q3": "Não", "q4": "Não sei", "q5": "Não"}
+        resultado = ia_ddi.analisar(dados, fid)
+
+        assert "risco_geral" in resultado
+        assert "dimensoes" in resultado
+
     @patch('ia_utils.urllib.request.urlopen')
     def test_retorna_estrutura_correta(self, mock_urlopen):
         resposta = _json.dumps({
