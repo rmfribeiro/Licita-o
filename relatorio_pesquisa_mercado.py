@@ -78,9 +78,9 @@ def gerar_mapa_precos(
                         try:
                             if _p_f < float(cots_dict[_k]):
                                 cots_dict[_k] = _p
-                        except (ValueError, TypeError):
+                        except (ValueError, TypeError, OverflowError):
                             cots_dict[_k] = _p  # existing is non-numeric, new is numeric
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError, OverflowError):
                         pass  # new is non-numeric, keep existing
         excluidas_precos: set = {
             e["preco"] for e in (item.get("cotacoes_excluidas") or [])
