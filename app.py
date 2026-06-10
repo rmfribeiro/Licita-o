@@ -1876,10 +1876,13 @@ with aba10:
         st.markdown("#### Itens identificados no TR")
         _itens_extr = st.session_state.get("pm_itens_tr") or []
         if _itens_extr:
+            def _safe_cell(s: object) -> str:
+                return _safe_md(s).replace("|", "∣").replace("\n", " ")
+
             _tbl_header = "| # | Descrição | Unidade | Qtd estimada |\n|---|-----------|---------|-------------|\n"
             _tbl_rows   = "\n".join(
-                f"| {i.get('id', idx + 1)} | {_safe_md(i.get('descricao', ''))} "
-                f"| {_safe_md(i.get('unidade', 'un'))} "
+                f"| {i.get('id', idx + 1)} | {_safe_cell(i.get('descricao', ''))} "
+                f"| {_safe_cell(i.get('unidade', 'un'))} "
                 f"| {i.get('quantidade_estimada', '—')} |"
                 for idx, i in enumerate(_itens_extr)
             )
@@ -1970,14 +1973,14 @@ with aba10:
                 _desc_i = _safe_md(_item_pm.get("descricao") or "")
                 _un_i   = _safe_md(_item_pm.get("unidade") or "un")
                 _qtd_i  = _item_pm.get("quantidade_estimada")
-                _qtd_str = f" — Qtd: {_qtd_i}" if _qtd_i else ""
+                _qtd_str = f" — Qtd: {_qtd_i}" if _qtd_i is not None else ""
                 st.markdown(f"**Item {_item_pm['item_id']} — {_desc_i}** ({_un_i}){_qtd_str}")
 
                 if _item_pm.get("preco_referencia") is not None:
                     st.markdown(
                         f"Preço de referência: **{_fmt_brl(_item_pm['preco_referencia'])}/{_un_i}**"
                     )
-                    if _item_pm.get("subtotal_estimado"):
+                    if _item_pm.get("subtotal_estimado") is not None:
                         st.caption(
                             f"Subtotal estimado: {_fmt_brl(_item_pm['subtotal_estimado'])}"
                         )
