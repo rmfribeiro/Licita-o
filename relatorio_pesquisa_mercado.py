@@ -63,10 +63,11 @@ def gerar_mapa_precos(
     nota_num = 1
 
     for item in itens_avaliados:
-        cots_dict: dict = {
-            _norm(c.get("fornecedor") or ""): c.get("preco_unitario")
-            for c in (item.get("cotacoes_detalhadas") or [])
-        }
+        cots_dict: dict = {}
+        for _c in (item.get("cotacoes_detalhadas") or []):
+            _k = _norm(_c.get("fornecedor") or "")
+            if _k not in cots_dict:
+                cots_dict[_k] = _c.get("preco_unitario")
         excluidas_precos: set = {
             e["preco"] for e in (item.get("cotacoes_excluidas") or [])
             if e.get("preco") is not None
