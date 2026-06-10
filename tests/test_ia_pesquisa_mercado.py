@@ -67,3 +67,137 @@ class TestCalcularReferencia:
         r = ia_pesquisa_mercado.calcular_referencia([100.0, 100.0, 100.0])
         assert r["status"] == "VALIDO"
         assert r["preco_referencia"] == 100.0
+
+
+def _mock_urlopen(payload: dict):
+    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
+    cm.__exit__ = MagicMock(return_value=False)
+    return cm
+
+
+class TestExtrairItensTR:
+    def test_retorna_lista_com_campos_esperados(self):
+        payload = {"itens": [
+            {"id": 1, "descricao": "Consultoria TI", "unidade": "hora",
+             "quantidade_estimada": 500.0},
+            {"id": 2, "descricao": "Licença SW", "unidade": "un",
+             "quantidade_estimada": 10.0},
+        ]}
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):
+            result = ia_pesquisa_mercado.extrair_itens_tr("texto do TR", "key")
+        assert len(result) == 2
+        assert result[0]["descricao"] == "Consultoria TI"
+        assert result[1]["unidade"] == "un"
+
+    def test_json_malformado_levanta_runtime_error(self):
+        data = json.dumps({"content": [{"text": "não é json"}]}).encode("utf-8")
+        cm = MagicMock()
+        cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
+        cm.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=cm):
+            with pytest.raises(RuntimeError, match="JSON válido"):
+                ia_pesquisa_mercado.extrair_itens_tr("texto", "key")
+
+    def test_http_error_levanta_runtime_error_com_codigo(self):
+        err = urllib.error.HTTPError(
+            url="https://api.anthropic.com/v1/messages",
+            code=401, msg="Unauthorized", hdrs=None,
+            fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid"}')),
+        )
+        with patch("urllib.request.urlopen", side_effect=err):
+            with pytest.raises(RuntimeError, match="HTTP 401"):
+                ia_pesquisa_mercado.extrair_itens_tr("texto", "key")
+
+
+_ITENS_TR = [
+    {"id": 1, "descricao": "Consultoria TI", "unidade": "hora",
+     "quantidade_estimada": 100.0},
+    {"id": 2, "descricao": "Licença SW", "unidade": "un",
+     "quantidade_estimada": 5.0},
+]
+
+_COTACOES_VALIDAS = {
+    "fornecedores": [
+        {"nome": "Empresa A", "cnpj": "11.111.111/0001-11"},
+        {"nome": "Empresa B", "cnpj": "22.222.222/0001-22"},
+        {"nome": "Empresa C", "cnpj": "33.333.333/0001-33"},
+    ],
+    "itens_cotados": [
+        {"item_id": 1, "descricao_no_orcamento": "Consultoria",
+         "cotacoes": [
+             {"fornecedor": "Empresa A", "preco_unitario": 120.0},
+             {"fornecedor": "Empresa B", "preco_unitario": 130.0},
+             {"fornecedor": "Empresa C", "preco_unitario": 125.0},
+         ]},
+        {"item_id": 2, "descricao_no_orcamento": "Licença",
+         "cotacoes": [
+             {"fornecedor": "Empresa A", "preco_unitario": 500.0},
+             {"fornecedor": "Empresa B", "preco_unitario": 480.0},
+             {"fornecedor": "Empresa C", "preco_unitario": 490.0},
+         ]},
+    ],
+}
+
+_PARECER = {"parecer_narrativo": "Pesquisa válida. Cotações atendem os critérios."}
+
+
+class TestAnalisar:
+    def test_todos_itens_validos_retorna_pesquisa_valida(self):
+        side_effects = [_mock_urlopen(_COTACOES_VALIDAS), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto orçamentos", "key")
+        assert r["status_geral"] == "VÁLIDA"
+        assert len(r["itens_avaliados"]) == 2
+        assert r["itens_avaliados"][0]["status"] == "VALIDO"
+        assert r["parecer_narrativo"] == "Pesquisa válida. Cotações atendem os critérios."
+
+    def test_item_insuficiente_gera_com_ressalvas(self):
+        cotacoes_insuf = {
+            **_COTACOES_VALIDAS,
+            "itens_cotados": [
+                # item 1: só 2 cotações → INSUFICIENTE
+                {"item_id": 1, "descricao_no_orcamento": "Consultoria",
+                 "cotacoes": [
+                     {"fornecedor": "Empresa A", "preco_unitario": 120.0},
+                     {"fornecedor": "Empresa B", "preco_unitario": 130.0},
+                 ]},
+                _COTACOES_VALIDAS["itens_cotados"][1],  # item 2 válido
+            ],
+        }
+        side_effects = [_mock_urlopen(cotacoes_insuf), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+        assert r["status_geral"] == "COM RESSALVAS"
+        assert r["itens_avaliados"][0]["status"] == "INSUFICIENTE"
+
+    def test_maioria_insuficiente_gera_invalida(self):
+        cotacoes_insuf = {
+            **_COTACOES_VALIDAS,
+            "itens_cotados": [
+                {"item_id": 1, "descricao_no_orcamento": "Consultoria",
+                 "cotacoes": [{"fornecedor": "Empresa A", "preco_unitario": 120.0}]},
+                {"item_id": 2, "descricao_no_orcamento": "Licença",
+                 "cotacoes": [{"fornecedor": "Empresa B", "preco_unitario": 480.0}]},
+            ],
+        }
+        side_effects = [_mock_urlopen(cotacoes_insuf), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+        assert r["status_geral"] == "INVÁLIDA"
+
+    def test_json_malformado_levanta_runtime_error(self):
+        data = json.dumps({"content": [{"text": "não é json"}]}).encode("utf-8")
+        cm = MagicMock()
+        cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
+        cm.__exit__ = MagicMock(return_value=False)
+        with patch("urllib.request.urlopen", return_value=cm):
+            with pytest.raises(RuntimeError, match="JSON válido"):
+                ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+
+    def test_url_error_levanta_runtime_error(self):
+        err = urllib.error.URLError("Connection refused")
+        with patch("urllib.request.urlopen", side_effect=err):
+            with pytest.raises(RuntimeError):
+                ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
