@@ -2,7 +2,7 @@ from __future__ import annotations
 import calendar
 import types
 from datetime import date
-from ia_utils import chamar_api as _chamar_api, fmt_brl as _fmt_brl, safe_float as _safe_float
+from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -152,7 +152,7 @@ def analisar(
     ]
     if _multa_apl:
         partes.append(
-            f"  Valor: {'não informado' if _multa_valor is None else _fmt_brl(_safe_float(_multa_valor))}"
+            "  Valor: " + _fmt_brl_opcional(_multa_valor, default='não informado')
         )
         partes.append(f"  Multa quitada: {'Sim' if _multa_quit else 'Não'}")
 

@@ -32,6 +32,7 @@ _PERGUNTAS_FID = {
     "q4": "Política de conflito de interesses",
     "q5": "Auditorias internas ou externas",
 }
+_BOOL_PT = {True: "Sim", False: "Não"}
 
 _estilos_base   = getSampleStyleSheet()
 _ESTILO_TITULO  = ParagraphStyle("ddi_titulo", parent=_estilos_base["Title"],   fontSize=16, spaceAfter=4)
@@ -72,7 +73,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
         ["CNAE Principal",          html.escape(str(dados.get("cnae") or "-"))],
         ["Data de Abertura",        html.escape(str(dados.get("data_abertura") or "-"))],
         ["Valor do Contrato",       _fmt_brl_opcional(valor_contrato)],
-        ["Grande Vulto (> R$ 239M)", {True: "Sim", False: "Não"}.get(dados.get("grande_vulto"), "-")],
+        ["Grande Vulto (> R$ 239M)", _BOOL_PT.get(dados.get("grande_vulto"), "-")],
     ]
     t = Table(linhas_id, colWidths=[5*cm, 12*cm])
     t.setStyle(TableStyle([
@@ -155,14 +156,13 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     # Programa de Integridade
     pi_dim = dims.get("programa_integridade") or {}
     story.append(Paragraph("Programa de Integridade", _ESTILO_H2))
-    _bool_pt = {True: "Sim", False: "Não"}
     story.append(Paragraph(
-        "Empresa Pro-Etica (CGU): " + _bool_pt.get(pi_dim.get("pro_etica"), "-"),
+        "Empresa Pro-Etica (CGU): " + _BOOL_PT.get(pi_dim.get("pro_etica"), "-"),
         _ESTILO_CORPO
     ))
     story.append(Paragraph(
         "PI obrigatorio (Decreto 12.304/2024 - Grande Vulto): "
-        + _bool_pt.get(pi_dim.get("obrigatorio"), "-"),
+        + _BOOL_PT.get(pi_dim.get("obrigatorio"), "-"),
         _ESTILO_CORPO
     ))
     story.append(Spacer(1, 0.3*cm))

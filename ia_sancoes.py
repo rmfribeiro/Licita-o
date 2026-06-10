@@ -5,6 +5,7 @@ from ia_utils import (
     chamar_api as _chamar_api,
     safe_float as _safe_float,
     fmt_brl as _fmt_brl,
+    fmt_brl_opcional as _fmt_brl_opcional,
     optional_float as _optional_float,
 )
 
@@ -126,7 +127,7 @@ def analisar_dosimetria(
         "Análise de Dosimetria de Sanção Administrativa — Lei 14.133/2021\n",
         f"CNPJ do Fornecedor: {cnpj}",
         f"Número do Contrato: {numero_contrato}",
-        f"Valor do Contrato: {'não informado' if valor_contrato is None else _fmt_brl(valor_contrato)}",
+        "Valor do Contrato: " + _fmt_brl_opcional(valor_contrato, default='não informado'),
         f"Reincidência do Fornecedor: {reincidencia}",
     ]
     if reincidencia == "Sim":
@@ -176,7 +177,7 @@ def gerar_minuta(
         f"Autoridade competente: {autoridade}",
         f"CNPJ do Fornecedor Apenado: {cnpj}",
         f"Número do Contrato: {numero_contrato}",
-        f"Valor do Contrato: {'não informado' if valor_contrato is None else _fmt_brl(valor_contrato)}",
+        "Valor do Contrato: " + _fmt_brl_opcional(valor_contrato, default='não informado'),
         f"\nSanção aplicada: {label_sancao}",
         f"Artigo de enquadramento: {enq.get('artigo') or 'Art. 156, Lei 14.133/2021'}",
         f"Justificativa: {enq.get('justificativa') or ''}",

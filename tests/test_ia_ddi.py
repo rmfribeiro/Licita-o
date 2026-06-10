@@ -67,6 +67,11 @@ class TestAplicarPiso:
         fid = {"q1": "Sim", "q2": "Sim", "q3": "Sim", "q4": "Não", "q5": "Não"}
         assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
 
+    def test_grande_vulto_none_nao_aciona_piso_pi(self):
+        dados = {**_dados_base(), "grande_vulto": None, "pro_etica": False}
+        fid = {"q1": "Não", "q2": "Não", "q3": "Não", "q4": "Não", "q5": "Não"}
+        assert ia_ddi._aplicar_piso(dados, fid) == "SEM RISCO IDENTIFICADO"
+
 
 
 
