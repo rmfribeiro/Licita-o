@@ -67,10 +67,12 @@ def gerar_mapa_precos(
         }
         excluidas_precos: set = {
             e["preco"] for e in (item.get("cotacoes_excluidas") or [])
+            if e.get("preco") is not None
         }
         excluidas_motivos: dict = {
             e["preco"]: e.get("motivo", "excluída")
             for e in (item.get("cotacoes_excluidas") or [])
+            if e.get("preco") is not None
         }
 
         celulas_forn: list[str] = []
@@ -105,9 +107,10 @@ def gerar_mapa_precos(
         ["", "VALOR TOTAL ESTIMADO", "", ""] + [""] * len(fornecedores) + ["", total_str]
     )
 
-    col_w = [0.7*cm, 4.5*cm, 1*cm, 1.2*cm]
-    col_w += [2.5*cm] * len(fornecedores)
-    col_w += [3*cm, 2.5*cm]
+    _usable = A4[0] - 3 * cm  # 1.5 cm each margin
+    _fixed  = 0.7*cm + 4.5*cm + 1*cm + 1.2*cm + 3*cm + 2.5*cm
+    _forn_w = max(1.5*cm, (_usable - _fixed) / max(len(fornecedores), 1))
+    col_w   = [0.7*cm, 4.5*cm, 1*cm, 1.2*cm] + [_forn_w] * len(fornecedores) + [3*cm, 2.5*cm]
 
     t = Table(linhas, colWidths=col_w)
     t.setStyle(TableStyle([

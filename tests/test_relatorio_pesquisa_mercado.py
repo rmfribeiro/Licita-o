@@ -72,7 +72,7 @@ class TestGerarMapaPrecos:
     def test_caracteres_especiais_nao_quebram_pdf(self):
         itens_xss = [{**_ITENS[0], "descricao": "Item <Teste> & \"Especial\""}]
         pdf = relatorio_pesquisa_mercado.gerar_mapa_precos(
-            "Objeto <com> &amp; especiais", itens_xss, _FORNECEDORES, 1000.0
+            "Objeto <com> & especiais", itens_xss, _FORNECEDORES, 1000.0
         )
         assert isinstance(pdf, bytes)
         assert pdf[:4] == b"%PDF"
