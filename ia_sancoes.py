@@ -5,6 +5,7 @@ from ia_utils import (
     chamar_api as _chamar_api,
     safe_float as _safe_float,
     fmt_brl as _fmt_brl,
+    optional_float as _optional_float,
 )
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
@@ -118,8 +119,7 @@ def analisar_dosimetria(
 ) -> dict:
     cnpj = str(dados_formulario.get("cnpj") or "")
     numero_contrato = str(dados_formulario.get("numero_contrato") or "não informado")
-    _val_contrato_raw = dados_formulario.get("valor_contrato")
-    valor_contrato = _safe_float(_val_contrato_raw) if _val_contrato_raw is not None else None
+    valor_contrato = _optional_float(dados_formulario.get("valor_contrato"))
     reincidencia = str(dados_formulario.get("reincidencia") or "Não verificado")
 
     partes = [
@@ -167,8 +167,7 @@ def gerar_minuta(
     orgao = str(dados_formulario.get("orgao") or "Órgão/Entidade")
     cnpj = str(dados_formulario.get("cnpj") or "")
     numero_contrato = str(dados_formulario.get("numero_contrato") or "não informado")
-    _val_contrato_raw = dados_formulario.get("valor_contrato")
-    valor_contrato = _safe_float(_val_contrato_raw) if _val_contrato_raw is not None else None
+    valor_contrato = _optional_float(dados_formulario.get("valor_contrato"))
 
     partes = [
         "Redija a MINUTA DO ATO ADMINISTRATIVO de aplicação de sanção, "

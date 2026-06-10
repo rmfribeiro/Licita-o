@@ -67,11 +67,12 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     # Identificação do Contrato
     story.append(Paragraph("Identificação do Contrato", _ESTILO_H2))
     tipo_label = TIPOS_ALTERACAO.get(tipo, tipo)
+    _val_atual = dados_contrato.get("valor_atual")
     linhas_id = [
         ["Número do Contrato", html.escape(str(dados_contrato.get("numero_contrato") or "-"))],
         ["Objeto", html.escape(str(dados_contrato.get("objeto") or "-"))],
         ["Data de Assinatura", html.escape(str(dados_contrato.get("data_assinatura") or "-"))],
-        ["Valor Atual", _fmt_brl(_safe_float(dados_contrato.get("valor_atual")))],
+        ["Valor Atual", "-" if _val_atual is None else _fmt_brl(_safe_float(_val_atual))],
         ["Tipo de Alteração", html.escape(tipo_label)],
     ]
     t_id = Table(linhas_id, colWidths=[5*cm, 12*cm])

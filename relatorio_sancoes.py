@@ -80,10 +80,11 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
 
     # ── Identificação ────────────────────────────────────────────────────────
     story.append(Paragraph("Identificação", _ESTILO_H2))
+    _val_contrato = dados_formulario.get("valor_contrato")
     linhas_id = [
         ["CNPJ do Fornecedor",     html.escape(_fmt_cnpj(str(dados_formulario.get("cnpj") or "-")))],
         ["Número do Contrato",     html.escape(str(dados_formulario.get("numero_contrato") or "-"))],
-        ["Valor do Contrato",      _fmt_brl(_safe_float(dados_formulario.get("valor_contrato")))],
+        ["Valor do Contrato",      "-" if _val_contrato is None else _fmt_brl(_safe_float(_val_contrato))],
         ["Reincidência",           html.escape(str(dados_formulario.get("reincidencia") or "-"))],
         ["Órgão/Entidade",         html.escape(str(dados_formulario.get("orgao") or "-"))],
         ["Autoridade Competente",  html.escape(str(dados_formulario.get("autoridade") or "-"))],

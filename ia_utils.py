@@ -31,6 +31,10 @@ def safe_float(v) -> float:
         return 0.0
 
 
+def optional_float(v) -> float | None:
+    return None if v is None else safe_float(v)
+
+
 def fmt_brl(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
