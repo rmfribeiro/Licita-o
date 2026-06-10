@@ -1,6 +1,7 @@
 from __future__ import annotations
 import html
 import io
+import unicodedata
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -10,6 +11,11 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
+
+def _norm(s: str) -> str:
+    """Normaliza para comparação: minúsculas, sem acentos, sem espaços extras."""
+    return unicodedata.normalize("NFD", s).encode("ascii", "ignore").decode().strip().casefold()
+
 
 _COR_PESQUISA = {
     "VÁLIDA":        colors.HexColor(_COR_STATUS["ok"]),
@@ -58,7 +64,7 @@ def gerar_mapa_precos(
 
     for item in itens_avaliados:
         cots_dict: dict = {
-            c.get("fornecedor"): c.get("preco_unitario")
+            _norm(c.get("fornecedor") or ""): c.get("preco_unitario")
             for c in (item.get("cotacoes_detalhadas") or [])
         }
         excluidas_precos: set = {
@@ -74,7 +80,7 @@ def gerar_mapa_precos(
         celulas_forn: list[str] = []
         for forn in fornecedores:
             nome = forn.get("nome") or ""
-            preco = cots_dict.get(nome)
+            preco = cots_dict.get(_norm(nome))
             if preco is None:
                 celulas_forn.append("—")
             elif preco in excluidas_precos:
@@ -89,7 +95,8 @@ def gerar_mapa_precos(
 
         ref_str = _fmt_brl_opcional(item.get("preco_referencia"), default="INSUF.")
         sub_str = _fmt_brl_opcional(item.get("subtotal_estimado"), default="—")
-        qtd_str = str(item.get("quantidade_estimada") or "—")
+        _qtd = item.get("quantidade_estimada")
+        qtd_str = "—" if _qtd is None else str(_qtd)
 
         linhas.append([
             str(item["item_id"]),

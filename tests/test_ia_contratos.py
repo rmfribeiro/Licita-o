@@ -96,7 +96,7 @@ class TestAnalisar:
 
     def test_retorna_dict_com_parecer_e_requisitos(self):
         with patch(
-            "urllib.request.urlopen",
+            "ia_utils.urllib.request.urlopen",
             return_value=_mock_urlopen(_parecer_api_mock()),
         ):
             r = ia_contratos.analisar(
@@ -109,7 +109,7 @@ class TestAnalisar:
     def test_tipo_alteracao_sempre_local(self):
         api_result = {**_parecer_api_mock(), "tipo_alteracao": "repactuacao"}
         with patch(
-            "urllib.request.urlopen",
+            "ia_utils.urllib.request.urlopen",
             return_value=_mock_urlopen(api_result),
         ):
             r = ia_contratos.analisar(
@@ -120,7 +120,7 @@ class TestAnalisar:
     def test_dados_contrato_preservados_localmente(self):
         dados = _dados_contrato_mock()
         with patch(
-            "urllib.request.urlopen",
+            "ia_utils.urllib.request.urlopen",
             return_value=_mock_urlopen(_parecer_api_mock()),
         ):
             r = ia_contratos.analisar("reajuste", dados, None, "key_teste")
@@ -128,7 +128,7 @@ class TestAnalisar:
 
     def test_sem_documentos_nao_levanta_erro(self):
         with patch(
-            "urllib.request.urlopen",
+            "ia_utils.urllib.request.urlopen",
             return_value=_mock_urlopen(_parecer_api_mock()),
         ):
             r = ia_contratos.analisar(
@@ -192,7 +192,7 @@ class TestAnalisar:
 
     def test_analisar_com_texto_docs_inclui_documentos(self):
         with patch(
-            "urllib.request.urlopen",
+            "ia_utils.urllib.request.urlopen",
             return_value=_mock_urlopen(_parecer_api_mock()),
         ):
             r = ia_contratos.analisar(

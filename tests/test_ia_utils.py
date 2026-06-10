@@ -67,5 +67,8 @@ class TestFmtBrlOpcional:
     def test_valor_grande(self):
         assert ia_utils.fmt_brl_opcional(1_000_000.0) == "R$ 1.000.000,00"
 
-    def test_string_nao_numerica_retorna_r0(self):
-        assert ia_utils.fmt_brl_opcional("abc") == "R$ 0,00"
+    def test_string_nao_numerica_retorna_default(self):
+        assert ia_utils.fmt_brl_opcional("abc") == "-"
+
+    def test_string_nao_numerica_com_default_personalizado(self):
+        assert ia_utils.fmt_brl_opcional("não informado", default="INSUF.") == "INSUF."

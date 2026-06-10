@@ -175,7 +175,10 @@ def analisar(
 
     itens_avaliados: list[dict] = []
     for item_tr in itens_tr:
-        item_id = item_tr["id"]
+        try:
+            item_id = int(float(item_tr["id"]))
+        except (ValueError, TypeError):
+            item_id = item_tr["id"]
         item_cotado = itens_cotados.get(item_id, {})
         cotacoes_raw: list[float] = []
         for _c in (item_cotado.get("cotacoes") or []):

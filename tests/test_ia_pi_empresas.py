@@ -166,7 +166,7 @@ def _mock_urlopen(qualitativo: dict):
 class TestAvaliar:
     def test_retorna_dict_com_scores_e_qualitativo(self):
         respostas = _respostas_todos_implementados()
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
             resultado = ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
         assert "scores" in resultado
         assert "dimensoes" in resultado
@@ -174,13 +174,13 @@ class TestAvaliar:
 
     def test_scores_calculados_localmente(self):
         respostas = _respostas_todos_implementados()
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
             resultado = ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
         assert resultado["scores"]["geral"] == 100.0
 
     def test_hipotese_gravada_no_resultado(self):
         respostas = _respostas_todos_nao_existem()
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_qualitativo_mock())):
             resultado = ia_pi_empresas.avaliar(respostas, "grande_vulto", None, "key_teste")
         assert resultado["hipotese"] == "grande_vulto"
 
@@ -191,7 +191,7 @@ class TestAvaliar:
             code=401, msg="Unauthorized", hdrs=None,
             fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid key"}')),
         )
-        with patch("urllib.request.urlopen", side_effect=http_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=http_err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
                 ia_pi_empresas.avaliar(respostas, "desempate", None, "key_invalida")
 
@@ -203,14 +203,14 @@ class TestAvaliar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
 
     def test_url_error_levanta_runtime_error(self):
         respostas = _respostas_todos_implementados()
         url_err = urllib.error.URLError(reason="Connection refused")
-        with patch("urllib.request.urlopen", side_effect=url_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=url_err):
             with pytest.raises(RuntimeError):
                 ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
 
@@ -223,7 +223,7 @@ class TestAvaliar:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError):
                 ia_pi_empresas.avaliar(respostas, "desempate", None, "key_teste")
 
@@ -276,7 +276,7 @@ class TestAvaliarTipoEntidade:
     def test_tipo_entidade_gravado_no_resultado(self):
         respostas = {p: "Implementado" for p in ia_pi_empresas.QUESTOES_PI}
         with patch(
-            "urllib.request.urlopen",
+            "ia_utils.urllib.request.urlopen",
             return_value=_mock_urlopen(_qualitativo_mock()),
         ):
             resultado = ia_pi_empresas.avaliar(

@@ -84,42 +84,42 @@ class TestNormalizacao:
     def test_tipo_sancao_invalido_normaliza_para_multa(self):
         parecer = {**_parecer_api_mock()}
         parecer["enquadramento"] = {**parecer["enquadramento"], "tipo_sancao": "inexistente"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["enquadramento"]["tipo_sancao"] == "multa"
 
     def test_tipo_sancao_case_insensitive(self):
         parecer = {**_parecer_api_mock()}
         parecer["enquadramento"] = {**parecer["enquadramento"], "tipo_sancao": "MULTA"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["enquadramento"]["tipo_sancao"] == "multa"
 
     def test_percentual_multa_clampado_minimo(self):
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 0.1}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["dosimetria"]["percentual_multa"] == 0.5
 
     def test_percentual_multa_clampado_maximo(self):
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 99.9}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["dosimetria"]["percentual_multa"] == 30.0
 
     def test_percentual_multa_dentro_do_range_preservado(self):
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 10.0}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["dosimetria"]["percentual_multa"] == 10.0
 
     def test_configura_crime_sempre_bool_false(self):
         parecer = {**_parecer_api_mock()}
         parecer["alerta_criminal"] = {**parecer["alerta_criminal"], "configura_crime": 0}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert isinstance(r["alerta_criminal"]["configura_crime"], bool)
         assert r["alerta_criminal"]["configura_crime"] is False
@@ -127,7 +127,7 @@ class TestNormalizacao:
     def test_configura_crime_sempre_bool_true(self):
         parecer = {**_parecer_api_mock()}
         parecer["alerta_criminal"] = {**parecer["alerta_criminal"], "configura_crime": 1}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert isinstance(r["alerta_criminal"]["configura_crime"], bool)
         assert r["alerta_criminal"]["configura_crime"] is True
@@ -135,26 +135,26 @@ class TestNormalizacao:
     def test_nivel_gravidade_invalido_normaliza_para_medio(self):
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "nivel_gravidade": "ALTISSIMO"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["dosimetria"]["nivel_gravidade"] == "MÉDIO"
 
     def test_valor_contrato_zero_zera_estimativa_multa(self):
         parecer = {**_parecer_api_mock()}
         dados = {**_dados_formulario_mock(), "valor_contrato": 0.0}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(dados, None, "key")
         assert r["dosimetria"]["valor_multa_estimado"] == 0.0
 
     def test_valor_contrato_ausente_zera_estimativa_multa(self):
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_sancoes.analisar_dosimetria(dados, None, "key")
         assert r["dosimetria"]["valor_multa_estimado"] == 0.0
 
     def test_valor_contrato_ausente_prompt_contem_nao_informado(self):
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_open:
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_open:
             ia_sancoes.analisar_dosimetria(dados, None, "key")
         mock_open.assert_called_once()
         corpo = json.loads(mock_open.call_args.args[0].data.decode("utf-8"))
@@ -164,14 +164,14 @@ class TestNormalizacao:
         parecer = {**_parecer_api_mock()}
         parecer["enquadramento"] = {**parecer["enquadramento"], "tipo_sancao": "advertencia"}
         parecer["dosimetria"] = {**parecer["dosimetria"], "valor_multa_estimado": 99999.0}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert "valor_multa_estimado" not in r["dosimetria"]
 
 
 class TestAnalisarDosimetria:
     def test_retorna_dict_com_chaves_obrigatorias(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert "fatos_apurados" in r
         assert "enquadramento" in r
@@ -180,12 +180,12 @@ class TestAnalisarDosimetria:
         assert "base_legal" in r
 
     def test_sem_documento_nao_levanta_erro(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert isinstance(r, dict)
 
     def test_com_texto_docs_nao_levanta_erro(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_sancoes.analisar_dosimetria(
                 _dados_formulario_mock(), "Relatório de fiscalização...", "key"
             )
@@ -199,13 +199,13 @@ class TestAnalisarDosimetria:
             hdrs=None,
             fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid key"}')),
         )
-        with patch("urllib.request.urlopen", side_effect=http_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=http_err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
                 ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key_invalida")
 
     def test_url_error_levanta_runtime_error(self):
         url_err = urllib.error.URLError(reason="Connection refused")
-        with patch("urllib.request.urlopen", side_effect=url_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=url_err):
             with pytest.raises(RuntimeError):
                 ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
 
@@ -216,20 +216,20 @@ class TestAnalisarDosimetria:
             return_value=MagicMock(read=MagicMock(return_value=payload))
         )
         mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
 
 
 class TestGerarMinuta:
     def test_retorna_string(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_minuta_api_mock())):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_minuta_api_mock())):
             r = ia_sancoes.gerar_minuta(_parecer_api_mock(), _dados_formulario_mock(), "key")
         assert isinstance(r, str)
         assert len(r) > 0
 
     def test_api_sem_minuta_retorna_string_vazia(self):
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen({"minuta": ""})):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen({"minuta": ""})):
             r = ia_sancoes.gerar_minuta(_parecer_api_mock(), _dados_formulario_mock(), "key")
         assert r == ""
 
@@ -241,13 +241,13 @@ class TestGerarMinuta:
             hdrs=None,
             fp=MagicMock(read=MagicMock(return_value=b"")),
         )
-        with patch("urllib.request.urlopen", side_effect=http_err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=http_err):
             with pytest.raises(RuntimeError, match="HTTP 500"):
                 ia_sancoes.gerar_minuta(_parecer_api_mock(), _dados_formulario_mock(), "key")
 
     def test_valor_contrato_ausente_prompt_contem_nao_informado(self):
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(_minuta_api_mock())) as mock_open:
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_minuta_api_mock())) as mock_open:
             ia_sancoes.gerar_minuta(_parecer_api_mock(), dados, "key")
         mock_open.assert_called_once()
         corpo = json.loads(mock_open.call_args.args[0].data.decode("utf-8"))

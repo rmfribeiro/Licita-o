@@ -85,7 +85,7 @@ class TestExtrairItensTR:
             {"id": 2, "descricao": "Licença SW", "unidade": "un",
              "quantidade_estimada": 10.0},
         ]}
-        with patch("urllib.request.urlopen", return_value=_mock_urlopen(payload)):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(payload)):
             result = ia_pesquisa_mercado.extrair_itens_tr("texto do TR", "key")
         assert len(result) == 2
         assert result[0]["descricao"] == "Consultoria TI"
@@ -96,7 +96,7 @@ class TestExtrairItensTR:
         cm = MagicMock()
         cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
         cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=cm):
             with pytest.raises(RuntimeError, match="JSON válido"):
                 ia_pesquisa_mercado.extrair_itens_tr("texto", "key")
 
@@ -106,7 +106,7 @@ class TestExtrairItensTR:
             code=401, msg="Unauthorized", hdrs=None,
             fp=MagicMock(read=MagicMock(return_value=b'{"error":"invalid"}')),
         )
-        with patch("urllib.request.urlopen", side_effect=err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=err):
             with pytest.raises(RuntimeError, match="HTTP 401"):
                 ia_pesquisa_mercado.extrair_itens_tr("texto", "key")
 
@@ -146,7 +146,7 @@ _PARECER = {"parecer_narrativo": "Pesquisa válida. Cotações atendem os crité
 class TestAnalisar:
     def test_todos_itens_validos_retorna_pesquisa_valida(self):
         side_effects = [_mock_urlopen(_COTACOES_VALIDAS), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto orçamentos", "key")
         assert r["status_geral"] == "VÁLIDA"
         assert len(r["itens_avaliados"]) == 2
@@ -167,7 +167,7 @@ class TestAnalisar:
             ],
         }
         side_effects = [_mock_urlopen(cotacoes_insuf), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
         assert r["status_geral"] == "COM RESSALVAS"
         assert r["itens_avaliados"][0]["status"] == "INSUFICIENTE"
@@ -183,7 +183,7 @@ class TestAnalisar:
             ],
         }
         side_effects = [_mock_urlopen(cotacoes_insuf), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
         assert r["status_geral"] == "INVÁLIDA"
 
@@ -192,18 +192,18 @@ class TestAnalisar:
         cm = MagicMock()
         cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
         cm.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=cm):
             with pytest.raises(RuntimeError, match="JSON válido"):
                 ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
 
     def test_url_error_levanta_runtime_error(self):
         err = urllib.error.URLError("Connection refused")
-        with patch("urllib.request.urlopen", side_effect=err):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=err):
             with pytest.raises(RuntimeError):
                 ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
 
     def test_lista_de_itens_vazia_retorna_invalida_sem_api(self):
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
             r = ia_pesquisa_mercado.analisar([], "texto", "key")
         mock_url.assert_not_called()
         assert r["status_geral"] == "INVÁLIDA"
@@ -223,7 +223,7 @@ class TestAnalisar:
                                ]}],
         }
         side_effects = [_mock_urlopen(cotacoes_zero), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(itens_tr_zero, "texto", "key")
         assert r["itens_avaliados"][0]["subtotal_estimado"] == 0.0
         assert r["valor_total_estimado"] == 0.0
@@ -238,7 +238,7 @@ class TestAnalisar:
             ],
         }
         side_effects = [_mock_urlopen(cotacoes_str_id), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
         assert r["status_geral"] == "VÁLIDA"
 
@@ -251,7 +251,7 @@ class TestAnalisar:
             ],
         }
         side_effects = [_mock_urlopen(cotacoes_bad_id), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
         # O item não é associado → ambos INSUFICIENTE, mas não crasha
         assert r["status_geral"] in ("INVÁLIDA", "COM RESSALVAS")
@@ -271,7 +271,7 @@ class TestAnalisar:
             ],
         }
         side_effects = [_mock_urlopen(cotacoes_str_preco), _mock_urlopen(_PARECER)]
-        with patch("urllib.request.urlopen", side_effect=side_effects):
+        with patch("ia_utils.urllib.request.urlopen", side_effect=side_effects):
             r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
         assert r["itens_avaliados"][0]["status"] == "VALIDO"
         assert r["itens_avaliados"][0]["preco_referencia"] == 125.0

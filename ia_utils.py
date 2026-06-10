@@ -36,7 +36,12 @@ def optional_float(v) -> float | None:
 
 
 def fmt_brl_opcional(v, default: str = "-") -> str:
-    return default if v is None else fmt_brl(safe_float(v))
+    if v is None:
+        return default
+    try:
+        return fmt_brl(float(v))
+    except (ValueError, TypeError):
+        return default
 
 
 def fmt_brl(valor: float) -> str:
