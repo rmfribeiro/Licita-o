@@ -36,8 +36,8 @@ def _validar_cnpj(cnpj: str) -> bool:
     return int(cnpj[12]) == d1 and int(cnpj[13]) == d2
 
 
-def _e_grande_vulto(valor: float) -> bool:
-    return valor > _GRANDE_VULTO_LIMITE
+def _e_grande_vulto(valor: float | None) -> bool | None:
+    return None if valor is None else valor > _GRANDE_VULTO_LIMITE
 
 
 def _buscar_receita(cnpj: str) -> dict | None:
@@ -134,7 +134,7 @@ def _verificar_pro_etica(cnpj: str) -> bool | None:
         return None
 
 
-def consultar(cnpj: str, valor_contrato: float) -> dict:
+def consultar(cnpj: str, valor_contrato: float | None) -> dict:
     cnpj_limpo = re.sub(r'\D', '', cnpj)
     if not _validar_cnpj(cnpj_limpo):
         raise ValueError(f"CNPJ inválido: {cnpj}")

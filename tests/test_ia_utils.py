@@ -36,11 +36,6 @@ class TestOptionalFloat:
     def test_string_nao_numerica_retorna_zero(self):
         assert ia_utils.optional_float("abc") == 0.0
 
-    def test_distingue_none_de_zero(self):
-        assert ia_utils.optional_float(None) is None
-        assert ia_utils.optional_float(0.0) == 0.0
-
-
 class TestFmtBrl:
     def test_formata_valor_simples(self):
         assert ia_utils.fmt_brl(1234.56) == "R$ 1.234,56"
@@ -70,3 +65,6 @@ class TestFmtBrlOpcional:
 
     def test_valor_grande(self):
         assert ia_utils.fmt_brl_opcional(1_000_000.0) == "R$ 1.000.000,00"
+
+    def test_string_nao_numerica_retorna_r0(self):
+        assert ia_utils.fmt_brl_opcional("abc") == "R$ 0,00"

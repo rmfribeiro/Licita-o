@@ -221,7 +221,7 @@ with aba2:
         "CNPJ do licitante (14 digitos, sem formatacao)", max_chars=18, key="ddi_cnpj_input"
     )
     valor_input = col2.number_input(
-        "Valor do contrato (R$)", min_value=0.0, format="%.2f", step=10_000.0, key="ddi_valor_input"
+        "Valor do contrato (R$)", min_value=0.0, value=None, format="%.2f", step=10_000.0, key="ddi_valor_input"
     )
 
     if st.button("Consultar fontes publicas", type="primary", key="btn_ddi_consultar"):
@@ -1382,7 +1382,7 @@ with aba8:
         _dos_sanc  = _pr_sanc.get("dosimetria") or {}
         _alerta_sanc = _pr_sanc.get("alerta_criminal") or {}
         _tipo_sanc = str(_enq_sanc.get("tipo_sancao") or "multa")
-        if _tipo_sanc == "multa" and not (_dad_sanc.get("valor_contrato") or 0):
+        if _tipo_sanc == "multa" and _dad_sanc.get("valor_contrato") is None:
             st.info(
                 "Valor do contrato não informado — a estimativa monetária da multa não foi calculada."
             )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 import types
-from ia_utils import chamar_api as _chamar_api, safe_float as _safe_float, fmt_brl as _fmt_brl
+from ia_utils import chamar_api as _chamar_api, optional_float as _optional_float, fmt_brl as _fmt_brl
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -132,14 +132,13 @@ def analisar(
         )
 
     conds = _CONDICOES_POR_TIPO[tipo_objeto]
-    _val_recv_raw = dados_entrega.get('valor_contrato')
-    _val_recv = _safe_float(_val_recv_raw)
+    _val_recv = _optional_float(dados_entrega.get('valor_contrato'))
     partes = [
         f"Análise de Recebimento Contratual — {TIPOS_OBJETO[tipo_objeto]}\n",
         f"Número do Contrato: {dados_entrega.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_entrega.get('objeto') or 'não informado'}",
         f"Data de Entrega/Conclusão: {dados_entrega.get('data_entrega') or 'não informada'}",
-        f"Valor do Contrato: {'não informado' if _val_recv_raw is None else _fmt_brl(_val_recv)}",
+        f"Valor do Contrato: {'não informado' if _val_recv is None else _fmt_brl(_val_recv)}",
         f"Descrição do que foi entregue/executado:\n{dados_entrega.get('descricao_entrega') or 'não informado'}",
     ]
     nao_conf = dados_entrega.get("nao_conformidades")

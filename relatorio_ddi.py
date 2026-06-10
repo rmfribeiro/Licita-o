@@ -9,7 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl as _fmt_brl
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl as _fmt_brl, fmt_brl_opcional as _fmt_brl_opcional
 
 _COR_RISCO = {
     "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
@@ -47,7 +47,7 @@ def _fmt_cnpj(cnpj: str) -> str:
     return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}" if len(c) == 14 else cnpj
 
 
-def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer: dict) -> bytes:
+def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, parecer: dict) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
@@ -71,8 +71,8 @@ def gerar_pdf(cnpj: str, valor_contrato: float, dados: dict, fid: dict, parecer:
         ["Porte",                   html.escape(str(dados.get("porte") or "-"))],
         ["CNAE Principal",          html.escape(str(dados.get("cnae") or "-"))],
         ["Data de Abertura",        html.escape(str(dados.get("data_abertura") or "-"))],
-        ["Valor do Contrato",       _fmt_brl(valor_contrato)],
-        ["Grande Vulto (> R$ 239M)", "Sim" if dados.get("grande_vulto") else "Não"],
+        ["Valor do Contrato",       _fmt_brl_opcional(valor_contrato)],
+        ["Grande Vulto (> R$ 239M)", {True: "Sim", False: "Não"}.get(dados.get("grande_vulto"), "-")],
     ]
     t = Table(linhas_id, colWidths=[5*cm, 12*cm])
     t.setStyle(TableStyle([
