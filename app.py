@@ -33,6 +33,8 @@ import ia_sancoes
 import relatorio_sancoes
 import ia_reabilitacao
 import relatorio_reabilitacao
+import ia_pesquisa_mercado
+import relatorio_pesquisa_mercado
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -44,6 +46,10 @@ ROTULO = {"inconformidade": "Inconformidade", "alerta": "Alerta", "revisar": "Re
 
 def _safe_md(s: object) -> str:
     return str(s).replace('[', '&#91;')
+
+
+def _fmt_brl(valor: float) -> str:
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _get_api_key():
@@ -98,7 +104,7 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9 = st.tabs([
+aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9, aba10 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
@@ -108,6 +114,7 @@ aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9 = st.tabs([
     "📝 Auditoria de TR",
     "⚖️ Dosimetria de Sanções",
     "🔄 Reabilitação de Fornecedor",
+    "💰 Pesquisa de Mercado",
 ])
 
 with aba1:
@@ -1815,4 +1822,199 @@ with aba9:
                         file_name="reabilitacao_minuta_requerimento.pdf",
                         mime="application/pdf",
                         key="reab_dl_requerimento",
+                    )
+
+with aba10:
+    st.subheader("Pesquisa de Preços de Mercado")
+    st.caption("Art. 23, Lei 14.133/2021 + IN SEGES/MGI 65/2021")
+
+    _api_key_pm = _get_api_key()
+
+    _objeto_pm = st.text_input(
+        "Objeto da pesquisa (descrição curta)",
+        placeholder="ex.: Contratação de serviços de consultoria em tecnologia da informação",
+        key="pm_objeto_input",
+    )
+    _tr_pm = st.file_uploader(
+        "Termo de Referência (PDF ou DOCX)",
+        type=["pdf", "docx"],
+        key="pm_tr_arquivo",
+    )
+
+    if st.button(
+        "Extrair Itens →",
+        type="primary",
+        key="btn_pm_extrair",
+        disabled=not (_objeto_pm and _tr_pm),
+    ):
+        for _k in ("pm_etapa", "pm_objeto", "pm_itens_tr",
+                   "pm_resultado", "pm_pdf_mapa", "pm_pdf_relatorio"):
+            st.session_state.pop(_k, None)
+        if not _api_key_pm:
+            st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
+        else:
+            try:
+                with st.spinner("Extraindo texto do TR..."):
+                    _texto_tr_pm, _avisos_tr_pm = etp_extrator.extrair_texto([_tr_pm])
+                for _av in _avisos_tr_pm:
+                    st.warning(_safe_md(_av))
+                with st.spinner("Identificando itens com IA..."):
+                    _itens_pm = ia_pesquisa_mercado.extrair_itens_tr(
+                        _texto_tr_pm, _api_key_pm
+                    )
+                st.session_state["pm_objeto"]   = _objeto_pm
+                st.session_state["pm_itens_tr"] = _itens_pm
+                st.session_state["pm_etapa"]    = 1
+            except Exception as _e_pm:
+                _msg_pm = str(_e_pm)
+                if isinstance(_e_pm, ValueError):
+                    _msg_pm += " Verifique se o arquivo não é uma imagem sem OCR."
+                st.error(_msg_pm)
+
+    if st.session_state.get("pm_etapa", 0) >= 1:
+        st.divider()
+        st.markdown("#### Itens identificados no TR")
+        _itens_extr = st.session_state.get("pm_itens_tr") or []
+        if _itens_extr:
+            _tbl_header = "| # | Descrição | Unidade | Qtd estimada |\n|---|-----------|---------|-------------|\n"
+            _tbl_rows   = "\n".join(
+                f"| {i.get('id', idx + 1)} | {_safe_md(i.get('descricao', ''))} "
+                f"| {_safe_md(i.get('unidade', 'un'))} "
+                f"| {i.get('quantidade_estimada', '—')} |"
+                for idx, i in enumerate(_itens_extr)
+            )
+            st.markdown(_tbl_header + _tbl_rows)
+        else:
+            st.warning("Nenhum item identificado. Verifique se o TR contém lista de itens.")
+
+        _orcamentos_pm = st.file_uploader(
+            "Orçamentos dos fornecedores (PDF ou DOCX, múltiplos arquivos)",
+            type=["pdf", "docx"],
+            accept_multiple_files=True,
+            key="pm_orcamentos",
+        )
+
+        if st.button(
+            "Analisar Pesquisa de Mercado →",
+            type="primary",
+            key="btn_pm_analisar",
+            disabled=not _orcamentos_pm,
+        ):
+            if not _api_key_pm:
+                st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
+            else:
+                try:
+                    with st.spinner("Extraindo texto dos orçamentos..."):
+                        _texto_orc_pm, _avisos_orc_pm = etp_extrator.extrair_texto(
+                            _orcamentos_pm
+                        )
+                    for _av in _avisos_orc_pm:
+                        st.warning(_safe_md(_av))
+                    with st.spinner("Analisando pesquisa de mercado com IA..."):
+                        _resultado_pm = ia_pesquisa_mercado.analisar(
+                            st.session_state["pm_itens_tr"],
+                            _texto_orc_pm,
+                            _api_key_pm,
+                        )
+                    st.session_state["pm_resultado"] = _resultado_pm
+                    st.session_state["pm_etapa"]     = 3
+                    try:
+                        st.session_state["pm_pdf_mapa"] = (
+                            relatorio_pesquisa_mercado.gerar_mapa_precos(
+                                st.session_state["pm_objeto"],
+                                _resultado_pm["itens_avaliados"],
+                                _resultado_pm["fornecedores"],
+                                _resultado_pm["valor_total_estimado"],
+                            )
+                        )
+                    except Exception as _e_mapa:
+                        st.session_state.pop("pm_pdf_mapa", None)
+                        st.warning(f"Mapa de Preços indisponível: {_e_mapa}")
+                    try:
+                        st.session_state["pm_pdf_relatorio"] = (
+                            relatorio_pesquisa_mercado.gerar_relatorio_pesquisa(
+                                st.session_state["pm_objeto"],
+                                _resultado_pm["itens_avaliados"],
+                                _resultado_pm["fornecedores"],
+                                _resultado_pm["parecer_narrativo"],
+                                _resultado_pm["status_geral"],
+                                _resultado_pm["valor_total_estimado"],
+                            )
+                        )
+                    except Exception as _e_rel:
+                        st.session_state.pop("pm_pdf_relatorio", None)
+                        st.warning(f"Relatório de Pesquisa indisponível: {_e_rel}")
+                except Exception as _e_pm2:
+                    _msg_pm2 = str(_e_pm2)
+                    if isinstance(_e_pm2, ValueError):
+                        _msg_pm2 += " Verifique se o arquivo não é uma imagem sem OCR."
+                    st.error(_msg_pm2)
+
+    if st.session_state.get("pm_etapa", 0) >= 3:
+        _res_pm = st.session_state.get("pm_resultado") or {}
+        if _res_pm:
+            st.divider()
+            st.markdown("### Resultado da Pesquisa de Mercado")
+
+            _status_pm = str(_res_pm.get("status_geral") or "").strip().upper()
+            _icone_pm = {
+                "VÁLIDA":        "🟢",
+                "COM RESSALVAS": "🟡",
+                "INVÁLIDA":      "🔴",
+            }
+            st.subheader(
+                f"{_icone_pm.get(_status_pm, '⚪')} {_safe_md(_status_pm)}"
+            )
+
+            for _item_pm in (_res_pm.get("itens_avaliados") or []):
+                _desc_i = _safe_md(_item_pm.get("descricao") or "")
+                _un_i   = _safe_md(_item_pm.get("unidade") or "un")
+                _qtd_i  = _item_pm.get("quantidade_estimada")
+                _qtd_str = f" — Qtd: {_qtd_i}" if _qtd_i else ""
+                st.markdown(f"**Item {_item_pm['item_id']} — {_desc_i}** ({_un_i}){_qtd_str}")
+
+                if _item_pm.get("preco_referencia") is not None:
+                    st.markdown(
+                        f"Preço de referência: **{_fmt_brl(_item_pm['preco_referencia'])}/{_un_i}**"
+                    )
+                    if _item_pm.get("subtotal_estimado"):
+                        st.caption(
+                            f"Subtotal estimado: {_fmt_brl(_item_pm['subtotal_estimado'])}"
+                        )
+                else:
+                    st.warning(
+                        f"⚠ Apenas {len(_item_pm.get('cotacoes_validas', []))} cotação(ões) "
+                        "válida(s) — insuficiente (mínimo: 3)"
+                    )
+
+                for _exc_pm in (_item_pm.get("cotacoes_excluidas") or []):
+                    st.caption(f"❌ Excluída: {_safe_md(_exc_pm.get('motivo', ''))}")
+
+            if _res_pm.get("valor_total_estimado") is not None:
+                st.metric(
+                    "Valor Total Estimado",
+                    _fmt_brl(_res_pm["valor_total_estimado"]),
+                )
+
+            if _res_pm.get("parecer_narrativo"):
+                st.info(_safe_md(_res_pm["parecer_narrativo"]))
+
+            _col_pm1, _col_pm2 = st.columns(2)
+            with _col_pm1:
+                if "pm_pdf_mapa" in st.session_state:
+                    st.download_button(
+                        label="⬇ Mapa de Preços (PDF)",
+                        data=st.session_state["pm_pdf_mapa"],
+                        file_name="pesquisa_mercado_mapa_precos.pdf",
+                        mime="application/pdf",
+                        key="pm_dl_mapa",
+                    )
+            with _col_pm2:
+                if "pm_pdf_relatorio" in st.session_state:
+                    st.download_button(
+                        label="⬇ Relatório de Pesquisa (PDF)",
+                        data=st.session_state["pm_pdf_relatorio"],
+                        file_name="pesquisa_mercado_relatorio.pdf",
+                        mime="application/pdf",
+                        key="pm_dl_relatorio",
                     )
