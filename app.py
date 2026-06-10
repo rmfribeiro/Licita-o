@@ -865,7 +865,7 @@ with aba6:
         )
         _valor_cont = st.number_input(
             "Valor atual do contrato (R$)",
-            min_value=0.0, format="%.2f", step=10_000.0, key="cont_valor",
+            min_value=0.0, value=None, format="%.2f", step=10_000.0, key="cont_valor",
         )
 
         _arqs_cont = st.file_uploader(
@@ -888,7 +888,7 @@ with aba6:
                     "numero_contrato": _num_cont or "não informado",
                     "objeto": _objeto_cont or "não informado",
                     "data_assinatura": _data_cont or "não informada",
-                    "valor_atual": _valor_cont or None,
+                    "valor_atual": _valor_cont,
                 }
                 try:
                     with st.spinner(
@@ -1044,7 +1044,7 @@ with aba6:
         )
         _valor_recv = st.number_input(
             "Valor do contrato (R$)",
-            min_value=0.0, format="%.2f", step=10_000.0, key="recv_valor",
+            min_value=0.0, value=None, format="%.2f", step=10_000.0, key="recv_valor",
         )
         _arqs_recv = st.file_uploader(
             "Documentos de suporte (opcional — PDF ou DOCX)",
@@ -1070,7 +1070,7 @@ with aba6:
                     "data_entrega": _data_recv or "não informada",
                     "descricao_entrega": _desc_recv,
                     "nao_conformidades": _nao_conf_recv or "",
-                    "valor_contrato": _valor_recv or None,
+                    "valor_contrato": _valor_recv,
                 }
                 try:
                     with st.spinner(
@@ -1283,7 +1283,7 @@ with aba8:
         _valor_sanc = st.number_input(
             "Valor do Contrato (R$)",
             min_value=0.0,
-            value=0.0,
+            value=None,
             step=1000.0,
             format="%.2f",
             key="sanc_valor",
@@ -1334,7 +1334,7 @@ with aba8:
                     _dados_sanc = {
                         "cnpj":            _cnpj_sanc,
                         "numero_contrato": _contrato_sanc,
-                        "valor_contrato":  _valor_sanc or None,
+                        "valor_contrato":  _valor_sanc,
                         "reincidencia":    _reincidencia_sanc,
                         "autoridade":      _autoridade_sanc,
                         "orgao":           _orgao_sanc,
