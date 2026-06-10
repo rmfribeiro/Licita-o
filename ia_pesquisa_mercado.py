@@ -186,7 +186,11 @@ def analisar(
                 except (ValueError, TypeError):
                     pass
         ref = calcular_referencia(cotacoes_raw)
-        qtd = item_tr.get("quantidade_estimada")
+        _qtd_raw = item_tr.get("quantidade_estimada")
+        try:
+            qtd = float(_qtd_raw) if _qtd_raw is not None else None
+        except (ValueError, TypeError):
+            qtd = None
         subtotal = (
             ref["preco_referencia"] * qtd
             if ref["preco_referencia"] is not None and qtd is not None
@@ -222,7 +226,7 @@ def analisar(
         if i["preco_referencia"] is not None:
             resumo_parts.append(
                 f"Item {i['item_id']} ({i['descricao']}): {i['status']}, "
-                f"ref R$ {i['preco_referencia']:.2f}/{i['unidade']}"
+                f"ref {_fmt_brl(i['preco_referencia'])}/{i['unidade']}"
             )
         else:
             resumo_parts.append(

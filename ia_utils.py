@@ -23,8 +23,10 @@ def as_list(v) -> list:
 
 
 def safe_float(v) -> float:
+    if v is None:
+        return 0.0
     try:
-        return float(v or 0)
+        return float(v)
     except (ValueError, TypeError):
         return 0.0
 
@@ -65,9 +67,11 @@ def chamar_anthropic(
     return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 
-def chamar_api(prompt: str, api_key: str, modelo: str, sistema: str) -> dict:
+def chamar_api(prompt: str, api_key: str, modelo: str, sistema: str, *, max_tokens: int = 4000) -> dict:
     try:
-        bruto = chamar_anthropic(prompt, api_key, modelo, sistema)
+        bruto = chamar_anthropic(prompt, api_key, modelo, sistema, max_tokens=max_tokens)
+    except RuntimeError:
+        raise
     except urllib.error.HTTPError as exc:
         _body = ""
         try:

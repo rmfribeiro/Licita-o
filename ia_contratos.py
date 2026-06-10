@@ -1,8 +1,6 @@
 from __future__ import annotations
 import types
-import urllib.error
-
-from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic, safe_float as _safe_float
+from ia_utils import chamar_api as _chamar_api, safe_float as _safe_float, fmt_brl as _fmt_brl
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -116,7 +114,7 @@ def analisar(
         f"Número do Contrato: {dados_contrato.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_contrato.get('objeto') or 'não informado'}",
         f"Data de Assinatura: {dados_contrato.get('data_assinatura') or 'não informada'}",
-        f"Valor Atual: {'não informado' if _val_atual == 0.0 else f'R$ {_val_atual:.2f}'}",
+        f"Valor Atual: {'não informado' if _val_atual == 0.0 else _fmt_brl(_val_atual)}",
         f"\nRequisitos legais a verificar para {TIPOS_ALTERACAO[tipo]}:",
     ]
     for i, req in enumerate(REQUISITOS_POR_TIPO[tipo], 1):
@@ -136,32 +134,9 @@ def analisar(
         f"\nRetorne a análise no formato JSON:\n{_ESTRUTURA_PARECER}"
     )
 
-    try:
-        bruto = _chamar_anthropic(
-            "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo]
-        )
-    except urllib.error.HTTPError as exc:
-        _body = ""
-        try:
-            _body = exc.read().decode("utf-8", errors="replace")
-        except (OSError, IOError):
-            pass
-        raise RuntimeError(
-            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
-        ) from exc
-    except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-
-    try:
-        qualitativo = _extrair_json(bruto)
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-
-    if not isinstance(qualitativo, dict):
-        raise RuntimeError(
-            f"Resposta inesperada da API: objeto JSON esperado, "
-            f"recebeu {type(qualitativo).__name__}"
-        )
+    qualitativo = _chamar_api(
+        "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo]
+    )
 
     _pval = str(qualitativo.get("parecer") or "INDEFERÍVEL").strip().upper()
     qualitativo["parecer"] = NORM_PARECER_CONT.get(_pval, _pval)

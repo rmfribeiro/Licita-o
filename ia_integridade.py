@@ -1,14 +1,13 @@
 from __future__ import annotations
 import os
 import types
-import urllib.error
 import logging
 try:
     import streamlit as st
     _HAS_ST = True
 except ImportError:
     _HAS_ST = False
-from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
+from ia_utils import chamar_api as _chamar_api
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 _MATURIDADE_ORDEM = ["INEXISTENTE", "INICIAL", "EM DESENVOLVIMENTO", "CONSOLIDADO"]
@@ -135,27 +134,9 @@ def diagnosticar(
 
     partes.append(f"\nRetorne o diagnóstico no formato:\n{_ESTRUTURA_PARECER}")
 
-    try:
-        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000)
-    except urllib.error.HTTPError as exc:
-        _body = ""
-        try:
-            _body = exc.read().decode("utf-8", errors="replace")
-        except (OSError, IOError):
-            pass
-        raise RuntimeError(f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}") from exc
-    except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-
-    try:
-        parecer = _extrair_json(bruto)
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-
-    if not isinstance(parecer, dict):
-        raise RuntimeError(
-            f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}"
-        )
+    parecer = _chamar_api(
+        "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
+    )
 
     _mat = str(parecer.get("maturidade_geral") or "INEXISTENTE").strip().upper()
     if _mat not in _MATURIDADE_ORDEM:

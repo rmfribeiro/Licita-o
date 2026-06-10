@@ -1,8 +1,6 @@
 from __future__ import annotations
 import types
-import urllib.error
-
-from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic, safe_float as _safe_float
+from ia_utils import chamar_api as _chamar_api, safe_float as _safe_float, fmt_brl as _fmt_brl
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -140,7 +138,7 @@ def analisar(
         f"Número do Contrato: {dados_entrega.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_entrega.get('objeto') or 'não informado'}",
         f"Data de Entrega/Conclusão: {dados_entrega.get('data_entrega') or 'não informada'}",
-        f"Valor do Contrato: {'não informado' if _val_recv == 0.0 else f'R$ {_val_recv:.2f}'}",
+        f"Valor do Contrato: {'não informado' if _val_recv == 0.0 else _fmt_brl(_val_recv)}",
         f"Descrição do que foi entregue/executado:\n{dados_entrega.get('descricao_entrega') or 'não informado'}",
     ]
     nao_conf = dados_entrega.get("nao_conformidades")
@@ -165,30 +163,9 @@ def analisar(
 
     partes.append(f"\nRetorne a análise no formato JSON:\n{_ESTRUTURA_PARECER}")
 
-    try:
-        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto])
-    except urllib.error.HTTPError as exc:
-        _body = ""
-        try:
-            _body = exc.read().decode("utf-8", errors="replace")
-        except (OSError, IOError):
-            pass
-        raise RuntimeError(
-            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
-        ) from exc
-    except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-
-    try:
-        qualitativo = _extrair_json(bruto)
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-
-    if not isinstance(qualitativo, dict):
-        raise RuntimeError(
-            f"Resposta inesperada da API: objeto JSON esperado, "
-            f"recebeu {type(qualitativo).__name__}"
-        )
+    qualitativo = _chamar_api(
+        "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto]
+    )
 
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)
