@@ -27,7 +27,7 @@ def calcular_referencia(cotacoes: list[float]) -> dict:
             "preco_referencia":  None,
             "cotacoes_validas":  list(cotacoes),
             "cotacoes_excluidas": [],
-            "status":            "INSUFICIENTE",
+            "status":            STATUS_ITEM["INSUFICIENTE"],
         }
 
     mediana_prov = statistics.median(cotacoes)
@@ -50,14 +50,14 @@ def calcular_referencia(cotacoes: list[float]) -> dict:
             "preco_referencia":  None,
             "cotacoes_validas":  validas,
             "cotacoes_excluidas": excluidas,
-            "status":            "INSUFICIENTE",
+            "status":            STATUS_ITEM["INSUFICIENTE"],
         }
 
     return {
         "preco_referencia":  statistics.median(validas),
         "cotacoes_validas":  validas,
         "cotacoes_excluidas": excluidas,
-        "status":            "VALIDO",
+        "status":            STATUS_ITEM["VALIDO"],
     }
 
 
@@ -167,6 +167,19 @@ def analisar(
     api_key: str,
     modelo: str = _MODELO_PADRAO,
 ) -> dict:
+    if not itens_tr:
+        return {
+            "status_geral":         STATUS_PESQUISA["INVÁLIDA"],
+            "itens_avaliados":      [],
+            "fornecedores":         [],
+            "valor_total_estimado": None,
+            "parecer_narrativo":    "Nenhum item identificado no Termo de Referência.",
+            "base_legal": [
+                "Art. 23, Lei 14.133/2021",
+                "IN SEGES/MGI 65/2021",
+            ],
+        }
+
     _itens_texto = "\n".join(
         f"{i['id']}. {i['descricao']} ({i.get('unidade', 'un')}) "
         f"— qtd: {i.get('quantidade_estimada', 'não informada')}"
@@ -216,13 +229,13 @@ def analisar(
         })
 
     n_total = len(itens_avaliados)
-    n_insuf = sum(1 for i in itens_avaliados if i["status"] == "INSUFICIENTE")
+    n_insuf = sum(1 for i in itens_avaliados if i["status"] == STATUS_ITEM["INSUFICIENTE"])
     if n_insuf == 0:
-        status_geral = "VÁLIDA"
+        status_geral = STATUS_PESQUISA["VÁLIDA"]
     elif n_insuf > n_total / 2:
-        status_geral = "INVÁLIDA"
+        status_geral = STATUS_PESQUISA["INVÁLIDA"]
     else:
-        status_geral = "COM RESSALVAS"
+        status_geral = STATUS_PESQUISA["COM RESSALVAS"]
 
     subtotals = [i["subtotal_estimado"] for i in itens_avaliados if i["subtotal_estimado"]]
     valor_total = sum(subtotals) if subtotals else None

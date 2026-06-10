@@ -201,3 +201,10 @@ class TestAnalisar:
         with patch("urllib.request.urlopen", side_effect=err):
             with pytest.raises(RuntimeError):
                 ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+
+    def test_lista_de_itens_vazia_retorna_invalida_sem_api(self):
+        with patch("urllib.request.urlopen") as mock_url:
+            r = ia_pesquisa_mercado.analisar([], "texto", "key")
+        mock_url.assert_not_called()
+        assert r["status_geral"] == "INVÁLIDA"
+        assert r["itens_avaliados"] == []
