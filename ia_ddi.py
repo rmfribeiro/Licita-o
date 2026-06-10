@@ -48,7 +48,7 @@ def _aplicar_piso(dados: dict, fid: dict | None = None) -> str:
     if (dados.get("situacao") or "").upper() in ("SUSPENSA", "BAIXADA", "INAPTA"):
         piso = _risco_max(piso, "MÉDIO")
 
-    if dados.get("grande_vulto"):
+    if dados.get("grande_vulto") is True:
         tem_pi = dados.get("pro_etica") or (
             fid is not None and sum(1 for v in fid.values() if v == "Sim") >= 3
         )

@@ -36,6 +36,7 @@ class TestOptionalFloat:
     def test_string_nao_numerica_retorna_zero(self):
         assert ia_utils.optional_float("abc") == 0.0
 
+
 class TestFmtBrl:
     def test_formata_valor_simples(self):
         assert ia_utils.fmt_brl(1234.56) == "R$ 1.234,56"

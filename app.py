@@ -594,7 +594,7 @@ with aba5:
         st.session_state.pop("pi_docs", None)
         try:
             with st.spinner("Consultando Receita Federal..."):
-                _dados_pi = ddi_consultas.consultar(_cnpj_pi, 0.0)
+                _dados_pi = ddi_consultas.consultar(_cnpj_pi, None)
             st.session_state["pi_dados"] = _dados_pi
             st.session_state["pi_cnpj"] = _dados_pi["cnpj"]
             st.session_state["pi_hipotese"] = _hipotese_pi
@@ -1583,7 +1583,7 @@ with aba9:
             st.session_state.pop(_k, None)
         try:
             with st.spinner("Consultando CEIS/CNEP..."):
-                _dados_empresa_reab = ddi_consultas.consultar(_cnpj_reab, 0.0)
+                _dados_empresa_reab = ddi_consultas.consultar(_cnpj_reab, None)
             _dados_sancao_reab = {
                 "tipo_sancao":            _tipo_sancao_reab,
                 "data_aplicacao":         _data_sancao_reab,

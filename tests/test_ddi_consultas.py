@@ -200,6 +200,9 @@ class TestEGrandeVulto:
     def test_igual_ao_limite_nao_e_grande_vulto(self):
         assert ddi_consultas._e_grande_vulto(239_000_000.0) is False
 
+    def test_none_retorna_none(self):
+        assert ddi_consultas._e_grande_vulto(None) is None
+
 
 class TestConsultar:
     def test_cnpj_invalido_levanta_valor_error(self):
@@ -261,3 +264,13 @@ class TestConsultar:
 
         assert result["razao_social"] == ""
         assert result["receita_disponivel"] is False
+
+    @patch('ddi_consultas._buscar_receita', return_value=None)
+    @patch('ddi_consultas._buscar_ceis', return_value=[])
+    @patch('ddi_consultas._buscar_cnep', return_value=[])
+    @patch('ddi_consultas._verificar_pro_etica', return_value=None)
+    def test_valor_contrato_none_grande_vulto_none(self, *mocks):
+        result = ddi_consultas.consultar("11222333000181", None)
+
+        assert result["grande_vulto"] is None
+        assert result["valor_contrato"] is None

@@ -9,7 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl as _fmt_brl, fmt_brl_opcional as _fmt_brl_opcional
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
 
 _COR_RISCO = {
     "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
@@ -155,13 +155,14 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     # Programa de Integridade
     pi_dim = dims.get("programa_integridade") or {}
     story.append(Paragraph("Programa de Integridade", _ESTILO_H2))
+    _bool_pt = {True: "Sim", False: "Não"}
     story.append(Paragraph(
-        f"Empresa Pro-Etica (CGU): {'Sim' if pi_dim.get('pro_etica') else 'Não'}",
+        "Empresa Pro-Etica (CGU): " + _bool_pt.get(pi_dim.get("pro_etica"), "-"),
         _ESTILO_CORPO
     ))
     story.append(Paragraph(
-        f"PI obrigatorio (Decreto 12.304/2024 - Grande Vulto): "
-        f"{'Sim' if pi_dim.get('obrigatorio') else 'Não'}",
+        "PI obrigatorio (Decreto 12.304/2024 - Grande Vulto): "
+        + _bool_pt.get(pi_dim.get("obrigatorio"), "-"),
         _ESTILO_CORPO
     ))
     story.append(Spacer(1, 0.3*cm))

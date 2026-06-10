@@ -1,6 +1,6 @@
 from __future__ import annotations
 import types
-from ia_utils import chamar_api as _chamar_api, optional_float as _optional_float, fmt_brl as _fmt_brl
+from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -108,13 +108,12 @@ def analisar(
             f"Tipo de alteração inválido: '{tipo}'. Esperado: {list(TIPOS_ALTERACAO)}"
         )
 
-    _val_atual = _optional_float(dados_contrato.get('valor_atual'))
     partes = [
         f"Análise de Pedido de Alteração Contratual — {TIPOS_ALTERACAO[tipo]}\n",
         f"Número do Contrato: {dados_contrato.get('numero_contrato') or 'não informado'}",
         f"Objeto: {dados_contrato.get('objeto') or 'não informado'}",
         f"Data de Assinatura: {dados_contrato.get('data_assinatura') or 'não informada'}",
-        f"Valor Atual: {'não informado' if _val_atual is None else _fmt_brl(_val_atual)}",
+        "Valor Atual: " + _fmt_brl_opcional(dados_contrato.get('valor_atual'), default='não informado'),
         f"\nRequisitos legais a verificar para {TIPOS_ALTERACAO[tipo]}:",
     ]
     for i, req in enumerate(REQUISITOS_POR_TIPO[tipo], 1):
