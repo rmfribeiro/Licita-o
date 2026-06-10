@@ -9,7 +9,6 @@ _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 STATUS_ITEM: types.MappingProxyType[str, str] = types.MappingProxyType({
     "VALIDO":       "VALIDO",
     "INSUFICIENTE": "INSUFICIENTE",
-    "INEXEQUIVEL":  "INEXEQUIVEL",
 })
 
 STATUS_PESQUISA: types.MappingProxyType[str, str] = types.MappingProxyType({
@@ -91,31 +90,7 @@ def extrair_itens_tr(
         f"{texto_tr[:30000]}\n\n"
         f"Retorne no formato JSON:\n{_ESTRUTURA_ITENS}"
     )
-    try:
-        bruto = _chamar_anthropic(prompt, api_key, modelo, _SISTEMA_EXTRACAO)
-    except urllib.error.HTTPError as exc:
-        _body = ""
-        try:
-            _body = exc.read().decode("utf-8", errors="replace")
-        except (OSError, IOError):
-            pass
-        raise RuntimeError(
-            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
-        ) from exc
-    except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-
-    try:
-        resultado = _extrair_json(bruto)
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-
-    if not isinstance(resultado, dict):
-        raise RuntimeError(
-            f"Resposta inesperada da API: objeto JSON esperado, "
-            f"recebeu {type(resultado).__name__}"
-        )
-
+    resultado = _chamar_api(prompt, api_key, modelo, _SISTEMA_EXTRACAO)
     itens = resultado.get("itens") or []
     for i, item in enumerate(itens, start=1):
         if "id" not in item:
@@ -206,8 +181,9 @@ def analisar(
 
     fornecedores = dados_cotacoes.get("fornecedores") or []
     itens_cotados = {
-        item["item_id"]: item
+        int(item["item_id"]): item
         for item in (dados_cotacoes.get("itens_cotados") or [])
+        if item.get("item_id") is not None
     }
 
     itens_avaliados: list[dict] = []

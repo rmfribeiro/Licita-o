@@ -9,7 +9,7 @@ import ia_pesquisa_mercado
 class TestConstantes:
     def test_status_item_tem_chaves_esperadas(self):
         assert set(ia_pesquisa_mercado.STATUS_ITEM.keys()) == {
-            "VALIDO", "INSUFICIENTE", "INEXEQUIVEL"
+            "VALIDO", "INSUFICIENTE"
         }
 
     def test_status_pesquisa_tem_chaves_esperadas(self):
