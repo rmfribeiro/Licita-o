@@ -208,3 +208,70 @@ class TestAnalisar:
         mock_url.assert_not_called()
         assert r["status_geral"] == "INVÁLIDA"
         assert r["itens_avaliados"] == []
+
+    def test_quantidade_estimada_zero_produz_subtotal_zero_nao_none(self):
+        """quantidade_estimada=0 deve gerar subtotal=0.0, não None (falsy-zero guard)."""
+        itens_tr_zero = [{"id": 1, "descricao": "Item Zero", "unidade": "un",
+                          "quantidade_estimada": 0}]
+        cotacoes_zero = {
+            "fornecedores": [{"nome": "A", "cnpj": ""}],
+            "itens_cotados": [{"item_id": 1, "descricao_no_orcamento": "Item Zero",
+                               "cotacoes": [
+                                   {"fornecedor": "A", "preco_unitario": 100.0},
+                                   {"fornecedor": "B", "preco_unitario": 110.0},
+                                   {"fornecedor": "C", "preco_unitario": 105.0},
+                               ]}],
+        }
+        side_effects = [_mock_urlopen(cotacoes_zero), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(itens_tr_zero, "texto", "key")
+        assert r["itens_avaliados"][0]["subtotal_estimado"] == 0.0
+        assert r["valor_total_estimado"] == 0.0
+
+    def test_item_id_string_numerico_e_aceito(self):
+        """item_id retornado como string '1' deve ser parseado sem crash."""
+        cotacoes_str_id = {
+            **_COTACOES_VALIDAS,
+            "itens_cotados": [
+                {**_COTACOES_VALIDAS["itens_cotados"][0], "item_id": "1"},
+                {**_COTACOES_VALIDAS["itens_cotados"][1], "item_id": "2"},
+            ],
+        }
+        side_effects = [_mock_urlopen(cotacoes_str_id), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+        assert r["status_geral"] == "VÁLIDA"
+
+    def test_item_id_nao_numerico_nao_crasha(self):
+        """item_id='item_1' deve ser silenciosamente ignorado sem ValueError."""
+        cotacoes_bad_id = {
+            **_COTACOES_VALIDAS,
+            "itens_cotados": [
+                {**_COTACOES_VALIDAS["itens_cotados"][0], "item_id": "item_1"},
+            ],
+        }
+        side_effects = [_mock_urlopen(cotacoes_bad_id), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+        # O item não é associado → ambos INSUFICIENTE, mas não crasha
+        assert r["status_geral"] in ("INVÁLIDA", "COM RESSALVAS")
+
+    def test_preco_unitario_como_string_e_coercido_para_float(self):
+        """preco_unitario retornado como string deve ser convertido, não causar TypeError."""
+        cotacoes_str_preco = {
+            **_COTACOES_VALIDAS,
+            "itens_cotados": [
+                {**_COTACOES_VALIDAS["itens_cotados"][0],
+                 "cotacoes": [
+                     {"fornecedor": "Empresa A", "preco_unitario": "120.0"},
+                     {"fornecedor": "Empresa B", "preco_unitario": "130.0"},
+                     {"fornecedor": "Empresa C", "preco_unitario": "125.0"},
+                 ]},
+                _COTACOES_VALIDAS["itens_cotados"][1],
+            ],
+        }
+        side_effects = [_mock_urlopen(cotacoes_str_preco), _mock_urlopen(_PARECER)]
+        with patch("urllib.request.urlopen", side_effect=side_effects):
+            r = ia_pesquisa_mercado.analisar(_ITENS_TR, "texto", "key")
+        assert r["itens_avaliados"][0]["status"] == "VALIDO"
+        assert r["itens_avaliados"][0]["preco_referencia"] == 125.0

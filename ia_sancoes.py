@@ -1,10 +1,8 @@
 from __future__ import annotations
 import types
-import urllib.error
 
 from ia_utils import (
-    extrair_json as _extrair_json,
-    chamar_anthropic as _chamar_anthropic,
+    chamar_api as _chamar_api,
     safe_float as _safe_float,
     fmt_brl as _fmt_brl,
 )
@@ -110,34 +108,6 @@ def _normalizar(parecer: dict, valor_contrato: float) -> dict:
     parecer["dosimetria"] = dos
     parecer["alerta_criminal"] = alerta
     return parecer
-
-
-def _chamar_api(prompt: str, api_key: str, modelo: str, sistema: str) -> dict:
-    try:
-        bruto = _chamar_anthropic(prompt, api_key, modelo, sistema)
-    except urllib.error.HTTPError as exc:
-        _body = ""
-        try:
-            _body = exc.read().decode("utf-8", errors="replace")
-        except (OSError, IOError):
-            pass
-        raise RuntimeError(
-            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
-        ) from exc
-    except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-
-    try:
-        resultado = _extrair_json(bruto)
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-
-    if not isinstance(resultado, dict):
-        raise RuntimeError(
-            f"Resposta inesperada da API: objeto JSON esperado, "
-            f"recebeu {type(resultado).__name__}"
-        )
-    return resultado
 
 
 def analisar_dosimetria(

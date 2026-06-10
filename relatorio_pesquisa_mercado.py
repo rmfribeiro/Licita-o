@@ -9,7 +9,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS
+from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl as _fmt_brl
 
 _COR_PESQUISA = {
     "VÁLIDA":        colors.HexColor(_COR_STATUS["ok"]),
@@ -24,10 +24,6 @@ _H2      = ParagraphStyle("pm_h2",     parent=_estilos["Heading2"], fontSize=12,
 _CORPO   = ParagraphStyle("pm_corpo",  parent=_estilos["Normal"],   fontSize=10, spaceAfter=3)
 _PEQUENO = ParagraphStyle("pm_peq",    parent=_estilos["Normal"],   fontSize=8,  textColor=colors.grey)
 _BADGE   = ParagraphStyle("pm_badge",  parent=_estilos["Normal"],   fontSize=14, textColor=colors.white, alignment=1)
-
-
-def _fmt_brl(valor: float) -> str:
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def gerar_mapa_precos(

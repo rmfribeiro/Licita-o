@@ -65,6 +65,34 @@ def chamar_anthropic(
     return "".join(b.get("text", "") for b in (dados.get("content") or []) if isinstance(b, dict))
 
 
+def chamar_api(prompt: str, api_key: str, modelo: str, sistema: str) -> dict:
+    try:
+        bruto = chamar_anthropic(prompt, api_key, modelo, sistema)
+    except urllib.error.HTTPError as exc:
+        _body = ""
+        try:
+            _body = exc.read().decode("utf-8", errors="replace")
+        except (OSError, IOError):
+            pass
+        raise RuntimeError(
+            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
+        ) from exc
+    except (urllib.error.URLError, OSError) as exc:
+        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
+
+    try:
+        resultado = extrair_json(bruto)
+    except ValueError as exc:
+        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
+
+    if not isinstance(resultado, dict):
+        raise RuntimeError(
+            f"Resposta inesperada da API: objeto JSON esperado, "
+            f"recebeu {type(resultado).__name__}"
+        )
+    return resultado
+
+
 def extrair_json(texto: str) -> dict:
     """Extrai e repara JSON da resposta bruta do LLM.
 

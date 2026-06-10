@@ -1,8 +1,7 @@
 from __future__ import annotations
 import statistics
 import types
-import urllib.error
-from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
+from ia_utils import chamar_api as _chamar_api, fmt_brl as _fmt_brl
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -40,7 +39,7 @@ def calcular_referencia(cotacoes: list[float]) -> dict:
             pct = (c - mediana_prov) / mediana_prov * 100
             excluidas.append({
                 "preco":  c,
-                "motivo": f"R$ {c:.2f} — {pct:.0f}% acima da mediana provisória",
+                "motivo": f"{_fmt_brl(c)} — {pct:.0f}% acima da mediana provisória",
             })
         else:
             validas.append(c)
@@ -133,34 +132,6 @@ _SISTEMA_PARECER = (
 _ESTRUTURA_PARECER = '{"parecer_narrativo": "Texto do parecer técnico."}'
 
 
-def _chamar_api(prompt: str, api_key: str, modelo: str, sistema: str) -> dict:
-    try:
-        bruto = _chamar_anthropic(prompt, api_key, modelo, sistema)
-    except urllib.error.HTTPError as exc:
-        _body = ""
-        try:
-            _body = exc.read().decode("utf-8", errors="replace")
-        except (OSError, IOError):
-            pass
-        raise RuntimeError(
-            f"Falha na API Anthropic: HTTP {exc.code} {exc.reason} — {_body}"
-        ) from exc
-    except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Falha na API Anthropic: {exc}") from exc
-
-    try:
-        resultado = _extrair_json(bruto)
-    except ValueError as exc:
-        raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-
-    if not isinstance(resultado, dict):
-        raise RuntimeError(
-            f"Resposta inesperada da API: objeto JSON esperado, "
-            f"recebeu {type(resultado).__name__}"
-        )
-    return resultado
-
-
 def analisar(
     itens_tr: list[dict],
     texto_orcamentos: str,
@@ -193,26 +164,32 @@ def analisar(
     dados_cotacoes = _chamar_api(prompt_cotacoes, api_key, modelo, _SISTEMA_COTACOES)
 
     fornecedores = dados_cotacoes.get("fornecedores") or []
-    itens_cotados = {
-        int(item["item_id"]): item
-        for item in (dados_cotacoes.get("itens_cotados") or [])
-        if item.get("item_id") is not None
-    }
+    itens_cotados: dict = {}
+    for _ic in (dados_cotacoes.get("itens_cotados") or []):
+        if _ic.get("item_id") is None:
+            continue
+        try:
+            itens_cotados[int(float(_ic["item_id"]))] = _ic
+        except (ValueError, TypeError):
+            pass
 
     itens_avaliados: list[dict] = []
     for item_tr in itens_tr:
         item_id = item_tr["id"]
         item_cotado = itens_cotados.get(item_id, {})
-        cotacoes_raw = [
-            c["preco_unitario"]
-            for c in (item_cotado.get("cotacoes") or [])
-            if c.get("preco_unitario") is not None
-        ]
+        cotacoes_raw: list[float] = []
+        for _c in (item_cotado.get("cotacoes") or []):
+            _p = _c.get("preco_unitario")
+            if _p is not None:
+                try:
+                    cotacoes_raw.append(float(_p))
+                except (ValueError, TypeError):
+                    pass
         ref = calcular_referencia(cotacoes_raw)
         qtd = item_tr.get("quantidade_estimada")
         subtotal = (
             ref["preco_referencia"] * qtd
-            if ref["preco_referencia"] is not None and qtd
+            if ref["preco_referencia"] is not None and qtd is not None
             else None
         )
         itens_avaliados.append({
@@ -237,7 +214,7 @@ def analisar(
     else:
         status_geral = STATUS_PESQUISA["COM RESSALVAS"]
 
-    subtotals = [i["subtotal_estimado"] for i in itens_avaliados if i["subtotal_estimado"]]
+    subtotals = [i["subtotal_estimado"] for i in itens_avaliados if i["subtotal_estimado"] is not None]
     valor_total = sum(subtotals) if subtotals else None
 
     resumo_parts = []

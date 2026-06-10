@@ -35,6 +35,7 @@ import ia_reabilitacao
 import relatorio_reabilitacao
 import ia_pesquisa_mercado
 import relatorio_pesquisa_mercado
+from ia_utils import fmt_brl as _fmt_brl
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -46,10 +47,6 @@ ROTULO = {"inconformidade": "Inconformidade", "alerta": "Alerta", "revisar": "Re
 
 def _safe_md(s: object) -> str:
     return str(s).replace('[', '&#91;')
-
-
-def _fmt_brl(valor: float) -> str:
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _get_api_key():
