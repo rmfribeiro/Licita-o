@@ -5,6 +5,7 @@ import pytest
 import urllib.error
 from unittest.mock import patch, MagicMock
 import ia_integridade
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 def _nao() -> dict:
@@ -70,16 +71,6 @@ def _parecer_mock(maturidade: str = "EM DESENVOLVIMENTO") -> dict:
         "resumo_executivo": "Resumo para o prefeito.",
         "base_legal": ["Decreto 11.129/2022"],
     }
-
-
-def _mock_urlopen(parecer: dict):
-    payload = json.dumps({"content": [{"text": json.dumps(parecer)}]}).encode("utf-8")
-    mock_cm = MagicMock()
-    mock_cm.__enter__ = MagicMock(
-        return_value=MagicMock(read=MagicMock(return_value=payload))
-    )
-    mock_cm.__exit__ = MagicMock(return_value=False)
-    return mock_cm
 
 
 class TestDiagnosticar:

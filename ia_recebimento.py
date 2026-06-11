@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import types
 from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
 
@@ -178,5 +179,8 @@ def analisar(
         if isinstance(_b, dict):
             _p = str(_b.get("parecer") or "INAPTO").strip().upper()
             _pnorm = NORM_PARECER_RECV.get(_p, _p)
-            _b["parecer"] = _pnorm if _pnorm in PARECER_OPTIONS else "INAPTO"
+            if _pnorm not in PARECER_OPTIONS:
+                logging.warning("ia_recebimento: parecer desconhecido %r → usando 'INAPTO'", _p)
+                _pnorm = "INAPTO"
+            _b["parecer"] = _pnorm
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}

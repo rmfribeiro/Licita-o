@@ -5,6 +5,7 @@ import urllib.error
 from datetime import date
 from unittest.mock import patch, MagicMock
 import ia_reabilitacao
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 class TestConstantes:
@@ -117,14 +118,6 @@ def _parecer_api_mock() -> dict:
         "sintese":    "Todas as condições do Art. 163 estão atendidas.",
         "base_legal": ["Art. 163, Par. Único, Lei 14.133/2021"],
     }
-
-
-def _mock_urlopen(payload: dict):
-    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
 
 
 class TestAnalisar:

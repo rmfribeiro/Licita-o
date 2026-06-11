@@ -4,6 +4,7 @@ import ia_pi_empresas
 import json
 import urllib.error
 from unittest.mock import patch, MagicMock
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 class TestNivelMaturidade:
@@ -149,18 +150,6 @@ def _qualitativo_mock() -> dict:
         "recomendacoes": ["Formalizar orçamento do PI."],
         "base_legal": ["Decreto 12.304/2024, Art. 4º"],
     }
-
-
-def _mock_urlopen(qualitativo: dict):
-    payload = json.dumps(
-        {"content": [{"text": json.dumps(qualitativo)}]}
-    ).encode("utf-8")
-    mock_cm = MagicMock()
-    mock_cm.__enter__ = MagicMock(
-        return_value=MagicMock(read=MagicMock(return_value=payload))
-    )
-    mock_cm.__exit__ = MagicMock(return_value=False)
-    return mock_cm
 
 
 class TestAvaliar:

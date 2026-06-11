@@ -5,6 +5,7 @@ import urllib.error
 import pytest
 from unittest.mock import patch, MagicMock
 import ia_contratos
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 class TestConstantes:
@@ -75,18 +76,6 @@ def _parecer_api_mock() -> dict:
         "recomendacoes": ["Aguardar completar 12 meses da data-base"],
         "sintese": "Pedido atende parcialmente os requisitos legais.",
     }
-
-
-def _mock_urlopen(qualitativo: dict):
-    payload = json.dumps(
-        {"content": [{"text": json.dumps(qualitativo)}]}
-    ).encode("utf-8")
-    mock_cm = MagicMock()
-    mock_cm.__enter__ = MagicMock(
-        return_value=MagicMock(read=MagicMock(return_value=payload))
-    )
-    mock_cm.__exit__ = MagicMock(return_value=False)
-    return mock_cm
 
 
 class TestAnalisar:

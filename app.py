@@ -2073,7 +2073,7 @@ with aba11:
     )
 
     if st.button("Analisar e Gerar Minuta de Diligência", type="primary", key="btn_fid_analisar"):
-        for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf"):
+        for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf", "fid_minuta_edit"):
             st.session_state.pop(_k, None)
 
         if not _api_key_fid:
