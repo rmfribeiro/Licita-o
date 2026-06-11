@@ -48,7 +48,14 @@ ROTULO = {"inconformidade": "Inconformidade", "alerta": "Alerta", "revisar": "Re
 
 
 def _safe_md(s: object) -> str:
-    return str(s).replace('[', '&#91;')
+    return (
+        str(s)
+        .replace('\\', '\\\\')
+        .replace('[', '&#91;')
+        .replace('*', '&#42;')
+        .replace('_', '&#95;')
+        .replace('`', '&#96;')
+    )
 
 
 def _get_api_key():

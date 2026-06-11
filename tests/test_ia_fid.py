@@ -112,6 +112,16 @@ class TestAnalisar:
                 "habilitacao", _dados_licitante_mock(), "dúvida", None, "key"
             )
         assert r["necessita_diligencia"] == "PARCIALMENTE"
+        assert r.get("_aviso_nd") == "TALVEZ"
+
+    def test_resultado_reconhecido_nao_seta_aviso_nd(self):
+        parecer = {**_parecer_api_mock(), "necessita_diligencia": "PARCIAL"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar(
+                "habilitacao", _dados_licitante_mock(), "dúvida", None, "key"
+            )
+        assert r["necessita_diligencia"] == "PARCIALMENTE"
+        assert "_aviso_nd" not in r
 
     def test_prazo_clampado_maximo_30(self):
         parecer = {**_parecer_api_mock(), "prazo_resposta_sugerido": 999}
