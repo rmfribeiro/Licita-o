@@ -123,6 +123,15 @@ class TestAnalisar:
         assert r["necessita_diligencia"] == "PARCIALMENTE"
         assert "_aviso_nd" not in r
 
+    def test_pop_limpa_aviso_nd_espurio_da_api(self):
+        parecer = {**_parecer_api_mock(), "necessita_diligencia": "SIM", "_aviso_nd": "stale"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar(
+                "habilitacao", _dados_licitante_mock(), "dúvida", None, "key"
+            )
+        assert r["necessita_diligencia"] == "SIM"
+        assert "_aviso_nd" not in r
+
     def test_prazo_clampado_maximo_30(self):
         parecer = {**_parecer_api_mock(), "prazo_resposta_sugerido": 999}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):

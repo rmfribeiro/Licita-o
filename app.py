@@ -2125,7 +2125,7 @@ with aba11:
                 st.session_state["fid_fase_sel"]        = _fase_fid
                 st.session_state["fid_etapa"]           = 1
             except Exception as _e_fid:
-                st.error(str(_e_fid))
+                st.error(_safe_md(str(_e_fid)))
 
     if st.session_state.get("fid_etapa", 0) >= 1:
         _p_fid  = st.session_state["fid_parecer"]
@@ -2136,11 +2136,7 @@ with aba11:
 
         _res_fid = str(_p_fid.get("necessita_diligencia") or "PARCIALMENTE").strip().upper()
         _icone_fid = {"SIM": "🔴", "NÃO": "🟢", "PARCIALMENTE": "🟠"}.get(_res_fid, "⚪")
-        _label_fid = {
-            "SIM":          "DILIGÊNCIA NECESSÁRIA",
-            "NÃO":          "DILIGÊNCIA DESNECESSÁRIA",
-            "PARCIALMENTE": "DILIGÊNCIA PARCIALMENTE NECESSÁRIA",
-        }.get(_res_fid, _res_fid)
+        _label_fid = relatorio_fid._LABEL_RESULTADO.get(_res_fid, _res_fid)
         st.subheader(f"{_icone_fid} {_label_fid}")
         _aviso_nd = _p_fid.get("_aviso_nd")
         if _aviso_nd is not None:
@@ -2209,4 +2205,4 @@ with aba11:
                 key="fid_dl_pdf",
             )
         except Exception as _e_fid_pdf:
-            st.error(f"Erro ao gerar PDF: {_e_fid_pdf}")
+            st.error(f"Erro ao gerar PDF: {_safe_md(str(_e_fid_pdf))}")
