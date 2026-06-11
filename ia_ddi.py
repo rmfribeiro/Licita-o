@@ -96,8 +96,6 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     try:
         bruto = _chamar_anthropic(prompt, api_key, _get_modelo(), _SISTEMA, max_tokens=3000)
-    except RuntimeError:
-        raise
     except urllib.error.HTTPError as exc:
         _body = ""
         try:

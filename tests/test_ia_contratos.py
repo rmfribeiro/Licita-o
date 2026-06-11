@@ -150,15 +150,7 @@ class TestAnalisar:
                 )
 
     def test_api_retorna_nao_dict_levanta_runtime_error(self):
-        payload = json.dumps(
-            {"content": [{"text": "[1, 2, 3]"}]}
-        ).encode("utf-8")
-        mock_cm = MagicMock()
-        mock_cm.__enter__ = MagicMock(
-            return_value=MagicMock(read=MagicMock(return_value=payload))
-        )
-        mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen([1, 2, 3])):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"

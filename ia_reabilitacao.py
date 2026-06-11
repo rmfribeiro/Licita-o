@@ -112,7 +112,7 @@ def analisar(
                 if len(_p) == 3:
                     _ano = int(_p[2])
                     if _ano < 100:
-                        _ano += 2000
+                        _ano += 1900 if _ano >= 70 else 2000
                     _data_apl = date(_ano, int(_p[1]), int(_p[0]))
                 else:
                     _data_apl = None

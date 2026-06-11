@@ -2073,7 +2073,7 @@ with aba11:
     )
 
     if st.button("Analisar e Gerar Minuta de Diligência", type="primary", key="btn_fid_analisar"):
-        for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf", "fid_minuta_edit"):
+        for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf", "fid_pdf_minuta", "fid_minuta_edit"):
             st.session_state.pop(_k, None)
 
         if not _api_key_fid:
@@ -2175,11 +2175,15 @@ with aba11:
                     st.write(f"- {_safe_md(_bl_fid)}")
 
         try:
-            if "fid_pdf" not in st.session_state:
-                st.session_state["fid_pdf"] = relatorio_fid.gerar_pdf(
-                    _dl_fid, _fs_fid, _p_fid
-                )
-            _cnpj_fid_dl = (_dl_fid.get("cnpj") or "licitante").replace("/", "").replace(".", "")
+            _minuta_atual = st.session_state.get("fid_minuta_edit", _p_fid.get("minuta_oficio") or "")
+            if (
+                "fid_pdf" not in st.session_state
+                or st.session_state.get("fid_pdf_minuta") != _minuta_atual
+            ):
+                _parecer_pdf = {**_p_fid, "minuta_oficio": _minuta_atual}
+                st.session_state["fid_pdf"] = relatorio_fid.gerar_pdf(_dl_fid, _fs_fid, _parecer_pdf)
+                st.session_state["fid_pdf_minuta"] = _minuta_atual
+            _cnpj_fid_dl = (_dl_fid.get("cnpj") or "licitante")
             st.download_button(
                 label="⬇ Baixar Relatório PDF",
                 data=st.session_state["fid_pdf"],

@@ -16,12 +16,19 @@ RESULTADO_DILIGENCIA: types.MappingProxyType[str, str] = types.MappingProxyType(
     "PARCIALMENTE": "PARCIALMENTE",
 })
 
-_NORM_RESULTADO: dict[str, str] = {
-    "NAO":             "NÃO",
-    "NÃO NECESSITA":   "NÃO",
-    "NAO NECESSITA":   "NÃO",
-    "PARCIAL":         "PARCIALMENTE",
-}
+_NORM_RESULTADO: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "NAO":                   "NÃO",
+    "NÃO NECESSITA":         "NÃO",
+    "NAO NECESSITA":         "NÃO",
+    "PARCIAL":               "PARCIALMENTE",
+    "NECESSITA":             "SIM",
+    "NECESSARIO":            "SIM",
+    "NECESSÁRIO":            "SIM",
+    "SIM COM RESSALVAS":     "SIM",
+    "SIM PARCIALMENTE":      "SIM",
+    "NECESSITA DILIGENCIA":  "SIM",
+    "NECESSITA DILIGÊNCIA":  "SIM",
+})
 
 _SISTEMA = (
     "Você é um especialista em licitações e contratações públicas brasileiras, "
