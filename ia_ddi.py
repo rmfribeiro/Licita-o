@@ -96,6 +96,8 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     try:
         bruto = _chamar_anthropic(prompt, api_key, _get_modelo(), _SISTEMA, max_tokens=3000)
+    except RuntimeError:
+        raise
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
@@ -114,7 +116,10 @@ def analisar(dados: dict, fid: dict) -> dict:
     if not isinstance(parecer, dict):
         raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
     _risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
-    _risco = {"MEDIO": "MÉDIO"}.get(_risco, _risco)
+    _risco = {
+        "MEDIO":     "MÉDIO",
+        "SEM RISCO": "SEM RISCO IDENTIFICADO",
+    }.get(_risco, _risco)
     parecer["risco_geral"] = _risco if _risco in _RISCO_ORDEM else "SEM RISCO IDENTIFICADO"
 
     if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(parecer["risco_geral"]):

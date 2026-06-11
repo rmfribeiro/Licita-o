@@ -170,5 +170,6 @@ def analisar(
         _b = qualitativo.get(_bk)
         if isinstance(_b, dict):
             _p = str(_b.get("parecer") or "INAPTO").strip().upper()
-            _b["parecer"] = NORM_PARECER_RECV.get(_p, _p)
+            _pnorm = NORM_PARECER_RECV.get(_p, _p)
+            _b["parecer"] = _pnorm if _pnorm in PARECER_OPTIONS else "INAPTO"
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}

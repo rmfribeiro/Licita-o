@@ -1,11 +1,6 @@
 from __future__ import annotations
 import types
 import logging
-try:
-    import streamlit as st
-    _HAS_ST = True
-except ImportError:
-    _HAS_ST = False
 from ia_utils import chamar_api as _chamar_api
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"

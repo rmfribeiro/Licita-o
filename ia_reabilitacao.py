@@ -102,10 +102,16 @@ def analisar(
     # Guarda de prazo: retorna INELEGÍVEL sem chamar a IA
     _data_apl = dados_sancao.get("data_aplicacao")
     if isinstance(_data_apl, str):
+        _raw = _data_apl.strip()
         try:
-            _data_apl = date.fromisoformat(_data_apl)
+            _data_apl = date.fromisoformat(_raw)
         except ValueError:
-            _data_apl = None
+            # tenta DD/MM/YYYY (formato brasileiro)
+            _p = _raw.split("/")
+            try:
+                _data_apl = date(int(_p[2]), int(_p[1]), int(_p[0])) if len(_p) == 3 else None
+            except (ValueError, TypeError, IndexError):
+                _data_apl = None
     if isinstance(_data_apl, date):
         _prazo = calcular_prazo(tipo_sancao, _data_apl, data_referencia)
         if not _prazo["atendido"]:
