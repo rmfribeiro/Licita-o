@@ -35,6 +35,8 @@ import ia_reabilitacao
 import relatorio_reabilitacao
 import ia_pesquisa_mercado
 import relatorio_pesquisa_mercado
+import ia_fid
+import relatorio_fid
 from ia_utils import fmt_brl as _fmt_brl
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -101,7 +103,7 @@ if not _logo_visivel:
     st.caption(b["tagline"])
 st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
 
-aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9, aba10 = st.tabs([
+aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9, aba10, aba11 = st.tabs([
     "📄 Auditoria de Edital",
     "🔍 Due Diligence de Integridade",
     "📋 Auditoria de ETP",
@@ -112,6 +114,7 @@ aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9, aba10 = st.tabs([
     "⚖️ Dosimetria de Sanções",
     "🔄 Reabilitação de Fornecedor",
     "💰 Pesquisa de Mercado",
+    "🔎 Instituto da Diligência",
 ])
 
 with aba1:
@@ -2018,3 +2021,171 @@ with aba10:
                         mime="application/pdf",
                         key="pm_dl_relatorio",
                     )
+
+with aba11:
+    st.subheader("Instituto da Diligência")
+    st.caption(
+        "Art. 42, §2º · Art. 59, §2º · Art. 64, I e II — Lei 14.133/2021"
+    )
+
+    _api_key_fid = _get_api_key()
+
+    _col_fid1, _col_fid2 = st.columns(2)
+    _razao_fid   = _col_fid1.text_input(
+        "Razão Social do Licitante", placeholder="Empresa Exemplo Ltda", key="fid_razao"
+    )
+    _cnpj_fid    = _col_fid2.text_input(
+        "CNPJ (14 dígitos)", max_chars=18, placeholder="00000000000000", key="fid_cnpj"
+    )
+    _col_fid3, _col_fid4 = st.columns(2)
+    _edital_fid  = _col_fid3.text_input(
+        "Nº Edital / Processo", placeholder="PE 042/2024", key="fid_edital"
+    )
+    _orgao_fid   = _col_fid4.text_input(
+        "Órgão", placeholder="Ministério da Educação", key="fid_orgao"
+    )
+    _objeto_fid  = st.text_input(
+        "Objeto do contrato / licitação",
+        placeholder="Contratação de serviços de tecnologia da informação",
+        key="fid_objeto",
+    )
+    _fase_fid    = st.selectbox(
+        "Fase do processo licitatório",
+        options=list(ia_fid.FASES_PROCESSO.keys()),
+        format_func=lambda k: ia_fid.FASES_PROCESSO[k],
+        key="fid_fase",
+    )
+    _situacao_fid = st.text_area(
+        "Situação identificada / dúvidas a esclarecer",
+        placeholder=(
+            "Descreva a irregularidade ou dúvida encontrada nos documentos de habilitação "
+            "ou na proposta do licitante. Ex.: Certidão FGTS vencida em 10/05/2024; "
+            "declaração de ME/EPP sem assinatura; CNPJ divergente na nota fiscal."
+        ),
+        height=140,
+        key="fid_situacao",
+    )
+    _docs_fid = st.file_uploader(
+        "Documentos de habilitação para análise (opcional — PDF ou DOCX)",
+        type=["pdf", "docx"],
+        accept_multiple_files=True,
+        key="fid_docs",
+    )
+
+    if st.button("Analisar e Gerar Minuta de Diligência", type="primary", key="btn_fid_analisar"):
+        for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf"):
+            st.session_state.pop(_k, None)
+
+        if not _api_key_fid:
+            st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
+        elif not _situacao_fid.strip():
+            st.error("Descreva a situação identificada antes de analisar.")
+        else:
+            _dados_licitante_fid = {
+                "razao_social":  _razao_fid.strip() or None,
+                "cnpj":          "".join(c for c in (_cnpj_fid or "") if c.isdigit()) or None,
+                "numero_edital": _edital_fid.strip() or None,
+                "objeto":        _objeto_fid.strip() or None,
+                "orgao":         _orgao_fid.strip() or None,
+            }
+
+            _texto_docs_fid: str | None = None
+            if _docs_fid:
+                try:
+                    with st.spinner("Extraindo texto dos documentos..."):
+                        _texto_docs_fid, _avisos_fid = etp_extrator.extrair_texto(_docs_fid)
+                    for _av in _avisos_fid:
+                        st.warning(_safe_md(_av))
+                except Exception as _e_fid_ext:
+                    st.warning(f"Não foi possível extrair texto dos documentos: {_e_fid_ext}")
+
+            try:
+                with st.spinner("Analisando com IA e gerando minuta de diligência..."):
+                    _parecer_fid = ia_fid.analisar(
+                        _fase_fid,
+                        _dados_licitante_fid,
+                        _situacao_fid.strip(),
+                        _texto_docs_fid,
+                        _api_key_fid,
+                    )
+                st.session_state["fid_parecer"]         = _parecer_fid
+                st.session_state["fid_dados_licitante"] = _dados_licitante_fid
+                st.session_state["fid_fase_sel"]        = _fase_fid
+                st.session_state["fid_etapa"]           = 1
+            except RuntimeError as _e_fid:
+                st.error(str(_e_fid))
+
+    if st.session_state.get("fid_etapa", 0) >= 1:
+        _p_fid  = st.session_state["fid_parecer"]
+        _dl_fid = st.session_state["fid_dados_licitante"]
+        _fs_fid = st.session_state["fid_fase_sel"]
+
+        st.divider()
+
+        _res_fid = str(_p_fid.get("necessita_diligencia") or "PARCIALMENTE").strip().upper()
+        _icone_fid = {"SIM": "🔴", "NÃO": "🟢", "PARCIALMENTE": "🟠"}.get(_res_fid, "⚪")
+        _label_fid = {
+            "SIM":          "DILIGÊNCIA NECESSÁRIA",
+            "NÃO":          "DILIGÊNCIA DESNECESSÁRIA",
+            "PARCIALMENTE": "DILIGÊNCIA PARCIALMENTE NECESSÁRIA",
+        }.get(_res_fid, _res_fid)
+        st.subheader(f"{_icone_fid} {_label_fid}")
+
+        _docs_sol = _p_fid.get("documentos_solicitados") or []
+        if _docs_sol:
+            st.markdown("#### Documentos / Informações a Solicitar")
+            for _i, _d in enumerate(_docs_sol, 1):
+                if not isinstance(_d, dict):
+                    continue
+                with st.expander(
+                    f"{_i}. {_safe_md(_d.get('documento') or 'Documento')} "
+                    f"— {_safe_md(_d.get('situacao') or '')}"
+                ):
+                    st.write(f"**Fundamento legal:** {_safe_md(_d.get('fundamento_legal') or '-')}")
+                    st.write(f"**Prazo sugerido:** {_d.get('prazo_dias', 5)} dias úteis")
+
+        _pontos_fid = _p_fid.get("pontos_de_atencao") or []
+        if _pontos_fid:
+            st.markdown("#### Pontos de Atenção")
+            for _pt in _pontos_fid:
+                if str(_pt).strip():
+                    st.warning(_safe_md(_pt))
+
+        _prazo_fid = _p_fid.get("prazo_resposta_sugerido", 5)
+        st.info(f"**Prazo de resposta sugerido:** {_prazo_fid} dias úteis")
+
+        _minuta_fid = str(_p_fid.get("minuta_oficio") or "").strip()
+        if _minuta_fid:
+            st.markdown("#### Minuta do Ofício de Diligência")
+            st.text_area(
+                "Minuta (edite antes de utilizar)",
+                value=_minuta_fid,
+                height=300,
+                key="fid_minuta_edit",
+            )
+
+        _conclusao_fid = str(_p_fid.get("conclusao") or "").strip()
+        if _conclusao_fid:
+            st.markdown("#### Conclusão")
+            st.write(_safe_md(_conclusao_fid))
+
+        with st.expander("Base Legal"):
+            for _bl_fid in (_p_fid.get("base_legal") or []):
+                if str(_bl_fid).strip():
+                    st.write(f"- {_safe_md(_bl_fid)}")
+
+        try:
+            if "fid_pdf" not in st.session_state:
+                st.session_state["fid_pdf"] = relatorio_fid.gerar_pdf(
+                    _dl_fid, _fs_fid, _p_fid
+                )
+            _cnpj_fid_dl = (_dl_fid.get("cnpj") or "licitante").replace("/", "").replace(".", "")
+            st.download_button(
+                label="⬇ Baixar Relatório PDF",
+                data=st.session_state["fid_pdf"],
+                file_name=f"FID_{_cnpj_fid_dl}.pdf",
+                mime="application/pdf",
+                key="fid_dl_pdf",
+            )
+        except Exception as _e_fid_pdf:
+            st.error(f"Erro ao gerar PDF: {_e_fid_pdf}")
