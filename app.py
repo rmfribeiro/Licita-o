@@ -804,6 +804,11 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
         unsafe_allow_html=True,
     )
     st.caption(titulo)
+    _aviso_pval = _bloco.get("_aviso_parecer")
+    if _aviso_pval:
+        st.warning(
+            f"⚠️ Valor de parecer não reconhecido: '{_aviso_pval}' — registrado como **INAPTO**. Verifique manualmente."
+        )
     _sint = str(_bloco.get("sintese") or "")
     if _sint:
         st.info(_safe_md(_sint))

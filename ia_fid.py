@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import types
 from ia_utils import chamar_api as _chamar_api
 
@@ -101,9 +102,16 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=4000
     )
 
-    _res = str(parecer.get("necessita_diligencia") or "PARCIALMENTE").strip().upper()
+    _nd = parecer.get("necessita_diligencia")
+    if isinstance(_nd, bool):
+        _res = "SIM" if _nd else "NÃO"
+    else:
+        _res = str(_nd or "PARCIALMENTE").strip().upper()
     _res = _NORM_RESULTADO.get(_res, _res)
-    parecer["necessita_diligencia"] = _res if _res in RESULTADO_DILIGENCIA else "PARCIALMENTE"
+    if _res not in RESULTADO_DILIGENCIA:
+        logging.warning("ia_fid: necessita_diligencia desconhecido %r → usando 'PARCIALMENTE'", _nd)
+        _res = "PARCIALMENTE"
+    parecer["necessita_diligencia"] = _res
 
     _prazo = parecer.get("prazo_resposta_sugerido")
     try:

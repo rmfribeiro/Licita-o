@@ -182,5 +182,6 @@ def analisar(
             if _pnorm not in PARECER_OPTIONS:
                 logging.warning("ia_recebimento: parecer desconhecido %r → usando 'INAPTO'", _p)
                 _pnorm = "INAPTO"
+                _b["_aviso_parecer"] = _p
             _b["parecer"] = _pnorm
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}
