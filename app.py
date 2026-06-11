@@ -2109,7 +2109,7 @@ with aba11:
                     for _av in _avisos_fid:
                         st.warning(_safe_md(_av))
                 except Exception as _e_fid_ext:
-                    st.warning(f"Não foi possível extrair texto dos documentos: {_e_fid_ext}")
+                    st.warning(f"Não foi possível extrair texto dos documentos: {_safe_md(str(_e_fid_ext))}")
 
             try:
                 with st.spinner("Analisando com IA e gerando minuta de diligência..."):

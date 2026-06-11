@@ -101,6 +101,7 @@ def analisar(
     parecer = _chamar_api(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=4000
     )
+    parecer.pop("_aviso_nd", None)
 
     _nd = parecer.get("necessita_diligencia")
     if isinstance(_nd, bool):
