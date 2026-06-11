@@ -807,7 +807,7 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
     _aviso_pval = _bloco.get("_aviso_parecer")
     if _aviso_pval:
         st.warning(
-            f"⚠️ Valor de parecer não reconhecido: '{_aviso_pval}' — registrado como **INAPTO**. Verifique manualmente."
+            f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_pval))}' — registrado como **INAPTO**. Verifique manualmente."
         )
     _sint = str(_bloco.get("sintese") or "")
     if _sint:
@@ -2135,6 +2135,11 @@ with aba11:
             "PARCIALMENTE": "DILIGÊNCIA PARCIALMENTE NECESSÁRIA",
         }.get(_res_fid, _res_fid)
         st.subheader(f"{_icone_fid} {_label_fid}")
+        _aviso_nd = _p_fid.get("_aviso_nd")
+        if _aviso_nd is not None:
+            st.warning(
+                f"⚠️ Valor de necessita_diligencia não reconhecido: '{_safe_md(str(_aviso_nd))}' — registrado como **PARCIALMENTE NECESSÁRIA**. Verifique manualmente."
+            )
 
         _docs_sol = _p_fid.get("documentos_solicitados") or []
         if _docs_sol:
@@ -2180,7 +2185,7 @@ with aba11:
                     st.write(f"- {_safe_md(_bl_fid)}")
 
         try:
-            _minuta_atual = st.session_state.get("fid_minuta_edit", _p_fid.get("minuta_oficio") or "")
+            _minuta_atual = st.session_state.get("fid_minuta_edit", str(_p_fid.get("minuta_oficio") or "").strip())
             if (
                 "fid_pdf" not in st.session_state
                 or st.session_state.get("fid_pdf_minuta") != _minuta_atual

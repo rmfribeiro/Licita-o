@@ -111,6 +111,7 @@ def analisar(
     if _res not in RESULTADO_DILIGENCIA:
         logging.warning("ia_fid: necessita_diligencia desconhecido %r → usando 'PARCIALMENTE'", _nd)
         _res = "PARCIALMENTE"
+        parecer["_aviso_nd"] = _nd
     parecer["necessita_diligencia"] = _res
 
     _prazo = parecer.get("prazo_resposta_sugerido")

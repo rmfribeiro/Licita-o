@@ -56,6 +56,14 @@ def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
     story.append(t_badge)
     story.append(Spacer(1, 0.3 * cm))
 
+    _aviso_pval = bloco.get("_aviso_parecer")
+    if _aviso_pval:
+        story.append(Paragraph(
+            f"⚠ Valor original não reconhecido: '{html.escape(str(_aviso_pval))}' — registrado como INAPTO.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2 * cm))
+
     sintese = str(bloco.get("sintese") or "-")
     story.append(Paragraph(html.escape(sintese), _ESTILO_CORPO))
     story.append(Spacer(1, 0.3 * cm))
