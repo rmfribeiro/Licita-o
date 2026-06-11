@@ -100,7 +100,7 @@ def analisar(
 
     _prazo = parecer.get("prazo_resposta_sugerido")
     try:
-        _prazo_int = int(_prazo) if _prazo is not None else 5
+        _prazo_int = 5 if (_prazo is None or isinstance(_prazo, bool)) else int(_prazo)
     except (ValueError, TypeError):
         _prazo_int = 5
     parecer["prazo_resposta_sugerido"] = max(1, min(30, _prazo_int))

@@ -109,7 +109,13 @@ def analisar(
             # tenta DD/MM/YYYY (formato brasileiro)
             _p = _raw.split("/")
             try:
-                _data_apl = date(int(_p[2]), int(_p[1]), int(_p[0])) if len(_p) == 3 else None
+                if len(_p) == 3:
+                    _ano = int(_p[2])
+                    if _ano < 100:
+                        _ano += 2000
+                    _data_apl = date(_ano, int(_p[1]), int(_p[0]))
+                else:
+                    _data_apl = None
             except (ValueError, TypeError, IndexError):
                 _data_apl = None
     if isinstance(_data_apl, date):

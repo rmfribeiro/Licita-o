@@ -13,7 +13,6 @@ compatible with its relatorio_* counterpart without requiring real API calls.
 """
 from __future__ import annotations
 
-import json
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -40,17 +39,9 @@ import relatorio_reabilitacao
 import relatorio_recebimento
 import relatorio_sancoes
 import relatorio_tr
+from .helpers import mock_urlopen as _mock_urlopen
 
 _KEY = "test-dummy-key"
-
-
-def _mock_urlopen(payload: dict):
-    """Context-manager mock returning *payload* as the Anthropic API response."""
-    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
 
 
 def _assert_valid_pdf(pdf: bytes) -> None:

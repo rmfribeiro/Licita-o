@@ -17,7 +17,14 @@ PARECER_OPTIONS: types.MappingProxyType[str, str] = types.MappingProxyType({
 })
 
 # Normalização canônica de aliases de parecer — importável por app.py e relatorio_recebimento.py
-NORM_PARECER_RECV: types.MappingProxyType[str, str] = types.MappingProxyType({"APTO COM RESSALVA": "APTO COM RESSALVAS"})
+NORM_PARECER_RECV: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "APTO COM RESSALVA":    "APTO COM RESSALVAS",
+    "APTO C/ RESSALVAS":    "APTO COM RESSALVAS",
+    "APTO C/ RESSALVA":     "APTO COM RESSALVAS",
+    "APTO COM RESERVAS":    "APTO COM RESSALVAS",
+    "PARCIALMENTE APTO":    "APTO COM RESSALVAS",
+    "APTO PARCIALMENTE":    "APTO COM RESSALVAS",
+})
 
 STATUS_CONDICAO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ATENDIDA": "ATENDIDA",

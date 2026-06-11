@@ -4,6 +4,7 @@ import urllib.error
 import pytest
 from unittest.mock import patch, MagicMock
 import ia_fid
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 def _dados_licitante_mock() -> dict:
@@ -40,14 +41,6 @@ def _parecer_api_mock() -> dict:
             "Art. 64, I e II, Lei 14.133/2021",
         ],
     }
-
-
-def _mock_urlopen(payload: dict):
-    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
-    mock_cm = MagicMock()
-    mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
-    mock_cm.__exit__ = MagicMock(return_value=False)
-    return mock_cm
 
 
 class TestConstantes:
