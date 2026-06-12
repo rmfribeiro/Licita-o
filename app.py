@@ -2160,7 +2160,7 @@ with aba11:
         _aviso_nd = _p_fid.get("_aviso_nd")
         if _aviso_nd is not None:
             st.warning(
-                f"⚠️ Valor de necessita_diligencia não reconhecido: '{_safe_md(str(_aviso_nd))}' — registrado como **PARCIALMENTE NECESSÁRIA**. Verifique manualmente."
+                f"⚠️ Valor de necessita_diligencia não reconhecido: '{_safe_md(str(_aviso_nd))}' — registrado como **DILIGÊNCIA PARCIALMENTE NECESSÁRIA**. Verifique manualmente."
             )
 
         _docs_sol = _p_fid.get("documentos_solicitados") or []

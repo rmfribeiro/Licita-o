@@ -105,7 +105,7 @@ def analisar(
     if isinstance(_data_apl, str):
         _raw = _data_apl.strip()
         try:
-            _data_apl = date.fromisoformat(_raw)
+            _data_apl = date.fromisoformat(_raw.split("T")[0])
             if _data_apl > (data_referencia or date.today()):
                 _data_apl = None
         except ValueError:

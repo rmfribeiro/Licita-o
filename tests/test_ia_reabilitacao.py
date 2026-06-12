@@ -257,6 +257,25 @@ class TestAnalisar:
             )
         mock_url.assert_called_once()
 
+    def test_data_aplicacao_iso_com_hora_dispara_guarda_de_prazo(self):
+        # String ISO com componente de hora (e.g. de um banco de dados) deve ser aceita no Python 3.9.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "2024-03-15T00:00:00",  # datetime ISO, apenas 2 anos atrás (< 3 anos min)
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+
     def test_data_aplicacao_iso_futuro_ignorado(self):
         # Data ISO com ano no futuro deve ser descartada e a IA deve ser chamada normalmente.
         dados_sancao = {
