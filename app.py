@@ -209,7 +209,8 @@ with aba1:
 
         _html_report = A.gerar_html(apont, pct, nivel, up.name, len(paginas))
         st.download_button("⬇️ Baixar relatório (HTML)", data=_html_report.encode("utf-8"),
-                           file_name=f"relatorio_{os.path.splitext(up.name)[0]}.html", mime="text/html")
+                           file_name=f"relatorio_{os.path.splitext(up.name)[0]}.html", mime="text/html",
+                           key="aba1_dl_html")
         st.caption("Ferramenta de apoio — não substitui o parecer jurídico. "
                    "Os apontamentos devem ser confirmados por profissional habilitado.")
     else:
@@ -368,6 +369,7 @@ with aba2:
                 data=st.session_state["ddi_pdf"],
                 file_name=f"DDI_{cnpj_final}.pdf",
                 mime="application/pdf",
+                key="ddi_dl_pdf",
             )
         except Exception as _e:
             st.error(f"Erro ao gerar PDF: {_e}")
@@ -450,6 +452,7 @@ with aba3:
                 data=_pdf_etp,
                 file_name="ETP_auditoria.pdf",
                 mime="application/pdf",
+                key="etp_dl_pdf",
             )
         except Exception as _e:
             st.error(f"Erro ao gerar PDF: {_e}")
@@ -568,6 +571,7 @@ with aba4:
                 data=st.session_state["pip_pdf"],
                 file_name=st.session_state.get("pip_pdf_nome", "PIP.pdf"),
                 mime="application/pdf",
+                key="pip_dl_pdf",
             )
 
 with aba5:
@@ -808,6 +812,7 @@ with aba5:
                 data=st.session_state["pi_pdf"],
                 file_name=_nome_pdf_pi,
                 mime="application/pdf",
+                key="pi_dl_pdf",
             )
 
 def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
@@ -1040,6 +1045,7 @@ with aba6:
                     data=st.session_state["cont_pdf"],
                     file_name=_nome_pdf_cont,
                     mime="application/pdf",
+                    key="cont_dl_pdf",
                 )
 
     with _sub_aba_recv:
@@ -1190,6 +1196,7 @@ with aba6:
                     data=st.session_state["recv_pdf"],
                     file_name=_nome_pdf_recv,
                     mime="application/pdf",
+                    key="recv_dl_pdf",
                 )
 
 with aba7:

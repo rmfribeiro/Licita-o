@@ -116,7 +116,7 @@ def analisar(
     _res = _NORM_RESULTADO.get(_res, _res)
     if _res not in RESULTADO_DILIGENCIA:
         logging.warning("ia_fid: necessita_diligencia desconhecido %r → usando 'PARCIALMENTE'", _nd)
-        if _nd:
+        if _nd is not None and str(_nd).strip():
             parecer["_aviso_nd"] = _nd
         _res = "PARCIALMENTE"
     parecer["necessita_diligencia"] = _res
@@ -127,5 +127,14 @@ def analisar(
     except (ValueError, TypeError):
         _prazo_int = 5
     parecer["prazo_resposta_sugerido"] = max(1, min(30, _prazo_int))
+
+    for _doc in (parecer.get("documentos_solicitados") or []):
+        if isinstance(_doc, dict):
+            _pd = _doc.get("prazo_dias")
+            try:
+                _pd_int = 5 if (_pd is None or isinstance(_pd, bool)) else int(_pd)
+            except (ValueError, TypeError):
+                _pd_int = 5
+            _doc["prazo_dias"] = max(1, min(30, _pd_int))
 
     return parecer
