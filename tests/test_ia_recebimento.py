@@ -197,3 +197,31 @@ class TestAnalisar:
         with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         assert "recebimento_provisorio" in r
+
+    def test_parecer_desconhecido_vira_inapto_com_aviso(self):
+        parecer = {
+            **_parecer_api_mock(),
+            "recebimento_provisorio": {
+                **_parecer_api_mock()["recebimento_provisorio"],
+                "parecer": "APROVADO",
+            },
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
+        bloco = r["recebimento_provisorio"]
+        assert bloco["parecer"] == "INAPTO"
+        assert bloco.get("_aviso_parecer") == "APROVADO"
+
+    def test_parecer_none_vira_inapto_sem_aviso(self):
+        parecer = {
+            **_parecer_api_mock(),
+            "recebimento_definitivo": {
+                **_parecer_api_mock()["recebimento_definitivo"],
+                "parecer": None,
+            },
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
+        bloco = r["recebimento_definitivo"]
+        assert bloco["parecer"] == "INAPTO"
+        assert "_aviso_parecer" not in bloco

@@ -168,6 +168,18 @@ class TestAnalisar:
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_alias_sem_risco_normalizado(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": "SEM RISCO"}
+        resposta = _json.dumps({"content": [{"text": _json.dumps(parecer)}]}).encode("utf-8")
+        mock_cm = MagicMock()
+        mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=resposta)))
+        mock_cm.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_cm
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_httperror_inclui_body_na_mensagem(self, mock_key, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(

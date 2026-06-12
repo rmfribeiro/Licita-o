@@ -114,6 +114,8 @@ def analisar(
                     if _ano < 100:
                         _ano += 1900 if _ano >= 70 else 2000
                     _data_apl = date(_ano, int(_p[1]), int(_p[0]))
+                    if _data_apl > (data_referencia or date.today()):
+                        _data_apl = None
                 else:
                     _data_apl = None
             except (ValueError, TypeError, IndexError):

@@ -106,8 +106,10 @@ def analisar(
     _nd = parecer.get("necessita_diligencia")
     if isinstance(_nd, bool):
         _res = "SIM" if _nd else "NÃO"
+    elif _nd is None:
+        _res = "PARCIALMENTE"
     else:
-        _res = str(_nd or "PARCIALMENTE").strip().upper()
+        _res = str(_nd).strip().upper()
     _res = _NORM_RESULTADO.get(_res, _res)
     if _res not in RESULTADO_DILIGENCIA:
         logging.warning("ia_fid: necessita_diligencia desconhecido %r → usando 'PARCIALMENTE'", _nd)

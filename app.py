@@ -55,6 +55,8 @@ def _safe_md(s: object) -> str:
         .replace('*', '&#42;')
         .replace('_', '&#95;')
         .replace('`', '&#96;')
+        .replace('#', '&#35;')
+        .replace('>', '&#62;')
     )
 
 

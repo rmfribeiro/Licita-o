@@ -221,3 +221,38 @@ class TestAnalisar:
             )
         mock_url.assert_not_called()
         assert r["parecer"] == "INELEGÍVEL"
+
+    def test_data_aplicacao_ddmmyyyy_dispara_guarda_de_prazo(self):
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "15/03/2024",  # DD/MM/YYYY, apenas 2 anos atrás
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+
+    def test_data_aplicacao_ddmmyyyy_futuro_ignorado(self):
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "01/01/69",  # pivot 2-digit: 2069 > data_referencia → ignorado
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_url:
+            ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_called_once()

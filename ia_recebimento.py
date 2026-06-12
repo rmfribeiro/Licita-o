@@ -177,7 +177,8 @@ def analisar(
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)
         if isinstance(_b, dict):
-            _p = str(_b.get("parecer") or "INAPTO").strip().upper()
+            _raw_p = _b.get("parecer")
+            _p = "INAPTO" if _raw_p is None else str(_raw_p).strip().upper()
             _pnorm = NORM_PARECER_RECV.get(_p, _p)
             if _pnorm not in PARECER_OPTIONS:
                 logging.warning("ia_recebimento: parecer desconhecido %r → usando 'INAPTO'", _p)
