@@ -242,7 +242,7 @@ with aba2:
             st.error("Informe o CNPJ com 14 digitos numericos.")
         else:
             for _k in ("ddi_etapa", "ddi_parecer", "ddi_fid", "ddi_dados", "ddi_cnpj", "ddi_valor",
-                       "ddi_q1", "ddi_q2", "ddi_q3", "ddi_q4", "ddi_q5", "ddi_pro_etica_manual"):
+                       "ddi_q1", "ddi_q2", "ddi_q3", "ddi_q4", "ddi_q5", "ddi_pro_etica_manual", "ddi_pdf"):
                 st.session_state.pop(_k, None)
             try:
                 with st.spinner("Consultando Receita Federal, CEIS, CNEP e Empresa Pro-Etica..."):
@@ -303,6 +303,7 @@ with aba2:
                 st.session_state["ddi_fid"] = fid
                 st.session_state["ddi_dados"] = _dados_analise
                 st.session_state["ddi_etapa"] = 3
+                st.session_state.pop("ddi_pdf", None)
             except RuntimeError as e:
                 st.error(str(e))
 
@@ -323,7 +324,7 @@ with aba2:
         _aviso_risco = parecer.get("_aviso_risco")
         if _aviso_risco is not None:
             st.warning(
-                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **{_safe_md(risco)}**. Verifique manualmente."
+                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **SEM RISCO IDENTIFICADO**. Verifique manualmente."
             )
 
         dims = parecer.get("dimensoes") or {}
@@ -360,10 +361,11 @@ with aba2:
                     st.write(f"- {_safe_md(bl)}")
 
         try:
-            pdf_bytes = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
+            if "ddi_pdf" not in st.session_state:
+                st.session_state["ddi_pdf"] = relatorio_ddi.gerar_pdf(cnpj_final, valor_final, dados, fid, parecer)
             st.download_button(
                 label="Baixar Relatorio PDF",
-                data=pdf_bytes,
+                data=st.session_state["ddi_pdf"],
                 file_name=f"DDI_{cnpj_final}.pdf",
                 mime="application/pdf",
             )

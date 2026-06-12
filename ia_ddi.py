@@ -114,6 +114,7 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     if not isinstance(parecer, dict):
         raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
+    parecer.pop("_aviso_risco", None)
     _raw_risco = parecer.get("risco_geral")
     _risco = "SEM RISCO IDENTIFICADO" if _raw_risco is None else str(_raw_risco).strip().upper()
     _risco = {
