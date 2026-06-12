@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import types
 from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
 
@@ -138,5 +139,10 @@ def analisar(
     )
 
     _pval = str(qualitativo.get("parecer") or "INDEFERÍVEL").strip().upper()
-    qualitativo["parecer"] = NORM_PARECER_CONT.get(_pval, _pval)
+    _pnorm_cont = NORM_PARECER_CONT.get(_pval, _pval)
+    if _pnorm_cont not in PARECER_OPTIONS:
+        logging.warning("ia_contratos: parecer desconhecido %r → usando 'INDEFERÍVEL'", _pval)
+        _pnorm_cont = "INDEFERÍVEL"
+        qualitativo["_aviso_parecer"] = _pval
+    qualitativo["parecer"] = _pnorm_cont
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}

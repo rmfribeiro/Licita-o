@@ -1,5 +1,6 @@
 from __future__ import annotations
 import calendar
+import logging
 import types
 from datetime import date
 from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
@@ -192,5 +193,10 @@ def analisar(
     )
 
     _pval = str(parecer.get("parecer") or "INELEGÍVEL").strip().upper()
-    parecer["parecer"] = NORM_PARECER_REAB.get(_pval, _pval)
+    _pnorm_reab = NORM_PARECER_REAB.get(_pval, _pval)
+    if _pnorm_reab not in PARECER_OPTIONS:
+        logging.warning("ia_reabilitacao: parecer desconhecido %r → usando 'INELEGÍVEL'", _pval)
+        _pnorm_reab = "INELEGÍVEL"
+        parecer["_aviso_parecer"] = _pval
+    parecer["parecer"] = _pnorm_reab
     return {**parecer, "dados_empresa": dados_empresa, "dados_sancao": dados_sancao}

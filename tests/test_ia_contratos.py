@@ -193,3 +193,26 @@ class TestAnalisar:
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
                 )
+
+    def test_parecer_desconhecido_vira_indeferivel_com_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": "DEFERÍVEL PARCIALMENTE"}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), "texto", "key_teste"
+            )
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert r.get("_aviso_parecer") == "DEFERÍVEL PARCIALMENTE"
+
+    def test_parecer_reconhecido_nao_seta_aviso(self):
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(_parecer_api_mock()),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), "texto", "key_teste"
+            )
+        assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
+        assert "_aviso_parecer" not in r

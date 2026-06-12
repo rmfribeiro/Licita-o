@@ -274,3 +274,33 @@ class TestAnalisar:
                 data_referencia=date(2026, 6, 1),
             )
         mock_url.assert_called_once()
+
+    def test_parecer_desconhecido_vira_inelegivel_com_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": "ELEGÍVEL PARCIALMENTE"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "INELEGÍVEL"
+        assert r.get("_aviso_parecer") == "ELEGÍVEL PARCIALMENTE"
+
+    def test_parecer_reconhecido_nao_seta_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": "ELEGÍVEL COM RESSALVAS"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "ELEGÍVEL COM RESSALVAS"
+        assert "_aviso_parecer" not in r

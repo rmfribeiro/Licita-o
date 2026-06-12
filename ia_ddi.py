@@ -119,13 +119,17 @@ def analisar(dados: dict, fid: dict) -> dict:
         "MEDIO":     "MÉDIO",
         "SEM RISCO": "SEM RISCO IDENTIFICADO",
     }.get(_risco, _risco)
+    _aviso_risco_val = None
     if _risco not in _RISCO_ORDEM:
         logging.warning("ia_ddi: risco_geral desconhecido %r → usando 'SEM RISCO IDENTIFICADO'", _risco)
-        parecer["_aviso_risco"] = _risco
+        _aviso_risco_val = _risco
         _risco = "SEM RISCO IDENTIFICADO"
     parecer["risco_geral"] = _risco
 
     if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(parecer["risco_geral"]):
         parecer["risco_geral"] = piso
+
+    if _aviso_risco_val is not None:
+        parecer["_aviso_risco"] = _aviso_risco_val
 
     return parecer

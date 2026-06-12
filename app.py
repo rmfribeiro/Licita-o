@@ -315,7 +315,6 @@ with aba2:
 
         st.divider()
         risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
-        risco = {"MEDIO": "MÉDIO"}.get(risco, risco)
         _icone_risco = {
             "ALTO": "🔴", "MÉDIO": "🟠",
             "BAIXO": "🟡", "SEM RISCO IDENTIFICADO": "🟢"
@@ -324,7 +323,7 @@ with aba2:
         _aviso_risco = parecer.get("_aviso_risco")
         if _aviso_risco is not None:
             st.warning(
-                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **SEM RISCO IDENTIFICADO**. Verifique manualmente."
+                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **{_safe_md(risco)}**. Verifique manualmente."
             )
 
         dims = parecer.get("dimensoes") or {}
@@ -974,6 +973,11 @@ with aba6:
                 unsafe_allow_html=True,
             )
             st.markdown("")
+            _aviso_cont = _pr_cont.get("_aviso_parecer")
+            if _aviso_cont is not None:
+                st.warning(
+                    f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_cont))}' — registrado como **INDEFERÍVEL**. Verifique manualmente."
+                )
 
             _sintese_cont = str(_pr_cont.get("sintese") or "")
             if _sintese_cont:
@@ -1801,6 +1805,11 @@ with aba9:
                 "INELEGÍVEL":             "🔴",
             }
             st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
+            _aviso_reab = _pr3_reab.get("_aviso_parecer")
+            if _aviso_reab is not None:
+                st.warning(
+                    f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_reab))}' — registrado como **INELEGÍVEL**. Verifique manualmente."
+                )
 
             _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []
             _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—"}
