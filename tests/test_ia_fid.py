@@ -210,31 +210,21 @@ class TestAnalisar:
 
     def test_resultado_necessaria_feminino_mapeado_para_sim(self):
         for variante in ("NECESSÁRIA", "NECESSARIA"):
-            payload = json.dumps({
-                "content": [{"text": json.dumps({
-                    "necessita_diligencia": variante,
-                    "documentos_solicitados": [],
-                    "pontos_de_atencao": [],
-                    "minuta_oficio": "",
-                    "prazo_resposta_sugerido": 5,
-                    "conclusao": "",
-                    "base_legal": [],
-                })}]
-            }).encode("utf-8")
-            mock_cm = MagicMock()
-            mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=payload)))
-            mock_cm.__exit__ = MagicMock(return_value=False)
-            with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
+            with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen({
+                "necessita_diligencia": variante,
+                "documentos_solicitados": [],
+                "pontos_de_atencao": [],
+                "minuta_oficio": "",
+                "prazo_resposta_sugerido": 5,
+                "conclusao": "",
+                "base_legal": [],
+            })):
                 r = ia_fid.analisar("habilitacao", _dados_licitante_mock(), "teste", None, "key")
             assert r["necessita_diligencia"] == "SIM", f"variante {variante!r} não mapeada"
             assert "_aviso_nd" not in r
 
     def test_api_retorna_nao_dict_levanta_runtime_error(self):
-        payload = json.dumps({"content": [{"text": "[1, 2, 3]"}]}).encode("utf-8")
-        mock_cm = MagicMock()
-        mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=payload)))
-        mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen([1, 2, 3])):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_fid.analisar(
                     "habilitacao", _dados_licitante_mock(), "teste", None, "key"

@@ -5,6 +5,7 @@ import urllib.error
 import pytest
 from unittest.mock import patch, MagicMock
 import ia_ddi
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 def _dados_base():
@@ -170,13 +171,19 @@ class TestAnalisar:
     @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_alias_sem_risco_normalizado(self, mock_key, mock_urlopen):
         parecer = {**_parecer_ia_mock(), "risco_geral": "SEM RISCO"}
-        resposta = _json.dumps({"content": [{"text": _json.dumps(parecer)}]}).encode("utf-8")
-        mock_cm = MagicMock()
-        mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=resposta)))
-        mock_cm.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_cm
+        mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
         assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert "_aviso_risco" not in resultado
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_desconhecido_vira_sem_risco_com_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": "CRÍTICO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert resultado.get("_aviso_risco") == "CRÍTICO"
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")

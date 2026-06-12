@@ -321,6 +321,11 @@ with aba2:
             "BAIXO": "🟡", "SEM RISCO IDENTIFICADO": "🟢"
         }
         st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {_safe_md(risco)}")
+        _aviso_risco = parecer.get("_aviso_risco")
+        if _aviso_risco is not None:
+            st.warning(
+                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **SEM RISCO IDENTIFICADO**. Verifique manualmente."
+            )
 
         dims = parecer.get("dimensoes") or {}
         _label_dim = {
