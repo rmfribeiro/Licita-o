@@ -358,7 +358,7 @@ class TestAnalisar:
         assert r["parecer"] == "INELEGÍVEL"
         assert "_aviso_parecer" not in r
 
-    def test_parecer_vazio_vira_inelegivel_sem_aviso(self):
+    def test_parecer_vazio_vira_inelegivel_com_aviso_vazio(self):
         api_result = {**_parecer_api_mock(), "parecer": ""}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
             r = ia_reabilitacao.analisar(
@@ -371,4 +371,4 @@ class TestAnalisar:
                 data_referencia=date(2026, 6, 1),
             )
         assert r["parecer"] == "INELEGÍVEL"
-        assert "_aviso_parecer" not in r
+        assert r.get("_aviso_parecer") == ""
