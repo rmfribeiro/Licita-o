@@ -199,6 +199,24 @@ class TestAnalisar:
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_none_vira_sem_risco_sem_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": None}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert "_aviso_risco" not in resultado
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_vazio_vira_sem_risco_sem_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": ""}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert "_aviso_risco" not in resultado
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_httperror_inclui_body_na_mensagem(self, mock_key, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(

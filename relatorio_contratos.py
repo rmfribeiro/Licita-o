@@ -101,6 +101,14 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     ]))
     story.append(t_badge)
     story.append(Spacer(1, 0.4*cm))
+    _aviso_par_cont = parecer.get("_aviso_parecer")
+    if _aviso_par_cont is not None:
+        story.append(Paragraph(
+            f"&#x26A0; Valor de parecer n&#xE3;o reconhecido: '{html.escape(str(_aviso_par_cont))}'"
+            " &#x2014; registrado como INDEFERIVEL. Verifique manualmente.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
 
     # Síntese
     sintese = str(parecer.get("sintese") or "-")

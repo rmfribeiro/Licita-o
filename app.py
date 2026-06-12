@@ -527,6 +527,9 @@ with aba4:
         st.divider()
         _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
         st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_safe_md(_mat_pip)}")
+        _aviso_mat_pip = _pr_pip.get("_aviso_maturidade")
+        if _aviso_mat_pip is not None:
+            st.warning(f"⚠️ Valor de maturidade_geral não reconhecido pela IA: '{_safe_md(str(_aviso_mat_pip))}' — registrado como **INEXISTENTE**. Verifique manualmente.")
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
         if _resumo_pip:

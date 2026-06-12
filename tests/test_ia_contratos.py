@@ -216,3 +216,27 @@ class TestAnalisar:
             )
         assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
         assert "_aviso_parecer" not in r
+
+    def test_parecer_none_vira_indeferivel_sem_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": None}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), None, "key_teste"
+            )
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert "_aviso_parecer" not in r
+
+    def test_parecer_vazio_vira_indeferivel_sem_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": ""}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), None, "key_teste"
+            )
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert "_aviso_parecer" not in r

@@ -192,11 +192,13 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
     )
 
-    _pval = str(parecer.get("parecer") or "INELEGÍVEL").strip().upper()
+    _raw_pval_reab = parecer.get("parecer")
+    _pval = "INELEGÍVEL" if _raw_pval_reab is None else str(_raw_pval_reab).strip().upper()
     _pnorm_reab = NORM_PARECER_REAB.get(_pval, _pval)
     if _pnorm_reab not in PARECER_OPTIONS:
         logging.warning("ia_reabilitacao: parecer desconhecido %r → usando 'INELEGÍVEL'", _pval)
         _pnorm_reab = "INELEGÍVEL"
-        parecer["_aviso_parecer"] = _pval
+        if _pval:
+            parecer["_aviso_parecer"] = _pval
     parecer["parecer"] = _pnorm_reab
     return {**parecer, "dados_empresa": dados_empresa, "dados_sancao": dados_sancao}

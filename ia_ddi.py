@@ -114,7 +114,8 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     if not isinstance(parecer, dict):
         raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
-    _risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
+    _raw_risco = parecer.get("risco_geral")
+    _risco = "SEM RISCO IDENTIFICADO" if _raw_risco is None else str(_raw_risco).strip().upper()
     _risco = {
         "MEDIO":     "MÉDIO",
         "SEM RISCO": "SEM RISCO IDENTIFICADO",
@@ -122,7 +123,8 @@ def analisar(dados: dict, fid: dict) -> dict:
     _aviso_risco_val = None
     if _risco not in _RISCO_ORDEM:
         logging.warning("ia_ddi: risco_geral desconhecido %r → usando 'SEM RISCO IDENTIFICADO'", _risco)
-        _aviso_risco_val = _risco
+        if _risco:
+            _aviso_risco_val = _risco
         _risco = "SEM RISCO IDENTIFICADO"
     parecer["risco_geral"] = _risco
 

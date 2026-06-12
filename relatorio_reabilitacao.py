@@ -92,6 +92,14 @@ def gerar_relatorio_tecnico(
     ]))
     story.append(t_badge)
     story.append(Spacer(1, 0.4*cm))
+    _aviso_par_reab = parecer.get("_aviso_parecer")
+    if _aviso_par_reab is not None:
+        story.append(Paragraph(
+            f"&#x26A0; Valor de parecer n&#xE3;o reconhecido: '{html.escape(str(_aviso_par_reab))}'"
+            " &#x2014; registrado como INELEGI&#x301;VEL. Verifique manualmente.",
+            _CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
 
     story.append(Paragraph("Condições Art. 163, Par. Único (5 condições cumulativas)", _H2))
     for cond in (parecer.get("condicoes_avaliadas") or []):
