@@ -25,6 +25,8 @@ _NORM_RESULTADO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "NECESSITA":             "SIM",
     "NECESSARIO":            "SIM",
     "NECESSÁRIO":            "SIM",
+    "NECESSARIA":            "SIM",
+    "NECESSÁRIA":            "SIM",
     "SIM COM RESSALVAS":     "SIM",
     "SIM PARCIALMENTE":      "SIM",
     "NECESSITA DILIGENCIA":  "SIM",
@@ -107,6 +109,7 @@ def analisar(
     if isinstance(_nd, bool):
         _res = "SIM" if _nd else "NÃO"
     elif _nd is None:
+        logging.warning("ia_fid: necessita_diligencia ausente no retorno da IA → usando 'PARCIALMENTE'")
         _res = "PARCIALMENTE"
     else:
         _res = str(_nd).strip().upper()

@@ -57,7 +57,7 @@ def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
     story.append(Spacer(1, 0.3 * cm))
 
     _aviso_pval = bloco.get("_aviso_parecer")
-    if _aviso_pval:
+    if _aviso_pval is not None:
         story.append(Paragraph(
             f"⚠ Valor original não reconhecido: '{html.escape(str(_aviso_pval))}' — registrado como INAPTO.",
             _ESTILO_CORPO,

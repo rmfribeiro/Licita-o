@@ -256,3 +256,21 @@ class TestAnalisar:
                 data_referencia=date(2026, 6, 1),
             )
         mock_url.assert_called_once()
+
+    def test_data_aplicacao_iso_futuro_ignorado(self):
+        # Data ISO com ano no futuro deve ser descartada e a IA deve ser chamada normalmente.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "2099-01-01",  # ISO, data futura → ignorada
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_url:
+            ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_called_once()

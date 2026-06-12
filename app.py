@@ -814,7 +814,7 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
     )
     st.caption(titulo)
     _aviso_pval = _bloco.get("_aviso_parecer")
-    if _aviso_pval:
+    if _aviso_pval is not None:
         st.warning(
             f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_pval))}' — registrado como **INAPTO**. Verifique manualmente."
         )
