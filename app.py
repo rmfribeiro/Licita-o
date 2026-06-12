@@ -56,6 +56,7 @@ def _safe_md(s: object) -> str:
         .replace('_', '&#95;')
         .replace('`', '&#96;')
         .replace('#', '&#35;')
+        .replace('<', '&lt;')
         .replace('>', '&#62;')
     )
 
@@ -2113,14 +2114,13 @@ with aba11:
     )
 
     if st.button("Analisar e Gerar Minuta de Diligência", type="primary", key="btn_fid_analisar"):
-        for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf", "fid_pdf_minuta", "fid_minuta_edit"):
-            st.session_state.pop(_k, None)
-
         if not _api_key_fid:
             st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
         elif not _situacao_fid.strip():
             st.error("Descreva a situação identificada antes de analisar.")
         else:
+            for _k in ("fid_etapa", "fid_parecer", "fid_dados_licitante", "fid_fase_sel", "fid_pdf", "fid_pdf_minuta", "fid_minuta_edit"):
+                st.session_state.pop(_k, None)
             _dados_licitante_fid = {
                 "razao_social":  _razao_fid.strip() or None,
                 "cnpj":          "".join(c for c in (_cnpj_fid or "") if c.isdigit()) or None,

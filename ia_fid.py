@@ -123,7 +123,7 @@ def analisar(
 
     _prazo = parecer.get("prazo_resposta_sugerido")
     try:
-        _prazo_int = 5 if (_prazo is None or isinstance(_prazo, bool)) else int(_prazo)
+        _prazo_int = 5 if (_prazo is None or isinstance(_prazo, bool)) else int(float(_prazo))
     except (ValueError, TypeError):
         _prazo_int = 5
     parecer["prazo_resposta_sugerido"] = max(1, min(30, _prazo_int))
@@ -132,7 +132,7 @@ def analisar(
         if isinstance(_doc, dict):
             _pd = _doc.get("prazo_dias")
             try:
-                _pd_int = 5 if (_pd is None or isinstance(_pd, bool)) else int(_pd)
+                _pd_int = 5 if (_pd is None or isinstance(_pd, bool)) else int(float(_pd))
             except (ValueError, TypeError):
                 _pd_int = 5
             _doc["prazo_dias"] = max(1, min(30, _pd_int))
