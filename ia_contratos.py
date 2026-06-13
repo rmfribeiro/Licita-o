@@ -144,7 +144,7 @@ def analisar(
     if _pnorm_cont not in PARECER_OPTIONS:
         logging.warning("ia_contratos: parecer desconhecido %r → usando 'INDEFERÍVEL'", _pval)
         _pnorm_cont = "INDEFERÍVEL"
-        if _pval:
+        if _raw_pval_cont is not None:
             qualitativo["_aviso_parecer"] = _pval
     qualitativo["parecer"] = _pnorm_cont
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}

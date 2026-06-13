@@ -163,13 +163,13 @@ class TestDiagnosticar:
         assert "_aviso_maturidade" not in resultado
 
     @patch("ia_utils.urllib.request.urlopen")
-    def test_maturidade_vazia_nao_seta_aviso(self, mock_urlopen):
+    def test_maturidade_vazia_seta_aviso_vazio(self, mock_urlopen):
         parecer_ruim = _parecer_mock()
         parecer_ruim["maturidade_geral"] = ""
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
         assert resultado["maturidade_geral"] == "INEXISTENTE"
-        assert "_aviso_maturidade" not in resultado
+        assert resultado.get("_aviso_maturidade") == ""
 
     @patch("ia_utils.urllib.request.urlopen")
     def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):

@@ -138,7 +138,7 @@ def diagnosticar(
         logging.warning(
             "ia_integridade: maturidade_geral inesperada da IA: %r — normalizado para INEXISTENTE", _mat
         )
-        if _mat:
+        if _raw_mat is not None:
             parecer["_aviso_maturidade"] = _mat
         _mat = "INEXISTENTE"
     parecer["maturidade_geral"] = _aplicar_piso(respostas, _mat)

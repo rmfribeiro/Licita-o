@@ -229,7 +229,7 @@ class TestAnalisar:
         assert r["parecer"] == "INDEFERÍVEL"
         assert "_aviso_parecer" not in r
 
-    def test_parecer_vazio_vira_indeferivel_sem_aviso(self):
+    def test_parecer_vazio_vira_indeferivel_com_aviso_vazio(self):
         api_result = {**_parecer_api_mock(), "parecer": ""}
         with patch(
             "ia_utils.urllib.request.urlopen",
@@ -239,4 +239,4 @@ class TestAnalisar:
                 "reajuste", _dados_contrato_mock(), None, "key_teste"
             )
         assert r["parecer"] == "INDEFERÍVEL"
-        assert "_aviso_parecer" not in r
+        assert r.get("_aviso_parecer") == ""

@@ -89,7 +89,7 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
     story.append(Spacer(1, 0.4 * cm))
 
     _aviso_nd = parecer.get("_aviso_nd")
-    if _aviso_nd is not None:
+    if _aviso_nd:
         story.append(Paragraph(
             f"⚠ Valor original não reconhecido: '{html.escape(str(_aviso_nd))}' — registrado como DILIGÊNCIA PARCIALMENTE NECESSÁRIA.",
             _ESTILO_CORPO,
