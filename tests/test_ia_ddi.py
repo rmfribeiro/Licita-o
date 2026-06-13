@@ -5,6 +5,7 @@ import urllib.error
 import pytest
 from unittest.mock import patch, MagicMock
 import ia_ddi
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 def _dados_base():
@@ -165,6 +166,63 @@ class TestAnalisar:
 
         with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
             ia_ddi.analisar(_dados_base(), fid)
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_alias_sem_risco_normalizado(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": "SEM RISCO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert "_aviso_risco" not in resultado
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_desconhecido_vira_sem_risco_com_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": "CRÍTICO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert resultado.get("_aviso_risco") == "CRÍTICO"
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_numerico_vira_sem_risco_com_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": 123}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert resultado.get("_aviso_risco") == "123"
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_desconhecido_com_piso_aviso_reflete_valor_final(self, mock_key, mock_urlopen):
+        # Piso (CEIS ativo → ALTO) deve elevar risco_geral após _aviso_risco ser gravado,
+        # e _aviso_risco deve permanecer como o valor original da IA.
+        dados = {**_dados_base(), "ceis": [{"situacaoAtual": "Ativo"}]}
+        parecer = {**_parecer_ia_mock(), "risco_geral": "XPTO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(dados, {})
+        assert resultado["risco_geral"] == "ALTO"
+        assert resultado.get("_aviso_risco") == "XPTO"
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_none_vira_sem_risco_sem_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": None}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert "_aviso_risco" not in resultado
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_vazio_vira_sem_risco_sem_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": ""}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert "_aviso_risco" not in resultado
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")

@@ -4,6 +4,7 @@ import pytest
 import urllib.error
 from unittest.mock import patch, MagicMock
 import ia_pesquisa_mercado
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 class TestConstantes:
@@ -67,14 +68,6 @@ class TestCalcularReferencia:
         r = ia_pesquisa_mercado.calcular_referencia([100.0, 100.0, 100.0])
         assert r["status"] == "VALIDO"
         assert r["preco_referencia"] == 100.0
-
-
-def _mock_urlopen(payload: dict):
-    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
 
 
 class TestExtrairItensTR:

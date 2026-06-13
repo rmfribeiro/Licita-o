@@ -1,11 +1,6 @@
 from __future__ import annotations
 import types
 import logging
-try:
-    import streamlit as st
-    _HAS_ST = True
-except ImportError:
-    _HAS_ST = False
 from ia_utils import chamar_api as _chamar_api
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
@@ -137,11 +132,14 @@ def diagnosticar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
     )
 
-    _mat = str(parecer.get("maturidade_geral") or "INEXISTENTE").strip().upper()
+    _raw_mat = parecer.get("maturidade_geral")
+    _mat = "INEXISTENTE" if _raw_mat is None else str(_raw_mat).strip().upper()
     if _mat not in _MATURIDADE_ORDEM:
         logging.warning(
             "ia_integridade: maturidade_geral inesperada da IA: %r — normalizado para INEXISTENTE", _mat
         )
+        if _raw_mat is not None:
+            parecer["_aviso_maturidade"] = _mat
         _mat = "INEXISTENTE"
     parecer["maturidade_geral"] = _aplicar_piso(respostas, _mat)
 

@@ -5,6 +5,7 @@ import urllib.error
 import pytest
 from unittest.mock import patch, MagicMock
 import ia_contratos
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 class TestConstantes:
@@ -75,18 +76,6 @@ def _parecer_api_mock() -> dict:
         "recomendacoes": ["Aguardar completar 12 meses da data-base"],
         "sintese": "Pedido atende parcialmente os requisitos legais.",
     }
-
-
-def _mock_urlopen(qualitativo: dict):
-    payload = json.dumps(
-        {"content": [{"text": json.dumps(qualitativo)}]}
-    ).encode("utf-8")
-    mock_cm = MagicMock()
-    mock_cm.__enter__ = MagicMock(
-        return_value=MagicMock(read=MagicMock(return_value=payload))
-    )
-    mock_cm.__exit__ = MagicMock(return_value=False)
-    return mock_cm
 
 
 class TestAnalisar:
@@ -161,15 +150,7 @@ class TestAnalisar:
                 )
 
     def test_api_retorna_nao_dict_levanta_runtime_error(self):
-        payload = json.dumps(
-            {"content": [{"text": "[1, 2, 3]"}]}
-        ).encode("utf-8")
-        mock_cm = MagicMock()
-        mock_cm.__enter__ = MagicMock(
-            return_value=MagicMock(read=MagicMock(return_value=payload))
-        )
-        mock_cm.__exit__ = MagicMock(return_value=False)
-        with patch("ia_utils.urllib.request.urlopen", return_value=mock_cm):
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen([1, 2, 3])):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
@@ -212,3 +193,50 @@ class TestAnalisar:
                 ia_contratos.analisar(
                     "reajuste", _dados_contrato_mock(), None, "key_teste"
                 )
+
+    def test_parecer_desconhecido_vira_indeferivel_com_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": "DEFERÍVEL PARCIALMENTE"}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), "texto", "key_teste"
+            )
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert r.get("_aviso_parecer") == "DEFERÍVEL PARCIALMENTE"
+
+    def test_parecer_reconhecido_nao_seta_aviso(self):
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(_parecer_api_mock()),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), "texto", "key_teste"
+            )
+        assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
+        assert "_aviso_parecer" not in r
+
+    def test_parecer_none_vira_indeferivel_sem_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": None}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), None, "key_teste"
+            )
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert "_aviso_parecer" not in r
+
+    def test_parecer_vazio_vira_indeferivel_com_aviso_vazio(self):
+        api_result = {**_parecer_api_mock(), "parecer": ""}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), None, "key_teste"
+            )
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert r.get("_aviso_parecer") == ""

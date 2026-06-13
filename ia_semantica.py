@@ -187,7 +187,11 @@ def gerar_pareceres(texto_edital, regras, base_juridica_path,
         dados = _extrair_json(bruto)
     except ValueError as exc:
         raise RuntimeError(f"Resposta da API não contém JSON válido: {exc}") from exc
-    achados = _normalizar_achados(dados.get("achados", []) if isinstance(dados, dict) else [])
+    if not isinstance(dados, dict):
+        raise RuntimeError(
+            f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(dados).__name__}"
+        )
+    achados = _normalizar_achados(dados.get("achados", []))
     return achados
 
 # ---- demonstracao: imprime o prompt que seria enviado (sem chamar a API) ----

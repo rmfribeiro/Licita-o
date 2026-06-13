@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import types
 from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
 
@@ -17,7 +18,14 @@ PARECER_OPTIONS: types.MappingProxyType[str, str] = types.MappingProxyType({
 })
 
 # Normalização canônica de aliases de parecer — importável por app.py e relatorio_recebimento.py
-NORM_PARECER_RECV: types.MappingProxyType[str, str] = types.MappingProxyType({"APTO COM RESSALVA": "APTO COM RESSALVAS"})
+NORM_PARECER_RECV: types.MappingProxyType[str, str] = types.MappingProxyType({
+    "APTO COM RESSALVA":    "APTO COM RESSALVAS",
+    "APTO C/ RESSALVAS":    "APTO COM RESSALVAS",
+    "APTO C/ RESSALVA":     "APTO COM RESSALVAS",
+    "APTO COM RESERVAS":    "APTO COM RESSALVAS",
+    "PARCIALMENTE APTO":    "APTO COM RESSALVAS",
+    "APTO PARCIALMENTE":    "APTO COM RESSALVAS",
+})
 
 STATUS_CONDICAO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ATENDIDA": "ATENDIDA",
@@ -169,6 +177,13 @@ def analisar(
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)
         if isinstance(_b, dict):
-            _p = str(_b.get("parecer") or "INAPTO").strip().upper()
-            _b["parecer"] = NORM_PARECER_RECV.get(_p, _p)
+            _raw_p = _b.get("parecer")
+            _p = "INAPTO" if _raw_p is None else str(_raw_p).strip().upper()
+            _pnorm = NORM_PARECER_RECV.get(_p, _p)
+            if _pnorm not in PARECER_OPTIONS:
+                logging.warning("ia_recebimento: parecer desconhecido %r → usando 'INAPTO'", _p)
+                _pnorm = "INAPTO"
+                if _raw_p is not None:
+                    _b["_aviso_parecer"] = _p
+            _b["parecer"] = _pnorm
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}

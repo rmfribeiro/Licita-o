@@ -1,4 +1,3 @@
-# tests/test_ia_tr.py
 from __future__ import annotations
 import io
 import json
@@ -6,6 +5,7 @@ import pytest
 import urllib.error
 from unittest.mock import patch, MagicMock
 import ia_tr
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 def _parecer_servico() -> dict:
@@ -65,14 +65,6 @@ def _parecer_tic() -> dict:
         "recomendacoes": ["Elaborar PDTIC.", "Realizar AVC completa."],
         "base_legal": ["IN SGD/ME 21/2024", "IN SEGES/MGI 81/2022"],
     }
-
-
-def _mock_urlopen(parecer: dict):
-    resposta = json.dumps({"content": [{"text": json.dumps(parecer)}]}).encode("utf-8")
-    mock_cm = MagicMock()
-    mock_cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=resposta)))
-    mock_cm.__exit__ = MagicMock(return_value=False)
-    return mock_cm
 
 
 class TestAnalisarTr:

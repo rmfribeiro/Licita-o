@@ -1,5 +1,6 @@
 from __future__ import annotations
 import calendar
+import logging
 import types
 from datetime import date
 from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
@@ -102,10 +103,26 @@ def analisar(
     # Guarda de prazo: retorna INELEGÍVEL sem chamar a IA
     _data_apl = dados_sancao.get("data_aplicacao")
     if isinstance(_data_apl, str):
+        _raw = _data_apl.strip()
         try:
-            _data_apl = date.fromisoformat(_data_apl)
+            _data_apl = date.fromisoformat(_raw[:10])
+            if _data_apl > (data_referencia or date.today()):
+                _data_apl = None
         except ValueError:
-            _data_apl = None
+            # tenta DD/MM/YYYY (formato brasileiro)
+            _p = _raw.split("/")
+            try:
+                if len(_p) == 3:
+                    _ano = int(_p[2])
+                    if _ano < 100:
+                        _ano += 1900 if _ano >= 70 else 2000
+                    _data_apl = date(_ano, int(_p[1]), int(_p[0]))
+                    if _data_apl > (data_referencia or date.today()):
+                        _data_apl = None
+                else:
+                    _data_apl = None
+            except (ValueError, TypeError, IndexError):
+                _data_apl = None
     if isinstance(_data_apl, date):
         _prazo = calcular_prazo(tipo_sancao, _data_apl, data_referencia)
         if not _prazo["atendido"]:
@@ -175,6 +192,13 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
     )
 
-    _pval = str(parecer.get("parecer") or "INELEGÍVEL").strip().upper()
-    parecer["parecer"] = NORM_PARECER_REAB.get(_pval, _pval)
+    _raw_pval_reab = parecer.get("parecer")
+    _pval = "INELEGÍVEL" if _raw_pval_reab is None else str(_raw_pval_reab).strip().upper()
+    _pnorm_reab = NORM_PARECER_REAB.get(_pval, _pval)
+    if _pnorm_reab not in PARECER_OPTIONS:
+        logging.warning("ia_reabilitacao: parecer desconhecido %r → usando 'INELEGÍVEL'", _pval)
+        _pnorm_reab = "INELEGÍVEL"
+        if _raw_pval_reab is not None:
+            parecer["_aviso_parecer"] = _pval
+    parecer["parecer"] = _pnorm_reab
     return {**parecer, "dados_empresa": dados_empresa, "dados_sancao": dados_sancao}

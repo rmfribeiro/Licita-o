@@ -5,6 +5,7 @@ import urllib.error
 from datetime import date
 from unittest.mock import patch, MagicMock
 import ia_reabilitacao
+from .helpers import mock_urlopen as _mock_urlopen
 
 
 class TestConstantes:
@@ -119,14 +120,6 @@ def _parecer_api_mock() -> dict:
     }
 
 
-def _mock_urlopen(payload: dict):
-    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
-
-
 class TestAnalisar:
     def test_tipo_invalido_levanta_value_error(self):
         with pytest.raises(ValueError, match="tipo_sancao inválido"):
@@ -228,3 +221,154 @@ class TestAnalisar:
             )
         mock_url.assert_not_called()
         assert r["parecer"] == "INELEGÍVEL"
+
+    def test_data_aplicacao_ddmmyyyy_dispara_guarda_de_prazo(self):
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "15/03/2024",  # DD/MM/YYYY, apenas 2 anos atrás
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+
+    def test_data_aplicacao_ddmmyyyy_futuro_ignorado(self):
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "01/01/69",  # pivot 2-digit: 2069 > data_referencia → ignorado
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_url:
+            ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_called_once()
+
+    def test_data_aplicacao_iso_com_offset_dispara_guarda_de_prazo(self):
+        # String ISO com offset de fuso horário (e.g. de API REST) deve ser tratada corretamente.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "2024-03-15+03:00",  # offset sem separador T, 2 anos atrás
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+
+    def test_data_aplicacao_iso_com_hora_dispara_guarda_de_prazo(self):
+        # String ISO com componente de hora (e.g. de um banco de dados) deve ser aceita no Python 3.9.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "2024-03-15T00:00:00",  # datetime ISO, apenas 2 anos atrás (< 3 anos min)
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+
+    def test_data_aplicacao_iso_futuro_ignorado(self):
+        # Data ISO com ano no futuro deve ser descartada e a IA deve ser chamada normalmente.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "2099-01-01",  # ISO, data futura → ignorada
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())) as mock_url:
+            ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_called_once()
+
+    def test_parecer_desconhecido_vira_inelegivel_com_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": "ELEGÍVEL PARCIALMENTE"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "INELEGÍVEL"
+        assert r.get("_aviso_parecer") == "ELEGÍVEL PARCIALMENTE"
+
+    def test_parecer_reconhecido_nao_seta_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": "ELEGÍVEL COM RESSALVAS"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "ELEGÍVEL COM RESSALVAS"
+        assert "_aviso_parecer" not in r
+
+    def test_parecer_none_vira_inelegivel_sem_aviso(self):
+        api_result = {**_parecer_api_mock(), "parecer": None}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "INELEGÍVEL"
+        assert "_aviso_parecer" not in r
+
+    def test_parecer_vazio_vira_inelegivel_com_aviso_vazio(self):
+        api_result = {**_parecer_api_mock(), "parecer": ""}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "INELEGÍVEL"
+        assert r.get("_aviso_parecer") == ""

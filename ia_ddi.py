@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import os
 import json
 import urllib.error
@@ -113,11 +114,25 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     if not isinstance(parecer, dict):
         raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
-    _risco = str(parecer.get("risco_geral") or "SEM RISCO IDENTIFICADO").strip().upper()
-    _risco = {"MEDIO": "MÉDIO"}.get(_risco, _risco)
-    parecer["risco_geral"] = _risco if _risco in _RISCO_ORDEM else "SEM RISCO IDENTIFICADO"
+    parecer.pop("_aviso_risco", None)
+    _raw_risco = parecer.get("risco_geral")
+    _risco = "SEM RISCO IDENTIFICADO" if _raw_risco is None else str(_raw_risco).strip().upper()
+    _risco = {
+        "MEDIO":     "MÉDIO",
+        "SEM RISCO": "SEM RISCO IDENTIFICADO",
+    }.get(_risco, _risco)
+    _aviso_risco_val = None
+    if _risco not in _RISCO_ORDEM:
+        logging.warning("ia_ddi: risco_geral desconhecido %r → usando 'SEM RISCO IDENTIFICADO'", _risco)
+        if _risco:
+            _aviso_risco_val = _risco
+        _risco = "SEM RISCO IDENTIFICADO"
+    parecer["risco_geral"] = _risco
 
     if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(parecer["risco_geral"]):
         parecer["risco_geral"] = piso
+
+    if _aviso_risco_val is not None:
+        parecer["_aviso_risco"] = _aviso_risco_val
 
     return parecer

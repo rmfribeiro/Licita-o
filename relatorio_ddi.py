@@ -112,6 +112,14 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     ]))
     story.append(t_risco)
     story.append(Spacer(1, 0.4*cm))
+    _aviso_risco_pdf = parecer.get("_aviso_risco")
+    if _aviso_risco_pdf:
+        story.append(Paragraph(
+            f"⚠ Valor de risco_geral não reconhecido: '{html.escape(str(_aviso_risco_pdf))}'"
+            " — registrado como SEM RISCO IDENTIFICADO. Verifique manualmente.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
 
     # Risco por dimensão
     story.append(Paragraph("Análise por Dimensão", _ESTILO_H2))
