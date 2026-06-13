@@ -187,6 +187,15 @@ class TestAnalisar:
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_numerico_vira_sem_risco_com_aviso(self, mock_key, mock_urlopen):
+        parecer = {**_parecer_ia_mock(), "risco_geral": 123}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        assert resultado.get("_aviso_risco") == "123"
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_risco_desconhecido_com_piso_aviso_reflete_valor_final(self, mock_key, mock_urlopen):
         # Piso (CEIS ativo → ALTO) deve elevar risco_geral após _aviso_risco ser gravado,
         # e _aviso_risco deve permanecer como o valor original da IA.
