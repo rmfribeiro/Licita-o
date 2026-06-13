@@ -51,11 +51,11 @@ def _safe_md(s: object) -> str:
     return (
         str(s)
         .replace('\\', '\\\\')
+        .replace('#', '&#35;')
         .replace('[', '&#91;')
         .replace('*', '&#42;')
         .replace('_', '&#95;')
         .replace('`', '&#96;')
-        .replace('#', '&#35;')
         .replace('<', '&lt;')
         .replace('>', '&#62;')
     )
