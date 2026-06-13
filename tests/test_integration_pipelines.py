@@ -632,7 +632,7 @@ class TestFIDPipeline:
         "base_legal": ["Art. 59, §2º, Lei 14.133/2021"],
     }
 
-    @pytest.mark.parametrize("fase", list(ia_fid.FASES_PROCESSO.keys()))
+    @pytest.mark.parametrize("fase", ["habilitacao", "proposta", "pos_adjudicacao"])
     def test_pipeline_todas_as_fases_pdf_valido(self, fase):
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(self._PARECER_API)):
             parecer = ia_fid.analisar(

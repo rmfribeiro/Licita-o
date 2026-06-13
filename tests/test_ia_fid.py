@@ -114,6 +114,33 @@ class TestAnalisar:
         assert r["necessita_diligencia"] == "PARCIALMENTE"
         assert r.get("_aviso_nd") == "TALVEZ"
 
+    def test_resultado_bool_true_vira_sim_sem_aviso(self):
+        parecer = {**_parecer_api_mock(), "necessita_diligencia": True}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar(
+                "habilitacao", _dados_licitante_mock(), "dúvida", None, "key"
+            )
+        assert r["necessita_diligencia"] == "SIM"
+        assert "_aviso_nd" not in r
+
+    def test_resultado_bool_false_vira_nao_sem_aviso(self):
+        parecer = {**_parecer_api_mock(), "necessita_diligencia": False}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar(
+                "habilitacao", _dados_licitante_mock(), "dúvida", None, "key"
+            )
+        assert r["necessita_diligencia"] == "NÃO"
+        assert "_aviso_nd" not in r
+
+    def test_resultado_int_vira_parcialmente_com_aviso(self):
+        parecer = {**_parecer_api_mock(), "necessita_diligencia": 1}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar(
+                "habilitacao", _dados_licitante_mock(), "dúvida", None, "key"
+            )
+        assert r["necessita_diligencia"] == "PARCIALMENTE"
+        assert r.get("_aviso_nd") == 1
+
     def test_resultado_reconhecido_nao_seta_aviso_nd(self):
         parecer = {**_parecer_api_mock(), "necessita_diligencia": "PARCIAL"}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
