@@ -116,7 +116,7 @@ def analisar(
     _res = _NORM_RESULTADO.get(_res, _res)
     if _res not in RESULTADO_DILIGENCIA:
         logging.warning("ia_fid: necessita_diligencia desconhecido %r → usando 'PARCIALMENTE'", _nd)
-        if _nd is not None and str(_nd).strip():
+        if _nd is not None:
             parecer["_aviso_nd"] = _nd
         _res = "PARCIALMENTE"
     parecer["necessita_diligencia"] = _res

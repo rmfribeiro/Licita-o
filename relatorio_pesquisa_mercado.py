@@ -11,6 +11,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
+import disclaimers  # >>> DISCLAIMER (1/4): importa os textos centralizados
 
 def _norm(s: str) -> str:
     """Normaliza para comparação: minúsculas, sem acentos, sem espaços extras."""
@@ -31,6 +32,33 @@ _CORPO   = ParagraphStyle("pm_corpo",  parent=_estilos["Normal"],   fontSize=10,
 _PEQUENO = ParagraphStyle("pm_peq",    parent=_estilos["Normal"],   fontSize=8,  textColor=colors.grey)
 _BADGE   = ParagraphStyle("pm_badge",  parent=_estilos["Normal"],   fontSize=14, textColor=colors.white, alignment=1)
 
+# >>> DISCLAIMER (2/4): estilo do rodapé fixo + função que o desenha em CADA página.
+#     Aqui usamos TEXTO_PDF (aviso brando), pois estas funções NÃO geram minuta —
+#     produzem mapa de preços e relatório de pesquisa (apoio à decisão).
+_ESTILO_RODAPE = ParagraphStyle(
+    "pm_rodape",
+    parent=_estilos["Normal"],
+    fontSize=7,
+    leading=8.5,
+    textColor=colors.HexColor("#C0392B"),
+    alignment=1,
+)
+
+
+def _rodape_todas_paginas(canvas, doc):
+    """Desenha o disclaimer de apoio no rodapé de TODAS as páginas."""
+    canvas.saveState()
+    largura, _altura = A4
+    p = Paragraph(disclaimers.TEXTO_PDF, _ESTILO_RODAPE)
+    # margem lateral varia (1,5cm no mapa, 2cm no relatório); 3cm de folga cobre os dois.
+    largura_util = largura - 3 * cm
+    p.wrap(largura_util, 2 * cm)
+    p.drawOn(canvas, 1.5 * cm, 1.0 * cm)
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(largura - 1.5 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.restoreState()
+
 
 def gerar_mapa_precos(
     objeto: str,
@@ -41,7 +69,7 @@ def gerar_mapa_precos(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=2*cm, bottomMargin=2*cm,
+        leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=2*cm, bottomMargin=2.5*cm,  # >>> DISCLAIMER
     )
     story: list = []
 
@@ -155,7 +183,8 @@ def gerar_mapa_precos(
         "Sujeito a verificação humana. Não substitui aprovação do ordenador.", _PEQUENO
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER (3/4): rodapé fixo em todas as páginas
+    doc.build(story, onFirstPage=_rodape_todas_paginas, onLaterPages=_rodape_todas_paginas)
     return buf.getvalue()
 
 
@@ -170,7 +199,7 @@ def gerar_relatorio_pesquisa(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
+        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm,  # >>> DISCLAIMER
     )
     story: list = []
 
@@ -258,5 +287,6 @@ def gerar_relatorio_pesquisa(
         _PEQUENO,
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER (4/4): rodapé fixo em todas as páginas
+    doc.build(story, onFirstPage=_rodape_todas_paginas, onLaterPages=_rodape_todas_paginas)
     return buf.getvalue()

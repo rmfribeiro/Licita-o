@@ -17,6 +17,7 @@ from ia_utils import (
     fmt_brl_opcional as _fmt_brl_opcional,
 )
 from ia_sancoes import LABEL_SANCAO as _LABEL_SANCAO
+import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _COR_SANCAO = {
     "advertencia":  colors.HexColor("#F39C12"),
@@ -49,6 +50,36 @@ _ESTILO_MINUTA   = ParagraphStyle(
     rightIndent=12,
 )
 
+# >>> DISCLAIMER (2/3): estilo do rodapé fixo e função que o desenha em CADA página.
+_ESTILO_RODAPE = ParagraphStyle(
+    "sanc_rodape",
+    parent=_estilos_base["Normal"],
+    fontSize=7,
+    leading=8.5,
+    textColor=colors.HexColor("#C0392B"),  # vermelho discreto, para destacar o aviso
+    alignment=1,  # centralizado
+)
+
+
+def _rodape_todas_paginas(canvas, doc):
+    """Desenha o disclaimer de minuta no rodapé de TODAS as páginas.
+
+    Chamado automaticamente pelo reportlab em cada página, via os
+    parâmetros onFirstPage / onLaterPages do doc.build().
+    """
+    canvas.saveState()
+    largura, _altura = A4
+    # Paragraph permite quebra de linha automática dentro da largura da página
+    p = Paragraph(disclaimers.TEXTO_PDF_MINUTA, _ESTILO_RODAPE)
+    largura_util = largura - 4 * cm  # respeita as margens de 2cm de cada lado
+    _l, alt = p.wrap(largura_util, 2 * cm)
+    p.drawOn(canvas, 2 * cm, 1.0 * cm)  # desenha a ~1cm da borda inferior
+    # número da página, à direita
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(largura - 2 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.restoreState()
+
 
 def _fmt_cnpj(cnpj: str) -> str:
     d = "".join(c for c in str(cnpj) if c.isdigit())
@@ -62,7 +93,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
         leftMargin=2 * cm, rightMargin=2 * cm,
-        topMargin=2 * cm, bottomMargin=2 * cm,
+        topMargin=2 * cm, bottomMargin=2.5 * cm,  # >>> DISCLAIMER: +0.5cm p/ caber o rodapé
     )
     story = []
 
@@ -216,6 +247,21 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         ParagraphStyle("sanc_minuta_titulo", parent=_ESTILO_H1,
                        textColor=colors.HexColor("#2C3E50")),
     ))
+
+    # >>> DISCLAIMER (3/3): aviso forte e destacado logo abaixo do título da minuta,
+    #     dentro do corpo do documento (além do rodapé fixo de todas as páginas).
+    _ESTILO_AVISO_MINUTA = ParagraphStyle(
+        "sanc_aviso_minuta",
+        parent=_estilos_base["Normal"],
+        fontSize=9,
+        leading=11,
+        textColor=colors.white,
+        backColor=colors.HexColor("#C0392B"),
+        borderPadding=6,
+        spaceBefore=4,
+        spaceAfter=8,
+    )
+    story.append(Paragraph(f"<b>{html.escape(disclaimers.TEXTO_PDF_MINUTA)}</b>", _ESTILO_AVISO_MINUTA))
     story.append(Spacer(1, 0.2 * cm))
 
     if minuta:
@@ -229,14 +275,17 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
 
     story.append(Spacer(1, 0.4 * cm))
 
-    # ── Rodapé ────────────────────────────────────────────────────────────────
+    # ── Rodapé final (texto adicional no fim do conteúdo) ─────────────────────
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital. "
-        "Sujeito a revisão jurídica antes da assinatura. "
-        "Não substitui parecer jurídico.",
+        "Gerado por IA-Licita — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER: registra a função de rodapé fixo em todas as páginas
+    doc.build(
+        story,
+        onFirstPage=_rodape_todas_paginas,
+        onLaterPages=_rodape_todas_paginas,
+    )
     return buf.getvalue()

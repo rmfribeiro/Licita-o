@@ -12,6 +12,7 @@ from reportlab.platypus import (
 from ia_utils import COR_STATUS_HEX as _COR_STATUS
 
 from ia_reabilitacao import TIPOS_SANCAO as _LABEL_SANCAO
+import disclaimers  # >>> DISCLAIMER (1/4): importa os textos centralizados
 
 _COR_PARECER = {
     "ELEGÍVEL":               colors.HexColor(_COR_STATUS["ok"]),
@@ -30,6 +31,36 @@ _TITULO_REQ = ParagraphStyle("reab_req_t",  parent=_estilos["Title"],    fontSiz
 _SECAO      = ParagraphStyle("reab_secao",  parent=_estilos["Heading2"], fontSize=11, spaceAfter=4)
 _CORPO_REQ  = ParagraphStyle("reab_corpo_r", parent=_estilos["Normal"],  fontSize=10, spaceAfter=6, leading=14)
 
+# >>> DISCLAIMER (2/4): estilo do rodapé fixo + funções que o desenham em CADA página.
+_ESTILO_RODAPE = ParagraphStyle(
+    "reab_rodape",
+    parent=_estilos["Normal"],
+    fontSize=7,
+    leading=8.5,
+    textColor=colors.HexColor("#C0392B"),
+    alignment=1,
+)
+
+
+def _desenhar_rodape(canvas, doc, texto: str):
+    """Desenha um disclaimer no rodapé de TODAS as páginas."""
+    canvas.saveState()
+    largura, _altura = A4
+    p = Paragraph(texto, _ESTILO_RODAPE)
+    # margem lateral varia entre as duas funções (2cm no técnico, 3cm na minuta);
+    # usamos 2cm como base segura — o texto centraliza e cabe nos dois casos.
+    largura_util = largura - 4 * cm
+    p.wrap(largura_util, 2 * cm)
+    p.drawOn(canvas, 2 * cm, 1.0 * cm)
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(largura - 2 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.restoreState()
+
+
+def _rodape_minuta(canvas, doc):
+    _desenhar_rodape(canvas, doc, disclaimers.TEXTO_PDF_MINUTA)
+
 
 def _fmt_cnpj(cnpj: str) -> str:
     c = cnpj.replace(".", "").replace("/", "").replace("-", "")
@@ -45,7 +76,7 @@ def gerar_relatorio_tecnico(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
+        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm,  # >>> DISCLAIMER
     )
     story = []
 
@@ -131,12 +162,12 @@ def gerar_relatorio_tecnico(
 
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita - RM Vertice Digital. "
-        "Sujeito a verificacao humana. Nao substitui parecer juridico.",
+        "Gerado por IA-Licita - RM Vertice Digital.",
         _PEQUENO,
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER (3/4): rodapé fixo de minuta em todas as páginas
+    doc.build(story, onFirstPage=_rodape_minuta, onLaterPages=_rodape_minuta)
     return buf.getvalue()
 
 
@@ -230,9 +261,10 @@ def gerar_minuta_requerimento(
     story.append(Spacer(1, 0.5*cm))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Minuta gerada por IA-Licita - RM Vertice Digital. Revisar antes de protocolar.",
+        "Minuta gerada por IA-Licita - RM Vertice Digital.",
         _PEQUENO,
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER (4/4): rodapé fixo de minuta em todas as páginas
+    doc.build(story, onFirstPage=_rodape_minuta, onLaterPages=_rodape_minuta)
     return buf.getvalue()

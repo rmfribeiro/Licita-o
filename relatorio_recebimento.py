@@ -12,6 +12,7 @@ from reportlab.platypus import (
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float, fmt_brl_opcional as _fmt_brl_opcional
 from ia_recebimento import TIPOS_OBJETO, NORM_PARECER_RECV as _NORM_PARECER_RECV
+import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _COR_PARECER = {
     "APTO":               colors.HexColor(_COR_STATUS["ok"]),
@@ -36,6 +37,31 @@ _ESTILO_COND_MAP = {
     "PARCIAL":  _ESTILO_COND_PAR,
     "AUSENTE":  _ESTILO_COND_AUS,
 }
+
+# >>> DISCLAIMER (2/3): estilo do rodapé fixo + função que o desenha em CADA página.
+#     Usa TEXTO_PDF (aviso brando): este relatório é um PARECER de apoio, não uma minuta.
+_ESTILO_RODAPE = ParagraphStyle(
+    "recv_rodape",
+    parent=_estilos_base["Normal"],
+    fontSize=7,
+    leading=8.5,
+    textColor=colors.HexColor("#C0392B"),
+    alignment=1,
+)
+
+
+def _rodape_todas_paginas(canvas, doc):
+    """Desenha o disclaimer de apoio no rodapé de TODAS as páginas."""
+    canvas.saveState()
+    largura, _altura = A4
+    p = Paragraph(disclaimers.TEXTO_PDF, _ESTILO_RODAPE)
+    largura_util = largura - 4 * cm  # margens de 2cm de cada lado
+    p.wrap(largura_util, 2 * cm)
+    p.drawOn(canvas, 2 * cm, 1.0 * cm)
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(largura - 2 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.restoreState()
 
 
 def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
@@ -100,7 +126,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=2 * cm, rightMargin=2 * cm, topMargin=2 * cm, bottomMargin=2 * cm,
+        leftMargin=2 * cm, rightMargin=2 * cm, topMargin=2 * cm, bottomMargin=2.5 * cm,  # >>> DISCLAIMER
     )
     story = []
 
@@ -161,10 +187,10 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
 
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital. Sujeito a verificacao humana. "
-        "Nao substitui parecer juridico.",
+        "Gerado por IA-Licita — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER (3/3): rodapé fixo em todas as páginas
+    doc.build(story, onFirstPage=_rodape_todas_paginas, onLaterPages=_rodape_todas_paginas)
     return buf.getvalue()

@@ -217,12 +217,12 @@ class TestAnalisar:
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
-    def test_risco_vazio_vira_sem_risco_sem_aviso(self, mock_key, mock_urlopen):
+    def test_risco_vazio_vira_sem_risco_com_aviso(self, mock_key, mock_urlopen):
         parecer = {**_parecer_ia_mock(), "risco_geral": ""}
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
         assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
-        assert "_aviso_risco" not in resultado
+        assert resultado.get("_aviso_risco") == ""
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")

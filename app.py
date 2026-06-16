@@ -50,6 +50,7 @@ ROTULO = {"inconformidade": "Inconformidade", "alerta": "Alerta", "revisar": "Re
 def _safe_md(s: object) -> str:
     return (
         str(s)
+        .replace('&', '&amp;')
         .replace('\\', '\\\\')
         .replace('#', '&#35;')
         .replace('[', '&#91;')
@@ -324,7 +325,7 @@ with aba2:
         }
         st.subheader(f"{_icone_risco.get(risco, '⚪')} Risco Geral: {_safe_md(risco)}")
         _aviso_risco = parecer.get("_aviso_risco")
-        if _aviso_risco:
+        if _aviso_risco is not None:
             st.warning(
                 f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **SEM RISCO IDENTIFICADO**. Verifique manualmente."
             )
@@ -534,7 +535,7 @@ with aba4:
         _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
         st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_safe_md(_mat_pip)}")
         _aviso_mat_pip = _pr_pip.get("_aviso_maturidade")
-        if _aviso_mat_pip:
+        if _aviso_mat_pip is not None:
             st.warning(f"⚠️ Valor de maturidade_geral não reconhecido pela IA: '{_safe_md(str(_aviso_mat_pip))}' — registrado como **INEXISTENTE**. Verifique manualmente.")
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
@@ -829,7 +830,7 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
     )
     st.caption(titulo)
     _aviso_pval = _bloco.get("_aviso_parecer")
-    if _aviso_pval:
+    if _aviso_pval is not None:
         st.warning(
             f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_pval))}' — registrado como **INAPTO**. Verifique manualmente."
         )
@@ -985,7 +986,7 @@ with aba6:
             )
             st.markdown("")
             _aviso_cont = _pr_cont.get("_aviso_parecer")
-            if _aviso_cont:
+            if _aviso_cont is not None:
                 st.warning(
                     f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_cont))}' — registrado como **INDEFERÍVEL**. Verifique manualmente."
                 )
@@ -1819,7 +1820,7 @@ with aba9:
             }
             st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
             _aviso_reab = _pr3_reab.get("_aviso_parecer")
-            if _aviso_reab:
+            if _aviso_reab is not None:
                 st.warning(
                     f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_reab))}' — registrado como **INELEGÍVEL**. Verifique manualmente."
                 )
@@ -2152,7 +2153,7 @@ with aba11:
                 st.session_state["fid_dados_licitante"] = _dados_licitante_fid
                 st.session_state["fid_fase_sel"]        = _fase_fid
                 st.session_state["fid_etapa"]           = 1
-            except Exception as _e_fid:
+            except RuntimeError as _e_fid:
                 st.error(_safe_md(str(_e_fid)))
 
     if st.session_state.get("fid_etapa", 0) >= 1:
@@ -2167,7 +2168,7 @@ with aba11:
         _label_fid = relatorio_fid._LABEL_RESULTADO.get(_res_fid, _res_fid)
         st.subheader(f"{_icone_fid} {_label_fid}")
         _aviso_nd = _p_fid.get("_aviso_nd")
-        if _aviso_nd:
+        if _aviso_nd is not None:
             st.warning(
                 f"⚠️ Valor de necessita_diligencia não reconhecido: '{_safe_md(str(_aviso_nd))}' — registrado como **DILIGÊNCIA PARCIALMENTE NECESSÁRIA**. Verifique manualmente."
             )

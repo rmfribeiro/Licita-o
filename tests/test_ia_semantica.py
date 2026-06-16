@@ -7,14 +7,6 @@ import ia_semantica
 from tests.helpers import mock_urlopen
 
 
-def _mock_urlopen_raw(payload):
-    """Wrap arbitrary payload (not necessarily a dict) as Anthropic API response."""
-    data = json.dumps({"content": [{"text": json.dumps(payload)}]}).encode("utf-8")
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=data)))
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
-
 
 def _mock_urlopen_text(text: str):
     """Wrap a raw text string as Anthropic API response (simulates non-JSON body)."""
@@ -77,12 +69,12 @@ class TestGeradorParecer:
 
     def test_api_retorna_lista_levanta_runtime_error(self):
         # extrair_json finds '{' inside [{}], so use a plain string-list to force a true list parse
-        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen_raw(["inconformidade", "alta"])):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_urlopen(["inconformidade", "alta"])):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_semantica.gerar_pareceres(_TEXTO, _REGRAS, _BASE_RAG)
 
     def test_api_retorna_string_levanta_runtime_error(self):
-        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen_raw("erro")):
+        with patch("ia_utils.urllib.request.urlopen", return_value=mock_urlopen("erro")):
             with pytest.raises(RuntimeError, match="objeto JSON esperado"):
                 ia_semantica.gerar_pareceres(_TEXTO, _REGRAS, _BASE_RAG)
 

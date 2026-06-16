@@ -11,6 +11,7 @@ from reportlab.platypus import (
 )
 from ia_integridade import COR_MATURIDADE_HEX as _COR_MATURIDADE_HEX
 from ia_pi_empresas import DIMENSOES_PI, HIPOTESES_POR_TIPO, QUESTOES_PI, TIPOS_ENTIDADE
+import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _COR_MATURIDADE = {k: colors.HexColor(v) for k, v in _COR_MATURIDADE_HEX.items()}
 
@@ -21,6 +22,31 @@ _ESTILO_H2      = ParagraphStyle("pi_h2",      parent=_estilos_base["Heading2"],
 _ESTILO_CORPO   = ParagraphStyle("pi_corpo",   parent=_estilos_base["Normal"],   fontSize=10, spaceAfter=3)
 _ESTILO_PEQUENO = ParagraphStyle("pi_peq",     parent=_estilos_base["Normal"],   fontSize=8,  textColor=colors.grey)
 _ESTILO_BADGE   = ParagraphStyle("pi_badge",   parent=_estilos_base["Normal"],   fontSize=14, textColor=colors.white, alignment=1)
+
+# >>> DISCLAIMER (2/3): estilo do rodapé fixo + função que o desenha em CADA página.
+#     Usa TEXTO_PDF (aviso brando): este relatório é uma avaliação de apoio, não uma minuta.
+_ESTILO_RODAPE = ParagraphStyle(
+    "pi_rodape",
+    parent=_estilos_base["Normal"],
+    fontSize=7,
+    leading=8.5,
+    textColor=colors.HexColor("#C0392B"),
+    alignment=1,
+)
+
+
+def _rodape_todas_paginas(canvas, doc):
+    """Desenha o disclaimer de apoio no rodapé de TODAS as páginas."""
+    canvas.saveState()
+    largura, _altura = A4
+    p = Paragraph(disclaimers.TEXTO_PDF, _ESTILO_RODAPE)
+    largura_util = largura - 4 * cm  # margens de 2cm de cada lado
+    p.wrap(largura_util, 2 * cm)
+    p.drawOn(canvas, 2 * cm, 1.0 * cm)
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(largura - 2 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.restoreState()
 
 
 def _fmt_cnpj(cnpj: str) -> str:
@@ -38,7 +64,7 @@ def gerar_pdf(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
+        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm,  # >>> DISCLAIMER
     )
     story = []
 
@@ -174,10 +200,10 @@ def gerar_pdf(
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital. Sujeito a verificacao humana. "
-        "Nao substitui parecer juridico.",
+        "Gerado por IA-Licita — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 
-    doc.build(story)
+    # >>> DISCLAIMER (3/3): rodapé fixo em todas as páginas
+    doc.build(story, onFirstPage=_rodape_todas_paginas, onLaterPages=_rodape_todas_paginas)
     return buf.getvalue()

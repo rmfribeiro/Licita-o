@@ -105,7 +105,7 @@ def analisar(
     if isinstance(_data_apl, str):
         _raw = _data_apl.strip()
         try:
-            _data_apl = date.fromisoformat(_raw[:10])
+            _data_apl = date.fromisoformat(_raw.split("T")[0][:10])
             if _data_apl > (data_referencia or date.today()):
                 _data_apl = None
         except ValueError:
@@ -129,7 +129,7 @@ def analisar(
             _min = _prazo["prazo_minimo_anos"]
             _a = _prazo["anos_decorridos"]
             _m = _prazo["meses_decorridos"]
-            _pval_inelegivel = NORM_PARECER_REAB.get("INELEGÍVEL", "INELEGÍVEL")
+            _pval_inelegivel = "INELEGÍVEL"
             return {
                 "parecer": _pval_inelegivel,
                 "condicoes_avaliadas": [{
