@@ -129,7 +129,7 @@ def analisar(dados: dict, fid: dict) -> dict:
         _risco = "SEM RISCO IDENTIFICADO"
     parecer["risco_geral"] = _risco
 
-    _risco_antes_piso = parecer["risco_geral"]
+    _risco_antes_piso = _risco
     if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(_risco_antes_piso):
         parecer["risco_geral"] = piso
         parecer["_aviso_piso"] = _risco_antes_piso

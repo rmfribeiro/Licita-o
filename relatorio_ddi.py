@@ -135,9 +135,26 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     story.append(Spacer(1, 0.4*cm))
     _aviso_risco_pdf = parecer.get("_aviso_risco")
     if _aviso_risco_pdf is not None:
+        _sem_risco_pdf = "SEM RISCO IDENTIFICADO"
+        if risco_display != _sem_risco_pdf:
+            _aviso_risco_txt = (
+                f"⚠ Valor de risco_geral não reconhecido: '{html.escape(str(_aviso_risco_pdf))}'"
+                f" — mapeado para {_sem_risco_pdf}; elevado para {html.escape(risco_display)}"
+                " por piso mínimo de risco (ocorrência ativa nos cadastros CEIS/CNEP). Verifique manualmente."
+            )
+        else:
+            _aviso_risco_txt = (
+                f"⚠ Valor de risco_geral não reconhecido: '{html.escape(str(_aviso_risco_pdf))}'"
+                f" — registrado como {_sem_risco_pdf}. Verifique manualmente."
+            )
+        story.append(Paragraph(_aviso_risco_txt, _ESTILO_CORPO))
+        story.append(Spacer(1, 0.2*cm))
+    _aviso_piso_pdf = parecer.get("_aviso_piso")
+    if _aviso_risco_pdf is None and _aviso_piso_pdf is not None:
         story.append(Paragraph(
-            f"⚠ Valor de risco_geral não reconhecido: '{html.escape(str(_aviso_risco_pdf))}'"
-            " — registrado como SEM RISCO IDENTIFICADO. Verifique manualmente.",
+            f"ℹ A IA avaliou o risco como {html.escape(str(_aviso_piso_pdf))}; elevado para"
+            f" {html.escape(risco_display)} por piso mínimo de risco em razão de ocorrência"
+            " ativa nos cadastros (CEIS/CNEP). Verifique manualmente.",
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2*cm))
