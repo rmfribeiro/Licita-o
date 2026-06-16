@@ -297,6 +297,25 @@ class TestAnalisar:
         mock_url.assert_not_called()
         assert r["parecer"] == "INELEGÍVEL"
 
+    def test_data_aplicacao_iso_compacto_futuro_retorna_inelegivel(self):
+        # ISO básico sem separadores (YYYYMMDD) com data futura → INELEGÍVEL sem chamar a IA.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "20990101",
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+
     def test_data_aplicacao_iso_futuro_retorna_inelegivel(self):
         # Data ISO com ano no futuro → retorno antecipado INELEGÍVEL sem chamar a IA.
         dados_sancao = {

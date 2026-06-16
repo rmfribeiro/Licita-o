@@ -115,6 +115,7 @@ def analisar(dados: dict, fid: dict) -> dict:
     if not isinstance(parecer, dict):
         raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
     parecer.pop("_aviso_risco", None)
+    parecer.pop("_aviso_piso", None)
     _raw_risco = parecer.get("risco_geral")
     _risco = "SEM RISCO IDENTIFICADO" if _raw_risco is None else str(_raw_risco).strip().upper()
     _risco = {
@@ -128,8 +129,10 @@ def analisar(dados: dict, fid: dict) -> dict:
         _risco = "SEM RISCO IDENTIFICADO"
     parecer["risco_geral"] = _risco
 
-    if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(parecer["risco_geral"]):
+    _risco_antes_piso = parecer["risco_geral"]
+    if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(_risco_antes_piso):
         parecer["risco_geral"] = piso
+        parecer["_aviso_piso"] = _risco_antes_piso
 
     if _aviso_risco_val is not None:
         parecer["_aviso_risco"] = _aviso_risco_val

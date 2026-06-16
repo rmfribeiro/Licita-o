@@ -127,6 +127,13 @@ def analisar(
             if _data_apl > _ref:
                 return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
         except ValueError:
+            # tenta ISO básico sem separadores: YYYYMMDD (ex: retorno de APIs REST)
+            try:
+                _data_apl = datetime.strptime(_raw[:8], "%Y%m%d").date()
+                if _data_apl > _ref:
+                    return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
+            except ValueError:
+                pass
             # tenta DD/MM/YYYY (formato brasileiro)
             _p = _raw.split("/")
             try:

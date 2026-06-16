@@ -208,6 +208,18 @@ class TestAnalisar:
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_piso_seta_aviso_piso_para_risco_original_reconhecido(self, mock_key, mock_urlopen):
+        # Valor reconhecido (BAIXO) elevado por piso → _aviso_piso guarda o valor original
+        dados = {**_dados_base(), "ceis": [{"situacaoAtual": "Ativo"}]}
+        parecer = {**_parecer_ia_mock(), "risco_geral": "BAIXO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(dados, {})
+        assert resultado["risco_geral"] == "ALTO"
+        assert resultado.get("_aviso_piso") == "BAIXO"
+        assert "_aviso_risco" not in resultado
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_risco_none_vira_sem_risco_sem_aviso(self, mock_key, mock_urlopen):
         parecer = {**_parecer_ia_mock(), "risco_geral": None}
         mock_urlopen.return_value = _mock_urlopen(parecer)

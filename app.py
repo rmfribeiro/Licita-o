@@ -331,7 +331,7 @@ with aba2:
                 _aviso_risco_msg = (
                     f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — "
                     f"mapeado para **{_safe_md(_sem_risco)}**; elevado para **{_safe_md(risco)}** "
-                    "por piso regulatório. Verifique manualmente."
+                    "por piso mínimo de risco (ocorrência ativa nos cadastros CEIS/CNEP). Verifique manualmente."
                 )
             else:
                 _aviso_risco_msg = (
@@ -339,6 +339,13 @@ with aba2:
                     f"registrado como **{_safe_md(risco)}**. Verifique manualmente."
                 )
             st.warning(_aviso_risco_msg)
+        _aviso_piso = parecer.get("_aviso_piso")
+        if _aviso_risco is None and _aviso_piso is not None:
+            st.info(
+                f"ℹ️ A IA avaliou o risco como **{_safe_md(str(_aviso_piso))}**; elevado para "
+                f"**{_safe_md(risco)}** por piso mínimo de risco em razão de ocorrência ativa "
+                "nos cadastros (CEIS/CNEP). Verifique manualmente."
+            )
 
         dims = parecer.get("dimensoes") or {}
         _label_dim = {
