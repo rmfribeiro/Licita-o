@@ -10,6 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
+import disclaimers
 
 _COR_RISCO = {
     "ALTO":                   colors.HexColor(_COR_STATUS["critico"]),
@@ -41,6 +42,26 @@ _ESTILO_CORPO   = ParagraphStyle("ddi_corpo",  parent=_estilos_base["Normal"],  
 _ESTILO_PEQUENO = ParagraphStyle("ddi_peq",    parent=_estilos_base["Normal"],   fontSize=8, textColor=colors.grey)
 _ESTILO_H1      = ParagraphStyle("ddi_h1",     parent=_estilos_base["Heading1"])
 _ESTILO_BADGE   = ParagraphStyle("ddi_badge",  parent=_estilos_base["Normal"], fontSize=14, textColor=colors.white, alignment=1)
+_ESTILO_RODAPE  = ParagraphStyle(
+    "ddi_rodape",
+    parent=_estilos_base["Normal"],
+    fontSize=7, leading=8.5,
+    textColor=colors.HexColor("#C0392B"),
+    alignment=1,
+)
+
+
+def _rodape_todas_paginas(canvas, doc):
+    canvas.saveState()
+    largura, _altura = A4
+    p = Paragraph(disclaimers.TEXTO_PDF, _ESTILO_RODAPE)
+    largura_util = largura - 4 * cm
+    p.wrap(largura_util, 2 * cm)
+    p.drawOn(canvas, 2 * cm, 1.0 * cm)
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.grey)
+    canvas.drawRightString(largura - 2 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.restoreState()
 
 
 def _fmt_cnpj(cnpj: str) -> str:
@@ -52,7 +73,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
-        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm,
+        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm,
     )
     story = []
 
@@ -113,7 +134,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     story.append(t_risco)
     story.append(Spacer(1, 0.4*cm))
     _aviso_risco_pdf = parecer.get("_aviso_risco")
-    if _aviso_risco_pdf:
+    if _aviso_risco_pdf is not None:
         story.append(Paragraph(
             f"⚠ Valor de risco_geral não reconhecido: '{html.escape(str(_aviso_risco_pdf))}'"
             " — registrado como SEM RISCO IDENTIFICADO. Verifique manualmente.",
@@ -198,5 +219,5 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
         _ESTILO_PEQUENO
     ))
 
-    doc.build(story)
+    doc.build(story, onFirstPage=_rodape_todas_paginas, onLaterPages=_rodape_todas_paginas)
     return buf.getvalue()

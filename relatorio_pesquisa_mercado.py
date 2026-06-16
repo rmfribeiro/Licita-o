@@ -50,13 +50,12 @@ def _rodape_todas_paginas(canvas, doc):
     canvas.saveState()
     largura, _altura = A4
     p = Paragraph(disclaimers.TEXTO_PDF, _ESTILO_RODAPE)
-    # margem lateral varia (1,5cm no mapa, 2cm no relatório); 3cm de folga cobre os dois.
-    largura_util = largura - 3 * cm
+    largura_util = largura - 4 * cm
     p.wrap(largura_util, 2 * cm)
-    p.drawOn(canvas, 1.5 * cm, 1.0 * cm)
+    p.drawOn(canvas, 2 * cm, 1.0 * cm)
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(colors.grey)
-    canvas.drawRightString(largura - 1.5 * cm, 0.7 * cm, f"Página {doc.page}")
+    canvas.drawRightString(largura - 2 * cm, 0.7 * cm, f"Página {doc.page}")
     canvas.restoreState()
 
 
@@ -179,11 +178,7 @@ def gerar_mapa_precos(
 
     story.append(Spacer(1, 0.5*cm))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
-    story.append(Paragraph(
-        "Sujeito a verificação humana. Não substitui aprovação do ordenador.", _PEQUENO
-    ))
 
-    # >>> DISCLAIMER (3/4): rodapé fixo em todas as páginas
     doc.build(story, onFirstPage=_rodape_todas_paginas, onLaterPages=_rodape_todas_paginas)
     return buf.getvalue()
 

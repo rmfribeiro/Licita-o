@@ -27,6 +27,37 @@ def _make_at() -> AppTest:
 
 
 # ---------------------------------------------------------------------------
+# _safe_md
+# ---------------------------------------------------------------------------
+
+class TestSafeMd:
+    """Verifica a ordem correta dos escapes em _safe_md."""
+
+    def _import(self):
+        import importlib, sys
+        # importa app sem executar o Streamlit top-level
+        spec = importlib.util.spec_from_file_location("app", _APP_PATH)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("app", mod)
+        spec.loader.exec_module(mod)
+        return mod._safe_md
+
+    def test_ampersand_escapado(self):
+        safe = self._import()
+        assert safe("AT&T") == "AT&amp;T"
+
+    def test_ampersand_primeiro_evita_duplo_encode(self):
+        safe = self._import()
+        # '#' vira '&#35;'; o '&' em '&#35;' NÃO deve ser re-escapado
+        assert safe("#") == "&#35;"
+
+    def test_ampersand_pre_escapado_duplo_encode(self):
+        safe = self._import()
+        # input já contém '&amp;' — deve virar '&amp;amp;' (comportamento correto: não passamos HTML pré-escapado)
+        assert safe("&amp;") == "&amp;amp;"
+
+
+# ---------------------------------------------------------------------------
 # Inicialização
 # ---------------------------------------------------------------------------
 

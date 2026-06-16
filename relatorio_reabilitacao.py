@@ -58,6 +58,10 @@ def _desenhar_rodape(canvas, doc, texto: str):
     canvas.restoreState()
 
 
+def _rodape_tecnico(canvas, doc):
+    _desenhar_rodape(canvas, doc, disclaimers.TEXTO_PDF)
+
+
 def _rodape_minuta(canvas, doc):
     _desenhar_rodape(canvas, doc, disclaimers.TEXTO_PDF_MINUTA)
 
@@ -166,8 +170,7 @@ def gerar_relatorio_tecnico(
         _PEQUENO,
     ))
 
-    # >>> DISCLAIMER (3/4): rodapé fixo de minuta em todas as páginas
-    doc.build(story, onFirstPage=_rodape_minuta, onLaterPages=_rodape_minuta)
+    doc.build(story, onFirstPage=_rodape_tecnico, onLaterPages=_rodape_tecnico)
     return buf.getvalue()
 
 

@@ -56,8 +56,20 @@ _ESTILO_RODAPE = ParagraphStyle(
     parent=_estilos_base["Normal"],
     fontSize=7,
     leading=8.5,
-    textColor=colors.HexColor("#C0392B"),  # vermelho discreto, para destacar o aviso
-    alignment=1,  # centralizado
+    textColor=colors.HexColor("#C0392B"),
+    alignment=1,
+)
+
+_ESTILO_AVISO_MINUTA = ParagraphStyle(
+    "sanc_aviso_minuta",
+    parent=_estilos_base["Normal"],
+    fontSize=9,
+    leading=11,
+    textColor=colors.white,
+    backColor=colors.HexColor("#C0392B"),
+    borderPadding=6,
+    spaceBefore=4,
+    spaceAfter=8,
 )
 
 
@@ -72,7 +84,7 @@ def _rodape_todas_paginas(canvas, doc):
     # Paragraph permite quebra de linha automática dentro da largura da página
     p = Paragraph(disclaimers.TEXTO_PDF_MINUTA, _ESTILO_RODAPE)
     largura_util = largura - 4 * cm  # respeita as margens de 2cm de cada lado
-    _l, alt = p.wrap(largura_util, 2 * cm)
+    p.wrap(largura_util, 2 * cm)
     p.drawOn(canvas, 2 * cm, 1.0 * cm)  # desenha a ~1cm da borda inferior
     # número da página, à direita
     canvas.setFont("Helvetica", 7)
@@ -250,18 +262,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
 
     # >>> DISCLAIMER (3/3): aviso forte e destacado logo abaixo do título da minuta,
     #     dentro do corpo do documento (além do rodapé fixo de todas as páginas).
-    _ESTILO_AVISO_MINUTA = ParagraphStyle(
-        "sanc_aviso_minuta",
-        parent=_estilos_base["Normal"],
-        fontSize=9,
-        leading=11,
-        textColor=colors.white,
-        backColor=colors.HexColor("#C0392B"),
-        borderPadding=6,
-        spaceBefore=4,
-        spaceAfter=8,
-    )
-    story.append(Paragraph(f"<b>{html.escape(disclaimers.TEXTO_PDF_MINUTA)}</b>", _ESTILO_AVISO_MINUTA))
+    story.append(Paragraph(disclaimers.TEXTO_PDF_MINUTA, _ESTILO_AVISO_MINUTA))
     story.append(Spacer(1, 0.2 * cm))
 
     if minuta:

@@ -2153,7 +2153,7 @@ with aba11:
                 st.session_state["fid_dados_licitante"] = _dados_licitante_fid
                 st.session_state["fid_fase_sel"]        = _fase_fid
                 st.session_state["fid_etapa"]           = 1
-            except RuntimeError as _e_fid:
+            except (RuntimeError, ValueError) as _e_fid:
                 st.error(_safe_md(str(_e_fid)))
 
     if st.session_state.get("fid_etapa", 0) >= 1:
