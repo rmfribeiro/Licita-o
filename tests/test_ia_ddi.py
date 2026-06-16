@@ -226,6 +226,17 @@ class TestAnalisar:
 
     @patch('ia_utils.urllib.request.urlopen')
     @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_vazio_com_piso_ativo(self, mock_key, mock_urlopen):
+        # risco="" aciona _aviso_risco=""; piso CEIS Ativo eleva risco_geral para ALTO
+        dados = {**_dados_base(), "ceis": [{"situacaoAtual": "Ativo"}]}
+        parecer = {**_parecer_ia_mock(), "risco_geral": ""}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(dados, {})
+        assert resultado["risco_geral"] == "ALTO"
+        assert resultado.get("_aviso_risco") == ""
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
     def test_httperror_inclui_body_na_mensagem(self, mock_key, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(

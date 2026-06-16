@@ -2,7 +2,7 @@ from __future__ import annotations
 import calendar
 import logging
 import types
-from datetime import date
+from datetime import date, datetime
 from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
@@ -104,10 +104,20 @@ def analisar(
     _data_apl = dados_sancao.get("data_aplicacao")
     if isinstance(_data_apl, str):
         _raw = _data_apl.strip()
+        _ref = data_referencia or date.today()
         try:
-            _data_apl = date.fromisoformat(_raw.split("T")[0][:10])
-            if _data_apl > (data_referencia or date.today()):
-                _data_apl = None
+            _data_apl = datetime.strptime(_raw.split("T")[0][:10], "%Y-%m-%d").date()
+            if _data_apl > _ref:
+                return {
+                    "parecer": "INELEGÍVEL",
+                    "condicoes_avaliadas": [{"numero": "III", "descricao": "Transcurso do prazo mínimo",
+                        "status": "AUSENTE", "observacao": (
+                            f"Data de aplicação da sanção ({_data_apl}) é posterior à data de "
+                            "referência — verifique o dado informado.")}],
+                    "sintese": "Reabilitação inelegível: data de aplicação da sanção está no futuro. Verifique o dado informado.",
+                    "base_legal": ["Art. 163, Par. Único, III, Lei 14.133/2021"],
+                    "dados_empresa": dados_empresa, "dados_sancao": dados_sancao,
+                }
         except ValueError:
             # tenta DD/MM/YYYY (formato brasileiro)
             _p = _raw.split("/")
@@ -117,8 +127,17 @@ def analisar(
                     if _ano < 100:
                         _ano += 1900 if _ano >= 70 else 2000
                     _data_apl = date(_ano, int(_p[1]), int(_p[0]))
-                    if _data_apl > (data_referencia or date.today()):
-                        _data_apl = None
+                    if _data_apl > _ref:
+                        return {
+                            "parecer": "INELEGÍVEL",
+                            "condicoes_avaliadas": [{"numero": "III", "descricao": "Transcurso do prazo mínimo",
+                                "status": "AUSENTE", "observacao": (
+                                    f"Data de aplicação da sanção ({_data_apl}) é posterior à data de "
+                                    "referência — verifique o dado informado.")}],
+                            "sintese": "Reabilitação inelegível: data de aplicação da sanção está no futuro. Verifique o dado informado.",
+                            "base_legal": ["Art. 163, Par. Único, III, Lei 14.133/2021"],
+                            "dados_empresa": dados_empresa, "dados_sancao": dados_sancao,
+                        }
                 else:
                     _data_apl = None
             except (ValueError, TypeError, IndexError):

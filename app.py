@@ -327,7 +327,7 @@ with aba2:
         _aviso_risco = parecer.get("_aviso_risco")
         if _aviso_risco is not None:
             st.warning(
-                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **SEM RISCO IDENTIFICADO**. Verifique manualmente."
+                f"⚠️ Valor de risco_geral não reconhecido: '{_safe_md(str(_aviso_risco))}' — registrado como **{_safe_md(risco)}**. Verifique manualmente."
             )
 
         dims = parecer.get("dimensoes") or {}

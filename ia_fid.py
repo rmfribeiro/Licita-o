@@ -17,6 +17,13 @@ RESULTADO_DILIGENCIA: types.MappingProxyType[str, str] = types.MappingProxyType(
     "PARCIALMENTE": "PARCIALMENTE",
 })
 
+def _clamp_prazo(v) -> int:
+    try:
+        return max(1, min(30, 5 if (v is None or isinstance(v, bool)) else int(float(v))))
+    except (ValueError, TypeError):
+        return 5
+
+
 _NORM_RESULTADO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "NAO":                   "NÃO",
     "NÃO NECESSITA":         "NÃO",
@@ -121,20 +128,10 @@ def analisar(
         _res = "PARCIALMENTE"
     parecer["necessita_diligencia"] = _res
 
-    _prazo = parecer.get("prazo_resposta_sugerido")
-    try:
-        _prazo_int = 5 if (_prazo is None or isinstance(_prazo, bool)) else int(float(_prazo))
-    except (ValueError, TypeError):
-        _prazo_int = 5
-    parecer["prazo_resposta_sugerido"] = max(1, min(30, _prazo_int))
+    parecer["prazo_resposta_sugerido"] = _clamp_prazo(parecer.get("prazo_resposta_sugerido"))
 
     for _doc in (parecer.get("documentos_solicitados") or []):
         if isinstance(_doc, dict):
-            _pd = _doc.get("prazo_dias")
-            try:
-                _pd_int = 5 if (_pd is None or isinstance(_pd, bool)) else int(float(_pd))
-            except (ValueError, TypeError):
-                _pd_int = 5
-            _doc["prazo_dias"] = max(1, min(30, _pd_int))
+            _doc["prazo_dias"] = _clamp_prazo(_doc.get("prazo_dias"))
 
     return parecer
