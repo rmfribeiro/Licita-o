@@ -65,6 +65,7 @@ _ESTILO_AVISO_MINUTA = ParagraphStyle(
     parent=_estilos_base["Normal"],
     fontSize=9,
     leading=11,
+    fontName="Helvetica-Bold",
     textColor=colors.white,
     backColor=colors.HexColor("#C0392B"),
     borderPadding=6,

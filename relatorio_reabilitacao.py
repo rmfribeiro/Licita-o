@@ -128,7 +128,7 @@ def gerar_relatorio_tecnico(
     story.append(t_badge)
     story.append(Spacer(1, 0.4*cm))
     _aviso_par_reab = parecer.get("_aviso_parecer")
-    if _aviso_par_reab:
+    if _aviso_par_reab is not None:
         story.append(Paragraph(
             f"⚠ Valor de parecer não reconhecido: '{html.escape(str(_aviso_par_reab))}'"
             " — registrado como INELEGÍVEL. Verifique manualmente.",
