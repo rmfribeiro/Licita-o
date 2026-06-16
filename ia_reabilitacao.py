@@ -85,6 +85,23 @@ _ESTRUTURA_PARECER = """{
 }"""
 
 
+def _inelegivel_data_futura(data_apl: date, ref: date, dados_empresa: dict, dados_sancao: dict) -> dict:
+    return {
+        "parecer": "INELEGÍVEL",
+        "condicoes_avaliadas": [{"numero": "III", "descricao": "Transcurso do prazo mínimo",
+            "status": "AUSENTE", "observacao": (
+                f"Data de aplicação da sanção ({data_apl}) é posterior à data de "
+                f"referência ({ref}) — verifique o dado informado.")}],
+        "sintese": (
+            f"Reabilitação inelegível: data de aplicação da sanção ({data_apl}) é posterior "
+            f"à data de referência ({ref}). Verifique o dado informado."
+        ),
+        "base_legal": ["Art. 163, Par. Único, III, Lei 14.133/2021"],
+        "dados_empresa": dados_empresa,
+        "dados_sancao": dados_sancao,
+    }
+
+
 def analisar(
     tipo_sancao: str,
     dados_empresa: dict,
@@ -108,16 +125,7 @@ def analisar(
         try:
             _data_apl = datetime.strptime(_raw.split("T")[0][:10], "%Y-%m-%d").date()
             if _data_apl > _ref:
-                return {
-                    "parecer": "INELEGÍVEL",
-                    "condicoes_avaliadas": [{"numero": "III", "descricao": "Transcurso do prazo mínimo",
-                        "status": "AUSENTE", "observacao": (
-                            f"Data de aplicação da sanção ({_data_apl}) é posterior à data de "
-                            "referência — verifique o dado informado.")}],
-                    "sintese": "Reabilitação inelegível: data de aplicação da sanção está no futuro. Verifique o dado informado.",
-                    "base_legal": ["Art. 163, Par. Único, III, Lei 14.133/2021"],
-                    "dados_empresa": dados_empresa, "dados_sancao": dados_sancao,
-                }
+                return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
         except ValueError:
             # tenta DD/MM/YYYY (formato brasileiro)
             _p = _raw.split("/")
@@ -128,16 +136,7 @@ def analisar(
                         _ano += 1900 if _ano >= 70 else 2000
                     _data_apl = date(_ano, int(_p[1]), int(_p[0]))
                     if _data_apl > _ref:
-                        return {
-                            "parecer": "INELEGÍVEL",
-                            "condicoes_avaliadas": [{"numero": "III", "descricao": "Transcurso do prazo mínimo",
-                                "status": "AUSENTE", "observacao": (
-                                    f"Data de aplicação da sanção ({_data_apl}) é posterior à data de "
-                                    "referência — verifique o dado informado.")}],
-                            "sintese": "Reabilitação inelegível: data de aplicação da sanção está no futuro. Verifique o dado informado.",
-                            "base_legal": ["Art. 163, Par. Único, III, Lei 14.133/2021"],
-                            "dados_empresa": dados_empresa, "dados_sancao": dados_sancao,
-                        }
+                        return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
                 else:
                     _data_apl = None
             except (ValueError, TypeError, IndexError):
