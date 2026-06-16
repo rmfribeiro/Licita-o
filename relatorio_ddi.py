@@ -152,7 +152,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     _aviso_piso_pdf = parecer.get("_aviso_piso")
     if _aviso_risco_pdf is None and _aviso_piso_pdf is not None:
         story.append(Paragraph(
-            f"ℹ A IA avaliou o risco como {html.escape(str(_aviso_piso_pdf))}; elevado para"
+            f"(i) A IA avaliou o risco como {html.escape(str(_aviso_piso_pdf))}; elevado para"
             f" {html.escape(risco_display)} por piso mínimo de risco em razão de ocorrência"
             " ativa nos cadastros (CEIS/CNEP). Verifique manualmente.",
             _ESTILO_CORPO,

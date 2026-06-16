@@ -554,6 +554,13 @@ with aba4:
         _aviso_mat_pip = _pr_pip.get("_aviso_maturidade")
         if _aviso_mat_pip is not None:
             st.warning(f"⚠️ Valor de maturidade_geral não reconhecido pela IA: '{_safe_md(str(_aviso_mat_pip))}' — registrado como **INEXISTENTE**. Verifique manualmente.")
+        _aviso_piso_pip = _pr_pip.get("_aviso_piso")
+        if _aviso_mat_pip is None and _aviso_piso_pip is not None:
+            st.info(
+                f"ℹ️ A IA avaliou a maturidade como **{_safe_md(str(_aviso_piso_pip))}**; "
+                f"rebaixada para **{_safe_md(_mat_pip)}** pelo piso de maturidade "
+                "(critérios estruturantes ausentes). Verifique manualmente."
+            )
 
         _resumo_pip = str(_pr_pip.get("resumo_executivo") or "")
         if _resumo_pip:

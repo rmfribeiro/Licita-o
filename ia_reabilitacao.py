@@ -134,25 +134,26 @@ def analisar(
                     return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
             except ValueError:
                 pass  # formato inválido — tenta próximo parser
-            # tenta DD/MM/YYYY (formato brasileiro)
-            _p = _raw.split("/")
-            try:
-                if len(_p) == 3:
-                    _ano = int(_p[2])
-                    if _ano < 100:
-                        _ano += 1900 if _ano >= 70 else 2000
-                    _data_apl = date(_ano, int(_p[1]), int(_p[0]))
-                    if _data_apl > _ref:
-                        return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
-                else:
+            # tenta DD/MM/YYYY (formato brasileiro) — só se YYYYMMDD também falhou
+            if not isinstance(_data_apl, date):
+                _p = _raw.split("/")
+                try:
+                    if len(_p) == 3:
+                        _ano = int(_p[2])
+                        if _ano < 100:
+                            _ano += 1900 if _ano >= 70 else 2000
+                        _data_apl = date(_ano, int(_p[1]), int(_p[0]))
+                        if _data_apl > _ref:
+                            return _inelegivel_data_futura(_data_apl, _ref, dados_empresa, dados_sancao)
+                    else:
+                        _data_apl = None
+                except (ValueError, TypeError, IndexError):
                     _data_apl = None
-            except (ValueError, TypeError, IndexError):
-                _data_apl = None
     if _data_apl is None and isinstance(dados_sancao.get("data_aplicacao"), str):
         logging.warning(
             "ia_reabilitacao: não foi possível interpretar data_aplicacao=%r — "
             "guarda de prazo ignorada, IA será consultada",
-            dados_sancao.get("data_aplicacao"),
+            _raw,
         )
     if isinstance(_data_apl, date):
         _prazo = calcular_prazo(tipo_sancao, _data_apl, data_referencia)

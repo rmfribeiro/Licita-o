@@ -141,6 +141,9 @@ def diagnosticar(
         if _raw_mat is not None:
             parecer["_aviso_maturidade"] = _mat
         _mat = "INEXISTENTE"
-    parecer["maturidade_geral"] = _aplicar_piso(respostas, _mat)
+    _mat_piso = _aplicar_piso(respostas, _mat)
+    if _mat_piso != _mat:
+        parecer["_aviso_piso"] = _mat
+    parecer["maturidade_geral"] = _mat_piso
 
     return parecer

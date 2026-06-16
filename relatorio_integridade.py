@@ -93,6 +93,15 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2*cm))
+    _aviso_piso_pdf = parecer.get("_aviso_piso")
+    if _aviso_mat_pdf is None and _aviso_piso_pdf is not None:
+        story.append(Paragraph(
+            f"(i) A IA avaliou a maturidade como {html.escape(str(_aviso_piso_pdf))}; "
+            f"rebaixada para {html.escape(maturidade)} pelo piso de maturidade "
+            "(critérios estruturantes ausentes). Verifique manualmente.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
 
     # Resumo executivo
     resumo = str(parecer.get("resumo_executivo") or "")

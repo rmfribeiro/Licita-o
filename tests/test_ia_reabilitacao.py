@@ -316,6 +316,27 @@ class TestAnalisar:
         mock_url.assert_not_called()
         assert r["parecer"] == "INELEGÍVEL"
 
+    def test_data_aplicacao_iso_compacto_passado_dispara_guarda_prazo(self):
+        # YYYYMMDD com data passada mas prazo mínimo não cumprido → INELEGÍVEL sem chamar a IA.
+        # Regressão: YYYYMMDD era sobrescrito para None pelo fallback DD/MM/YYYY.
+        dados_sancao = {
+            **_dados_sancao_mock("inidoneidade"),
+            "data_aplicacao": "20250601",  # 1 ano antes da referência; inidoneidade exige 3 anos
+        }
+        with patch("ia_utils.urllib.request.urlopen") as mock_url:
+            r = ia_reabilitacao.analisar(
+                "inidoneidade",
+                _dados_empresa_mock(),
+                dados_sancao,
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        mock_url.assert_not_called()
+        assert r["parecer"] == "INELEGÍVEL"
+        assert any(c.get("numero") == "III" for c in r.get("condicoes_avaliadas", []))
+
     def test_data_aplicacao_iso_futuro_retorna_inelegivel(self):
         # Data ISO com ano no futuro → retorno antecipado INELEGÍVEL sem chamar a IA.
         dados_sancao = {
