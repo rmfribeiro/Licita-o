@@ -152,7 +152,7 @@ def gerar_mapa_precos(
         ["", "VALOR TOTAL ESTIMADO", "", ""] + [""] * len(fornecedores) + ["", total_str]
     )
 
-    _usable = A4[0] - 3 * cm  # 1.5 cm each margin
+    _usable = A4[0] - 4 * cm
     _fixed  = 0.7*cm + 4.5*cm + 1*cm + 1.2*cm + 3*cm + 2.5*cm
     _forn_w = max(1.5*cm, (_usable - _fixed) / max(len(fornecedores), 1))
     col_w   = [0.7*cm, 4.5*cm, 1*cm, 1.2*cm] + [_forn_w] * len(fornecedores) + [3*cm, 2.5*cm]

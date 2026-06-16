@@ -86,7 +86,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     story.append(t_mat)
     story.append(Spacer(1, 0.4*cm))
     _aviso_mat_pdf = parecer.get("_aviso_maturidade")
-    if _aviso_mat_pdf:
+    if _aviso_mat_pdf is not None:
         story.append(Paragraph(
             f"⚠ Valor de maturidade_geral não reconhecido: '{html.escape(str(_aviso_mat_pdf))}'"
             " — registrado como INEXISTENTE. Verifique manualmente.",
