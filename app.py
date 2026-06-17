@@ -339,7 +339,7 @@ with aba2:
                     f"registrado como **{_safe_md(risco)}**. Verifique manualmente."
                 )
             st.warning(_aviso_risco_msg)
-        _aviso_piso = parecer.get("_aviso_piso")
+        _aviso_piso = parecer.get("_aviso_piso_risco")
         if _aviso_risco is None and _aviso_piso is not None:
             st.info(
                 f"ℹ️ A IA avaliou o risco como **{_safe_md(str(_aviso_piso))}**; elevado para "
@@ -554,7 +554,7 @@ with aba4:
         _aviso_mat_pip = _pr_pip.get("_aviso_maturidade")
         if _aviso_mat_pip is not None:
             st.warning(f"⚠️ Valor de maturidade_geral não reconhecido pela IA: '{_safe_md(str(_aviso_mat_pip))}' — registrado como **INEXISTENTE**. Verifique manualmente.")
-        _aviso_piso_pip = _pr_pip.get("_aviso_piso")
+        _aviso_piso_pip = _pr_pip.get("_aviso_piso_maturidade")
         if _aviso_mat_pip is None and _aviso_piso_pip is not None:
             st.info(
                 f"ℹ️ A IA avaliou a maturidade como **{_safe_md(str(_aviso_piso_pip))}**; "

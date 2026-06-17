@@ -106,6 +106,14 @@ class TestDiagnosticar:
         assert resultado["maturidade_geral"] == "INEXISTENTE"
 
     @patch("ia_utils.urllib.request.urlopen")
+    def test_piso_rebaixa_maturidade_seta_aviso_piso_maturidade(self, mock_urlopen):
+        # IA diz CONSOLIDADO, piso rebaixa para INEXISTENTE → _aviso_piso_maturidade gravado
+        mock_urlopen.return_value = _mock_urlopen(_parecer_mock("CONSOLIDADO"))
+        resultado = ia_integridade.diagnosticar(_nao(), None, "sk-test")
+        assert resultado["maturidade_geral"] == "INEXISTENTE"
+        assert resultado.get("_aviso_piso_maturidade") == "CONSOLIDADO"
+
+    @patch("ia_utils.urllib.request.urlopen")
     def test_texto_docs_incluido_no_prompt(self, mock_urlopen):
         mock_urlopen.return_value = _mock_urlopen(_parecer_mock())
         ia_integridade.diagnosticar(_sim(), "DOCUMENTO_MARCADOR_XYZ", "sk-test")

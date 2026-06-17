@@ -149,7 +149,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
             )
         story.append(Paragraph(_aviso_risco_txt, _ESTILO_CORPO))
         story.append(Spacer(1, 0.2*cm))
-    _aviso_piso_pdf = parecer.get("_aviso_piso")
+    _aviso_piso_pdf = parecer.get("_aviso_piso_risco")
     if _aviso_risco_pdf is None and _aviso_piso_pdf is not None:
         story.append(Paragraph(
             f"(i) A IA avaliou o risco como {html.escape(str(_aviso_piso_pdf))}; elevado para"

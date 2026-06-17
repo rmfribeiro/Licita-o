@@ -93,7 +93,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2*cm))
-    _aviso_piso_pdf = parecer.get("_aviso_piso")
+    _aviso_piso_pdf = parecer.get("_aviso_piso_maturidade")
     if _aviso_mat_pdf is None and _aviso_piso_pdf is not None:
         story.append(Paragraph(
             f"(i) A IA avaliou a maturidade como {html.escape(str(_aviso_piso_pdf))}; "

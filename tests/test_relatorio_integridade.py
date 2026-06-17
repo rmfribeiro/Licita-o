@@ -53,3 +53,10 @@ class TestGerarPdf:
         p["prioridades"] = []
         resultado = relatorio_integridade.gerar_pdf("Ilha Solteira/SP", p)
         assert isinstance(resultado, bytes)
+
+    def test_aviso_piso_maturidade_renderiza_sem_erro(self):
+        p = _parecer()
+        p["_aviso_piso_maturidade"] = "CONSOLIDADO"
+        resultado = relatorio_integridade.gerar_pdf("Ilha Solteira/SP", p)
+        assert isinstance(resultado, bytes)
+        assert len(resultado) > 1000
