@@ -174,6 +174,26 @@ class TestDiagnosticar:
         assert resultado.get("_aviso_maturidade") == ""
 
     @patch("ia_utils.urllib.request.urlopen")
+    def test_pop_remove_aviso_piso_maturidade_injetado_pelo_llm(self, mock_urlopen):
+        # Pop defensivo deve apagar _aviso_piso_maturidade injetado pelo LLM quando piso não dispara
+        parecer_injetado = _parecer_mock("EM DESENVOLVIMENTO")
+        parecer_injetado["_aviso_piso_maturidade"] = "FORJADO"
+        mock_urlopen.return_value = _mock_urlopen(parecer_injetado)
+        resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
+        assert resultado["maturidade_geral"] == "EM DESENVOLVIMENTO"
+        assert "_aviso_piso_maturidade" not in resultado
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_pop_remove_aviso_maturidade_injetado_pelo_llm(self, mock_urlopen):
+        # Pop defensivo deve apagar _aviso_maturidade injetado pelo LLM quando maturidade é válida
+        parecer_injetado = _parecer_mock("CONSOLIDADO")
+        parecer_injetado["_aviso_maturidade"] = "FORJADO"
+        mock_urlopen.return_value = _mock_urlopen(parecer_injetado)
+        resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
+        assert resultado["maturidade_geral"] == "CONSOLIDADO"
+        assert "_aviso_maturidade" not in resultado
+
+    @patch("ia_utils.urllib.request.urlopen")
     def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(

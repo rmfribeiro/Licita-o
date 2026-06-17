@@ -174,9 +174,11 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto]
     )
 
+    qualitativo.pop("_aviso_parecer", None)
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)
         if isinstance(_b, dict):
+            _b.pop("_aviso_parecer", None)
             _raw_p = _b.get("parecer")
             _p = "INAPTO" if _raw_p is None else str(_raw_p).strip().upper()
             _pnorm = NORM_PARECER_RECV.get(_p, _p)

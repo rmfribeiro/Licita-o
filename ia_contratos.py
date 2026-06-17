@@ -138,6 +138,7 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo]
     )
 
+    qualitativo.pop("_aviso_parecer", None)
     _raw_pval_cont = qualitativo.get("parecer")
     _pval = "INDEFERÍVEL" if _raw_pval_cont is None else str(_raw_pval_cont).strip().upper()
     _pnorm_cont = NORM_PARECER_CONT.get(_pval, _pval)

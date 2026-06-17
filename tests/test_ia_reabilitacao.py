@@ -415,3 +415,18 @@ class TestAnalisar:
             )
         assert r["parecer"] == "INELEGÍVEL"
         assert r.get("_aviso_parecer") == ""
+
+    def test_pop_remove_aviso_parecer_injetado_pelo_llm_quando_parecer_valido(self):
+        api_result = {**_parecer_api_mock(), "_aviso_parecer": "FORJADO"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
+            r = ia_reabilitacao.analisar(
+                "impedimento",
+                _dados_empresa_mock(),
+                _dados_sancao_mock(),
+                _respostas_mock(),
+                None,
+                "key",
+                data_referencia=date(2026, 6, 1),
+            )
+        assert r["parecer"] == "ELEGÍVEL"
+        assert "_aviso_parecer" not in r

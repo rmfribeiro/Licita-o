@@ -224,6 +224,7 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
     )
 
+    parecer.pop("_aviso_parecer", None)
     _raw_pval_reab = parecer.get("parecer")
     _pval = "INELEGÍVEL" if _raw_pval_reab is None else str(_raw_pval_reab).strip().upper()
     _pnorm_reab = NORM_PARECER_REAB.get(_pval, _pval)

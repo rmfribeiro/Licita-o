@@ -72,6 +72,38 @@ class TestAnalisarEtp:
         assert "adequacao_geral" in resultado
 
     @patch("ia_utils.urllib.request.urlopen")
+    def test_adequacao_invalida_seta_aviso_adequacao(self, mock_urlopen):
+        parecer_ruim = {**_parecer_mock(), "adequacao_geral": "PARCIALMENTE ADEQUADO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
+        resultado = ia_etp.analisar_etp("Texto", "sk-test")
+        assert resultado["adequacao_geral"] == "INADEQUADO"
+        assert resultado.get("_aviso_adequacao") == "PARCIALMENTE ADEQUADO"
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_adequacao_vazia_seta_aviso_adequacao_vazio(self, mock_urlopen):
+        parecer_ruim = {**_parecer_mock(), "adequacao_geral": ""}
+        mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
+        resultado = ia_etp.analisar_etp("Texto", "sk-test")
+        assert resultado["adequacao_geral"] == "INADEQUADO"
+        assert resultado.get("_aviso_adequacao") == ""
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_adequacao_none_nao_seta_aviso(self, mock_urlopen):
+        parecer_ruim = {**_parecer_mock(), "adequacao_geral": None}
+        mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
+        resultado = ia_etp.analisar_etp("Texto", "sk-test")
+        assert resultado["adequacao_geral"] == "INADEQUADO"
+        assert "_aviso_adequacao" not in resultado
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_pop_remove_aviso_adequacao_injetado_pelo_llm(self, mock_urlopen):
+        parecer_injetado = {**_parecer_mock(), "_aviso_adequacao": "FORJADO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer_injetado)
+        resultado = ia_etp.analisar_etp("Texto", "sk-test")
+        assert resultado["adequacao_geral"] == "ADEQUADO COM RESSALVAS"
+        assert "_aviso_adequacao" not in resultado
+
+    @patch("ia_utils.urllib.request.urlopen")
     def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):
         fp = io.BytesIO(b'{"error": "invalid_api_key"}')
         mock_urlopen.side_effect = urllib.error.HTTPError(

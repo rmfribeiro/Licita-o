@@ -62,6 +62,16 @@ def _safe_md(s: object) -> str:
     )
 
 
+def _mostrar_aviso_adequacao(parecer: dict) -> None:
+    val = parecer.get("_aviso_adequacao")
+    if val is not None:
+        _raw = f"'{_safe_md(str(val))}'" if val else "campo em branco"
+        st.warning(
+            f"⚠️ Valor de adequacao_geral não reconhecido: {_raw}"
+            " — registrado como **INADEQUADO**. Verifique manualmente."
+        )
+
+
 def _get_api_key():
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
@@ -435,6 +445,7 @@ with aba3:
         _adeq = str(_pr.get("adequacao_geral") or "INADEQUADO").strip().upper()
         _icone_adeq = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
         st.subheader(f"{_icone_adeq.get(_adeq, '⚪')} Adequação Geral: {_safe_md(_adeq)}")
+        _mostrar_aviso_adequacao(_pr)
 
         _dims = _pr.get("dimensoes") or {}
         _labels = relatorio_etp._LABEL_DIMENSAO
@@ -1280,6 +1291,7 @@ with aba7:
         _adeq_tr = str(_pr_tr.get("adequacao_geral") or "INADEQUADO").strip().upper()
         _icone_adeq_tr = {"ADEQUADO": "🟢", "ADEQUADO COM RESSALVAS": "🟡", "INADEQUADO": "🔴"}
         st.subheader(f"{_icone_adeq_tr.get(_adeq_tr, '⚪')} Adequação Geral: {_safe_md(_adeq_tr)}")
+        _mostrar_aviso_adequacao(_pr_tr)
 
         _dims_tr = _pr_tr.get("dimensoes") or {}
         _labels_tr = relatorio_tr.LABEL_DIMENSAO_POR_TIPO.get(_tipo_tr_saved, {})

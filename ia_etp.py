@@ -1,8 +1,7 @@
 from __future__ import annotations
-from ia_utils import chamar_api as _chamar_api
+from ia_utils import chamar_api as _chamar_api, normalizar_adequacao as _normalizar_adequacao
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
-_ADEQ_VALIDOS = {"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"}
 
 _SISTEMA = (
     "Você é um auditor especialista em contratações públicas federais brasileiras. "
@@ -38,6 +37,5 @@ def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict
         f"Retorne o parecer de auditoria no formato:\n{_ESTRUTURA_PARECER}"
     )
     parecer = _chamar_api(prompt, api_key, modelo, _SISTEMA, max_tokens=3000)
-    _adeq = str(parecer.get("adequacao_geral") or "INADEQUADO").strip().upper()
-    parecer["adequacao_geral"] = _adeq if _adeq in _ADEQ_VALIDOS else "INADEQUADO"
+    _normalizar_adequacao(parecer, "ia_etp")
     return parecer

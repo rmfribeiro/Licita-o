@@ -79,3 +79,17 @@ class TestGerarPdf:
         for tipo in ("servico", "bem", "tic"):
             pdf = relatorio_tr.gerar_pdf("Objeto de teste", tipo, parecer_base)
             assert pdf[:4] == b"%PDF", f"Falhou para tipo={tipo}"
+
+    def test_aviso_adequacao_renderiza_sem_erro(self):
+        parecer = {"adequacao_geral": "INADEQUADO", "dimensoes": {}, "pontos_criticos": [],
+                   "recomendacoes": [], "base_legal": [], "_aviso_adequacao": "PARCIALMENTE ADEQUADO"}
+        pdf = relatorio_tr.gerar_pdf("TR Teste", "servico", parecer)
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+
+    def test_aviso_adequacao_vazio_renderiza_sem_erro(self):
+        parecer = {"adequacao_geral": "INADEQUADO", "dimensoes": {}, "pontos_criticos": [],
+                   "recomendacoes": [], "base_legal": [], "_aviso_adequacao": ""}
+        pdf = relatorio_tr.gerar_pdf("TR Teste", "servico", parecer)
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000

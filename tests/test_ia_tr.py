@@ -131,6 +131,31 @@ class TestAnalisarTr:
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_tr.analisar_tr("Texto", "servico", "sk-test")
         assert resultado["adequacao_geral"] == "INADEQUADO"
+        assert resultado.get("_aviso_adequacao") == "PARCIALMENTE ADEQUADO"
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_adequacao_vazia_seta_aviso_adequacao_vazio(self, mock_urlopen):
+        parecer = {**_parecer_servico(), "adequacao_geral": ""}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_tr.analisar_tr("Texto", "servico", "sk-test")
+        assert resultado["adequacao_geral"] == "INADEQUADO"
+        assert resultado.get("_aviso_adequacao") == ""
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_adequacao_none_nao_seta_aviso(self, mock_urlopen):
+        parecer = {**_parecer_servico(), "adequacao_geral": None}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_tr.analisar_tr("Texto", "servico", "sk-test")
+        assert resultado["adequacao_geral"] == "INADEQUADO"
+        assert "_aviso_adequacao" not in resultado
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_pop_remove_aviso_adequacao_injetado_pelo_llm(self, mock_urlopen):
+        parecer = {**_parecer_servico(), "_aviso_adequacao": "FORJADO"}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_tr.analisar_tr("Texto", "servico", "sk-test")
+        assert resultado["adequacao_geral"] == "ADEQUADO COM RESSALVAS"
+        assert "_aviso_adequacao" not in resultado
 
     @patch("ia_utils.urllib.request.urlopen")
     def test_httperror_inclui_body_na_mensagem(self, mock_urlopen):

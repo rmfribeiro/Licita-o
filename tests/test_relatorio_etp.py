@@ -43,3 +43,15 @@ class TestGerarPdf:
         parecer = {**_parecer(), "adequacao_geral": "INADEQUADO"}
         pdf = relatorio_etp.gerar_pdf(["etp.pdf"], [], parecer)
         assert pdf[:4] == b"%PDF"
+
+    def test_aviso_adequacao_renderiza_sem_erro(self):
+        parecer = {**_parecer(), "_aviso_adequacao": "PARCIALMENTE ADEQUADO"}
+        pdf = relatorio_etp.gerar_pdf(["etp.pdf"], [], parecer)
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000
+
+    def test_aviso_adequacao_vazio_renderiza_sem_erro(self):
+        parecer = {**_parecer(), "_aviso_adequacao": ""}
+        pdf = relatorio_etp.gerar_pdf(["etp.pdf"], [], parecer)
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 1000

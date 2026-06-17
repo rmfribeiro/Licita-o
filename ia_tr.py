@@ -3,10 +3,9 @@ from __future__ import annotations
 import types
 import uuid
 
-from ia_utils import chamar_api as _chamar_api
+from ia_utils import chamar_api as _chamar_api, normalizar_adequacao as _normalizar_adequacao
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
-_ADEQ_VALIDOS = frozenset({"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"})
 
 TIPOS_OBJETO_TR: types.MappingProxyType[str, str] = types.MappingProxyType({
     "servico": "Serviço",
@@ -123,8 +122,7 @@ def analisar_tr(
         prompt, api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto]
     )
 
-    _adeq = str(parecer.get("adequacao_geral") or "INADEQUADO").strip().upper()
-    parecer["adequacao_geral"] = _adeq if _adeq in _ADEQ_VALIDOS else "INADEQUADO"
+    _normalizar_adequacao(parecer, "ia_tr")
 
     if not parecer.get("base_legal"):
         parecer["base_legal"] = list(_BASE_LEGAL_PADRAO[tipo_objeto])

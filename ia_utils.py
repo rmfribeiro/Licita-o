@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging as _logging
 import re
 import types
 import urllib.error
@@ -186,3 +187,40 @@ def extrair_json(texto: str) -> dict:
             pass
 
     raise ValueError("Resposta sem JSON reconhecível após tentativas de reparo")
+
+
+_ADEQ_VALIDOS: frozenset[str] = frozenset({"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"})
+
+
+def normalizar_adequacao(parecer: dict, modulo: str) -> None:
+    """Pop stale advisory key, normalize adequacao_geral, set advisory when value is unrecognized."""
+    parecer.pop("_aviso_adequacao", None)
+    _raw = parecer.get("adequacao_geral")
+    _adeq = "INADEQUADO" if _raw is None else str(_raw).strip().upper()
+    if _adeq not in _ADEQ_VALIDOS:
+        _logging.warning(
+            "%s: adequacao_geral inesperada %r — normalizado para INADEQUADO", modulo, _adeq
+        )
+        if _raw is not None:
+            parecer["_aviso_adequacao"] = _adeq
+        _adeq = "INADEQUADO"
+    parecer["adequacao_geral"] = _adeq
+
+
+def aviso_adequacao_story(parecer: dict, estilo) -> list:
+    """Return ReportLab story elements for the _aviso_adequacao advisory, or []."""
+    val = parecer.get("_aviso_adequacao")
+    if val is None:
+        return []
+    import html as _html
+    from reportlab.platypus import Paragraph, Spacer
+    from reportlab.lib.units import cm
+    _raw = f"'{_html.escape(str(val))}'" if val else "campo em branco"
+    return [
+        Paragraph(
+            f"⚠ Valor de adequacao_geral não reconhecido: {_raw}"
+            " — registrado como INADEQUADO. Verifique manualmente.",
+            estilo,
+        ),
+        Spacer(1, 0.2 * cm),
+    ]

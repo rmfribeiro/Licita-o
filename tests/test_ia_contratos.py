@@ -240,3 +240,15 @@ class TestAnalisar:
             )
         assert r["parecer"] == "INDEFERÍVEL"
         assert r.get("_aviso_parecer") == ""
+
+    def test_pop_remove_aviso_parecer_injetado_pelo_llm_quando_parecer_valido(self):
+        api_result = {**_parecer_api_mock(), "_aviso_parecer": "FORJADO"}
+        with patch(
+            "ia_utils.urllib.request.urlopen",
+            return_value=_mock_urlopen(api_result),
+        ):
+            r = ia_contratos.analisar(
+                "reajuste", _dados_contrato_mock(), None, "key_teste"
+            )
+        assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
+        assert "_aviso_parecer" not in r

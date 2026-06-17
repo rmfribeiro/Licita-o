@@ -9,7 +9,11 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_utils import COR_STATUS_HEX as _COR_STATUS, COR_ADEQUACAO_HEX as _COR_ADEQUACAO_HEX
+from ia_utils import (
+    COR_STATUS_HEX as _COR_STATUS,
+    COR_ADEQUACAO_HEX as _COR_ADEQUACAO_HEX,
+    aviso_adequacao_story as _aviso_adequacao_story,
+)
 
 _COR_ADEQUACAO = {k: colors.HexColor(v) for k, v in _COR_ADEQUACAO_HEX.items()}
 
@@ -77,6 +81,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     ]))
     story.append(t_adeq)
     story.append(Spacer(1, 0.4*cm))
+    story.extend(_aviso_adequacao_story(parecer, _ESTILO_CORPO))
 
     # Análise por dimensão
     story.append(Paragraph("Análise por Dimensão", _ESTILO_H2))

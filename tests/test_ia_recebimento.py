@@ -225,3 +225,23 @@ class TestAnalisar:
         bloco = r["recebimento_definitivo"]
         assert bloco["parecer"] == "INAPTO"
         assert "_aviso_parecer" not in bloco
+
+    def test_pop_remove_aviso_parecer_injetado_em_sub_dict_quando_parecer_valido(self):
+        parecer = {
+            **_parecer_api_mock(),
+            "recebimento_provisorio": {
+                **_parecer_api_mock()["recebimento_provisorio"],
+                "_aviso_parecer": "FORJADO",
+            },
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
+        bloco = r["recebimento_provisorio"]
+        assert bloco["parecer"] == "APTO"
+        assert "_aviso_parecer" not in bloco
+
+    def test_pop_remove_aviso_parecer_injetado_na_raiz_do_qualitativo(self):
+        parecer = {**_parecer_api_mock(), "_aviso_parecer": "FORJADO_RAIZ"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
+        assert "_aviso_parecer" not in r
