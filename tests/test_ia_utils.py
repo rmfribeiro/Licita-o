@@ -114,3 +114,11 @@ class TestNormalizarParecer:
         ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
         assert d["parecer"] == "DEFERÍVEL"
         assert "_aviso_parecer" not in d
+
+    def test_double_miss_norm_map_aponta_para_valor_invalido(self):
+        # norm_map maps "FOO" → "BAR", but "BAR" is not in valid_set → fallback
+        _norm_double = {"FOO": "BAR"}
+        d = {"parecer": "FOO"}
+        ia_utils.normalizar_parecer(d, _norm_double, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "INDEFERÍVEL"
+        assert d["_aviso_parecer"] == "FOO"
