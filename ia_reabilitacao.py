@@ -229,9 +229,9 @@ def analisar(
     _pval = "INELEGÍVEL" if _raw_pval_reab is None else str(_raw_pval_reab).strip().upper()
     _pnorm_reab = NORM_PARECER_REAB.get(_pval, _pval)
     if _pnorm_reab not in PARECER_OPTIONS:
-        logging.warning("ia_reabilitacao: parecer desconhecido %r → usando 'INELEGÍVEL'", _pval)
+        logging.warning("ia_reabilitacao: parecer desconhecido %r → usando 'INELEGÍVEL'", _raw_pval_reab)
         _pnorm_reab = "INELEGÍVEL"
         if _raw_pval_reab is not None:
-            parecer["_aviso_parecer"] = _pval
+            parecer["_aviso_parecer"] = _raw_pval_reab
     parecer["parecer"] = _pnorm_reab
     return {**parecer, "dados_empresa": dados_empresa, "dados_sancao": dados_sancao}
