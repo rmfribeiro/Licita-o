@@ -132,6 +132,8 @@ def diagnosticar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
     )
 
+    parecer.pop("_aviso_maturidade", None)
+    parecer.pop("_aviso_piso_maturidade", None)
     _raw_mat = parecer.get("maturidade_geral")
     _mat = "INEXISTENTE" if _raw_mat is None else str(_raw_mat).strip().upper()
     if _mat not in _MATURIDADE_ORDEM:
