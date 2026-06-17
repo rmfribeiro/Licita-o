@@ -190,6 +190,7 @@ def extrair_json(texto: str) -> dict:
 
 
 _ADEQ_VALIDOS: frozenset[str] = frozenset({"ADEQUADO", "ADEQUADO COM RESSALVAS", "INADEQUADO"})
+_AVISO_CAMPO_VAZIO = "campo em branco"
 
 
 def normalizar_adequacao(parecer: dict, modulo: str) -> None:
@@ -199,10 +200,9 @@ def normalizar_adequacao(parecer: dict, modulo: str) -> None:
     _adeq = "INADEQUADO" if _raw is None else str(_raw).strip().upper()
     if _adeq not in _ADEQ_VALIDOS:
         _logging.warning(
-            "%s: adequacao_geral inesperada %r — normalizado para INADEQUADO", modulo, _adeq
+            "%s: adequacao_geral inesperada %r — normalizado para INADEQUADO", modulo, _raw
         )
-        if _raw is not None:
-            parecer["_aviso_adequacao"] = _adeq
+        parecer["_aviso_adequacao"] = _raw
         _adeq = "INADEQUADO"
     parecer["adequacao_geral"] = _adeq
 
@@ -212,13 +212,15 @@ def aviso_adequacao_story(parecer: dict, estilo) -> list:
     val = parecer.get("_aviso_adequacao")
     if val is None:
         return []
+    if estilo is None:
+        raise TypeError("aviso_adequacao_story: estilo não pode ser None")
     import html as _html
     from reportlab.platypus import Paragraph, Spacer
     from reportlab.lib.units import cm
-    _raw = f"'{_html.escape(str(val))}'" if val else "campo em branco"
+    _label = f"'{_html.escape(str(val))}'" if val else _AVISO_CAMPO_VAZIO
     return [
         Paragraph(
-            f"⚠ Valor de adequacao_geral não reconhecido: {_raw}"
+            f"⚠ Valor de adequacao_geral não reconhecido: {_label}"
             " — registrado como INADEQUADO. Verifique manualmente.",
             estilo,
         ),

@@ -37,7 +37,7 @@ import ia_pesquisa_mercado
 import relatorio_pesquisa_mercado
 import ia_fid
 import relatorio_fid
-from ia_utils import fmt_brl as _fmt_brl
+from ia_utils import fmt_brl as _fmt_brl, _AVISO_CAMPO_VAZIO
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(AQUI, "regras_14133.json"), encoding="utf-8") as _f:
@@ -65,9 +65,9 @@ def _safe_md(s: object) -> str:
 def _mostrar_aviso_adequacao(parecer: dict) -> None:
     val = parecer.get("_aviso_adequacao")
     if val is not None:
-        _raw = f"'{_safe_md(str(val))}'" if val else "campo em branco"
+        _label = f"'{_safe_md(str(val))}'" if val else _AVISO_CAMPO_VAZIO
         st.warning(
-            f"⚠️ Valor de adequacao_geral não reconhecido: {_raw}"
+            f"⚠️ Valor de adequacao_geral não reconhecido: {_label}"
             " — registrado como **INADEQUADO**. Verifique manualmente."
         )
 
