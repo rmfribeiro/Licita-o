@@ -1,7 +1,10 @@
 from __future__ import annotations
-import logging
 import types
-from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
+from ia_utils import (
+    chamar_api as _chamar_api,
+    fmt_brl_opcional as _fmt_brl_opcional,
+    normalizar_parecer as _normalizar_parecer,
+)
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -178,13 +181,5 @@ def analisar(
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)
         if isinstance(_b, dict):
-            _b.pop("_aviso_parecer", None)
-            _raw_p = _b.get("parecer")
-            _p = "INAPTO" if _raw_p is None else str(_raw_p).strip().upper()
-            _pnorm = NORM_PARECER_RECV.get(_p, _p)
-            if _pnorm not in PARECER_OPTIONS:
-                logging.warning("ia_recebimento: parecer desconhecido %r → usando 'INAPTO'", _raw_p)
-                _pnorm = "INAPTO"
-                _b["_aviso_parecer"] = _raw_p
-            _b["parecer"] = _pnorm
+            _normalizar_parecer(_b, NORM_PARECER_RECV, PARECER_OPTIONS, "INAPTO", "ia_recebimento")
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}

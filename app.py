@@ -866,8 +866,9 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
     st.caption(titulo)
     _aviso_pval = _bloco.get("_aviso_parecer")
     if _aviso_pval is not None:
+        _label_pval = f"'{_safe_md(str(_aviso_pval))}'" if _aviso_pval != "" else _AVISO_CAMPO_VAZIO
         st.warning(
-            f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_pval))}' — registrado como **INAPTO**. Verifique manualmente."
+            f"⚠️ Valor de parecer não reconhecido: {_label_pval} — registrado como **INAPTO**. Verifique manualmente."
         )
     _sint = str(_bloco.get("sintese") or "")
     if _sint:
@@ -1022,8 +1023,9 @@ with aba6:
             st.markdown("")
             _aviso_cont = _pr_cont.get("_aviso_parecer")
             if _aviso_cont is not None:
+                _label_cont = f"'{_safe_md(str(_aviso_cont))}'" if _aviso_cont != "" else _AVISO_CAMPO_VAZIO
                 st.warning(
-                    f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_cont))}' — registrado como **INDEFERÍVEL**. Verifique manualmente."
+                    f"⚠️ Valor de parecer não reconhecido: {_label_cont} — registrado como **INDEFERÍVEL**. Verifique manualmente."
                 )
 
             _sintese_cont = str(_pr_cont.get("sintese") or "")
@@ -1857,8 +1859,9 @@ with aba9:
             st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
             _aviso_reab = _pr3_reab.get("_aviso_parecer")
             if _aviso_reab is not None:
+                _label_reab = f"'{_safe_md(str(_aviso_reab))}'" if _aviso_reab != "" else _AVISO_CAMPO_VAZIO
                 st.warning(
-                    f"⚠️ Valor de parecer não reconhecido: '{_safe_md(str(_aviso_reab))}' — registrado como **INELEGÍVEL**. Verifique manualmente."
+                    f"⚠️ Valor de parecer não reconhecido: {_label_reab} — registrado como **INELEGÍVEL**. Verifique manualmente."
                 )
 
             _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []

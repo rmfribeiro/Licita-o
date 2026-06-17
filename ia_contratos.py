@@ -1,7 +1,10 @@
 from __future__ import annotations
-import logging
 import types
-from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
+from ia_utils import (
+    chamar_api as _chamar_api,
+    fmt_brl_opcional as _fmt_brl_opcional,
+    normalizar_parecer as _normalizar_parecer,
+)
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -138,13 +141,5 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo]
     )
 
-    qualitativo.pop("_aviso_parecer", None)
-    _raw_pval_cont = qualitativo.get("parecer")
-    _pval = "INDEFERÍVEL" if _raw_pval_cont is None else str(_raw_pval_cont).strip().upper()
-    _pnorm_cont = NORM_PARECER_CONT.get(_pval, _pval)
-    if _pnorm_cont not in PARECER_OPTIONS:
-        logging.warning("ia_contratos: parecer desconhecido %r → usando 'INDEFERÍVEL'", _raw_pval_cont)
-        _pnorm_cont = "INDEFERÍVEL"
-        qualitativo["_aviso_parecer"] = _raw_pval_cont
-    qualitativo["parecer"] = _pnorm_cont
+    _normalizar_parecer(qualitativo, NORM_PARECER_CONT, PARECER_OPTIONS, "INDEFERÍVEL", "ia_contratos")
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}

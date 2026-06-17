@@ -72,3 +72,45 @@ class TestFmtBrlOpcional:
 
     def test_string_nao_numerica_com_default_personalizado(self):
         assert ia_utils.fmt_brl_opcional("não informado", default="INSUF.") == "INSUF."
+
+
+_NORM = {"DEFERIVEL": "DEFERÍVEL"}
+_VALID = {"DEFERÍVEL", "DEFERÍVEL COM RESSALVAS", "INDEFERÍVEL"}
+
+
+class TestNormalizarParecer:
+    def test_valor_canonico_passa_sem_aviso(self):
+        d = {"parecer": "DEFERÍVEL"}
+        ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "DEFERÍVEL"
+        assert "_aviso_parecer" not in d
+
+    def test_alias_normalizado_sem_aviso(self):
+        d = {"parecer": "DEFERIVEL"}
+        ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "DEFERÍVEL"
+        assert "_aviso_parecer" not in d
+
+    def test_none_usa_fallback_sem_aviso(self):
+        d = {}
+        ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "INDEFERÍVEL"
+        assert "_aviso_parecer" not in d
+
+    def test_valor_desconhecido_armazena_aviso_e_usa_fallback(self):
+        d = {"parecer": "APROVADO PARCIALMENTE"}
+        ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "INDEFERÍVEL"
+        assert d["_aviso_parecer"] == "APROVADO PARCIALMENTE"
+
+    def test_string_vazia_armazena_aviso_vazio(self):
+        d = {"parecer": ""}
+        ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "INDEFERÍVEL"
+        assert d["_aviso_parecer"] == ""
+
+    def test_pop_remove_aviso_injetado_anteriormente(self):
+        d = {"parecer": "DEFERÍVEL", "_aviso_parecer": "valor injetado"}
+        ia_utils.normalizar_parecer(d, _NORM, _VALID, "INDEFERÍVEL", "mod")
+        assert d["parecer"] == "DEFERÍVEL"
+        assert "_aviso_parecer" not in d

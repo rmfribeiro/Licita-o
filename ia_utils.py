@@ -207,6 +207,19 @@ def normalizar_adequacao(parecer: dict, modulo: str) -> None:
     parecer["adequacao_geral"] = _adeq
 
 
+def normalizar_parecer(d: dict, norm_map, valid_set, fallback: str, modulo: str) -> None:
+    """Pop stale advisory key, normalize parecer, set advisory when value is unrecognized."""
+    d.pop("_aviso_parecer", None)
+    _raw = d.get("parecer")
+    _pval = fallback if _raw is None else str(_raw).strip().upper()
+    _pnorm = norm_map.get(_pval, _pval)
+    if _pnorm not in valid_set:
+        _logging.warning("%s: parecer desconhecido %r → usando %r", modulo, _raw, fallback)
+        _pnorm = fallback
+        d["_aviso_parecer"] = _raw
+    d["parecer"] = _pnorm
+
+
 def aviso_adequacao_story(parecer: dict, estilo) -> list:
     """Return ReportLab story elements for the _aviso_adequacao advisory, or []."""
     if estilo is None:

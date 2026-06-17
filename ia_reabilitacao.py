@@ -3,7 +3,11 @@ import calendar
 import logging
 import types
 from datetime import date, datetime
-from ia_utils import chamar_api as _chamar_api, fmt_brl_opcional as _fmt_brl_opcional
+from ia_utils import (
+    chamar_api as _chamar_api,
+    fmt_brl_opcional as _fmt_brl_opcional,
+    normalizar_parecer as _normalizar_parecer,
+)
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -161,9 +165,8 @@ def analisar(
             _min = _prazo["prazo_minimo_anos"]
             _a = _prazo["anos_decorridos"]
             _m = _prazo["meses_decorridos"]
-            _pval_inelegivel = "INELEGÍVEL"
             return {
-                "parecer": _pval_inelegivel,
+                "parecer": "INELEGÍVEL",
                 "condicoes_avaliadas": [{
                     "numero": "III",
                     "descricao": "Transcurso do prazo mínimo",
@@ -224,13 +227,5 @@ def analisar(
         "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
     )
 
-    parecer.pop("_aviso_parecer", None)
-    _raw_pval_reab = parecer.get("parecer")
-    _pval = "INELEGÍVEL" if _raw_pval_reab is None else str(_raw_pval_reab).strip().upper()
-    _pnorm_reab = NORM_PARECER_REAB.get(_pval, _pval)
-    if _pnorm_reab not in PARECER_OPTIONS:
-        logging.warning("ia_reabilitacao: parecer desconhecido %r → usando 'INELEGÍVEL'", _raw_pval_reab)
-        _pnorm_reab = "INELEGÍVEL"
-        parecer["_aviso_parecer"] = _raw_pval_reab
-    parecer["parecer"] = _pnorm_reab
+    _normalizar_parecer(parecer, NORM_PARECER_REAB, PARECER_OPTIONS, "INELEGÍVEL", "ia_reabilitacao")
     return {**parecer, "dados_empresa": dados_empresa, "dados_sancao": dados_sancao}
