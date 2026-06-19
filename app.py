@@ -139,7 +139,15 @@ _authenticator = stauth.Authenticate(
 )
 
 # Renderiza o formulário de login. O resultado fica no st.session_state.
-_authenticator.login(location="main")
+_authenticator.login(
+    location="main",
+    fields={
+        "Form name": "Acesso ao IA-Licita",
+        "Username": "Usuário",
+        "Password": "Senha",
+        "Login": "Entrar",
+    },
+)
 
 _status = st.session_state.get("authentication_status")
 if _status is False:
