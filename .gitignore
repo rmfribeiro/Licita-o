@@ -1,34 +1,12 @@
-# macOS
-.DS_Store
-**/.DS_Store
-~$*
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.env
-.venv
-venv/
-*.egg-info/
-
-# Documentos e editais (não versionados)
-*.pdf
-*.docx
-*.doc
-*.xlsx
-EDITAIS/
-
-# Resultados de execução
-lote_resultado.json
-pareceres_edital*.json
-painel_lote.html
-relatorio_*.html
-
-# Logs e temporários
-*.log
-*.tmp
-
-# Secrets locais (NUNCA commitar)
+config.yaml
 .streamlit/secrets.toml
-secrets.toml
+*.env
+.env
+gerar_hashes.py
+__pycache__/
+*.pyc
+venv/
+.venv/
+.DS_Store
+.vscode/
+.idea/

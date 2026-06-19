@@ -7,6 +7,9 @@ Rodar localmente:  streamlit run app.py
 import os, io, json, html, tempfile
 from datetime import date as _date_today
 import streamlit as st
+import yaml                              # >>> AUTH: para ler o config.yaml
+from yaml.loader import SafeLoader       # >>> AUTH
+import streamlit_authenticator as stauth # >>> AUTH
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
 except ImportError:
@@ -89,27 +92,67 @@ def _get_api_key():
 b = branding.carregar()
 st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="📄", layout="wide")
 
-# --- Proteção por senha ---
-_senha_correta = None
-try:
-    _senha_correta = st.secrets.get("APP_PASSWORD")
-except _SecretsNotFound:
-    pass
-except Exception as _e:
-    st.error(f"Erro ao carregar configurações de acesso: {_e}. Contate o administrador.")
-    st.stop()
-if _senha_correta and not st.session_state.get("autenticado"):
-    st.title("IA-Licita — Acesso restrito")
-    senha = st.text_input("Senha de acesso", type="password", key="pwd")
-    if senha == _senha_correta:
-        st.session_state["autenticado"] = True
-    else:
-        if senha:
-            st.error("Senha incorreta.")
-        else:
-            st.info("Informe a senha de acesso para continuar.")
+# =====================================================================
+# =====================================================================
+# --- Autenticação por usuário (streamlit-authenticator) ---
+# Lê as credenciais do config.yaml local (na sua máquina) OU dos
+# Secrets do Streamlit Cloud (quando publicado). Assim o mesmo código
+# funciona nos dois ambientes.
+# =====================================================================
+_CONFIG_PATH = os.path.join(AQUI, "config.yaml")
+_config = None
+
+# 1) Tenta ler o arquivo local (ambiente de desenvolvimento na sua máquina)
+if os.path.isfile(_CONFIG_PATH):
+    try:
+        with open(_CONFIG_PATH, encoding="utf-8") as _cfg_file:
+            _config = yaml.load(_cfg_file, Loader=SafeLoader)
+    except Exception as _e:
+        st.error(f"Erro ao ler config.yaml: {_e}. Contate o administrador.")
         st.stop()
 
+# 2) Se não há arquivo local, lê dos Secrets do Streamlit Cloud
+if _config is None:
+    try:
+        # No painel de Secrets, as credenciais ficam sob a chave "auth_config"
+        # como um bloco de texto YAML (ver instruções de configuração).
+        _raw = st.secrets["auth_config"]
+        _config = yaml.load(str(_raw), Loader=SafeLoader)
+    except Exception:
+        _config = None
+
+# 3) Se ainda assim não há configuração, barra o acesso com mensagem clara
+if not _config or "credentials" not in _config or "cookie" not in _config:
+    st.error(
+        "Configuração de acesso não encontrada. "
+        "No ambiente local, verifique o arquivo config.yaml. "
+        "No Streamlit Cloud, verifique os Secrets (chave 'auth_config'). "
+        "Contate o administrador."
+    )
+    st.stop()
+
+_authenticator = stauth.Authenticate(
+    _config["credentials"],
+    _config["cookie"]["name"],
+    _config["cookie"]["key"],
+    _config["cookie"]["expiry_days"],
+)
+
+# Renderiza o formulário de login. O resultado fica no st.session_state.
+_authenticator.login(location="main")
+
+_status = st.session_state.get("authentication_status")
+if _status is False:
+    st.error("Usuário ou senha incorretos.")
+    st.stop()
+elif _status is None:
+    st.info("Informe seu usuário e senha para acessar o IA-Licita.")
+    st.stop()
+
+# A partir daqui, o usuário está autenticado.
+with st.sidebar:
+    st.write(f"Olá, {st.session_state.get('name', '')}")
+    _authenticator.logout("Sair", "sidebar")
 _logo_file = b.get("logo")
 _logo_path = os.path.join(AQUI, _logo_file) if _logo_file else ""
 _logo_visivel = False
