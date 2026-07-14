@@ -7,9 +7,9 @@ Rodar localmente:  streamlit run app.py
 import os, io, json, html, tempfile
 from datetime import date as _date_today
 import streamlit as st
-import yaml                              # >>> AUTH: para ler o config.yaml
-from yaml.loader import SafeLoader       # >>> AUTH
-import streamlit_authenticator as stauth # >>> AUTH
+import auth_db                           # >>> AUTH: usuários no Supabase
+import uso_db                            # >>> COBRANÇA: contador de relatórios
+import precos                            # >>> COBRANÇA: tabela de preços/planos
 try:
     from streamlit.errors import StreamlitSecretNotFoundError as _SecretsNotFound
 except ImportError:
@@ -38,6 +38,7 @@ import ia_reabilitacao
 import relatorio_reabilitacao
 import ia_pesquisa_mercado
 import relatorio_pesquisa_mercado
+import pncp_busca
 import ia_fid
 import relatorio_fid
 from ia_utils import fmt_brl as _fmt_brl, AVISO_CAMPO_VAZIO as _AVISO_CAMPO_VAZIO
@@ -93,74 +94,209 @@ b = branding.carregar()
 st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="📄", layout="wide")
 
 # =====================================================================
+# --- Autenticação por usuário (Supabase) ---
+# Cadastro com aprovação do administrador, login com usuário ou e-mail
+# e recuperação de senha por código enviado por e-mail.
+# Configuração: SUPABASE_URL e SUPABASE_SERVICE_KEY nos secrets
+# (ver CONFIGURAR_ACESSO.md).
 # =====================================================================
-# --- Autenticação por usuário (streamlit-authenticator) ---
-# Lê as credenciais do config.yaml local (na sua máquina) OU dos
-# Secrets do Streamlit Cloud (quando publicado). Assim o mesmo código
-# funciona nos dois ambientes.
-# =====================================================================
-_CONFIG_PATH = os.path.join(AQUI, "config.yaml")
-_config = None
+_erro_auth_cfg = auth_db.erro_configuracao()
+if _erro_auth_cfg:
+    st.error(_erro_auth_cfg)
+    st.stop()
 
-# 1) Tenta ler o arquivo local (ambiente de desenvolvimento na sua máquina)
-if os.path.isfile(_CONFIG_PATH):
-    try:
-        with open(_CONFIG_PATH, encoding="utf-8") as _cfg_file:
-            _config = yaml.load(_cfg_file, Loader=SafeLoader)
-    except Exception as _e:
-        st.error(f"Erro ao ler config.yaml: {_e}. Contate o administrador.")
-        st.stop()
+_usuario_logado = st.session_state.get("usuario_logado")
 
-# 2) Se não há arquivo local, lê dos Secrets do Streamlit Cloud
-if _config is None:
-    try:
-        # No painel de Secrets, as credenciais ficam sob a chave "auth_config"
-        # como um bloco de texto YAML (ver instruções de configuração).
-        _raw = st.secrets["auth_config"]
-        _config = yaml.load(str(_raw), Loader=SafeLoader)
-    except Exception:
-        _config = None
-
-# 3) Se ainda assim não há configuração, barra o acesso com mensagem clara
-if not _config or "credentials" not in _config or "cookie" not in _config:
-    st.error(
-        "Configuração de acesso não encontrada. "
-        "No ambiente local, verifique o arquivo config.yaml. "
-        "No Streamlit Cloud, verifique os Secrets (chave 'auth_config'). "
-        "Contate o administrador."
+if not _usuario_logado:
+    st.title("Acesso ao IA-Licita")
+    _t_login, _t_cadastro, _t_esqueci = st.tabs(
+        ["🔑 Entrar", "🆕 Criar conta", "🔓 Esqueci a senha"]
     )
-    st.stop()
 
-_authenticator = stauth.Authenticate(
-    _config["credentials"],
-    _config["cookie"]["name"],
-    _config["cookie"]["key"],
-    _config["cookie"]["expiry_days"],
-)
+    with _t_login:
+        with st.form("form_login"):
+            _lg_user = st.text_input("Usuário ou e-mail")
+            _lg_senha = st.text_input("Senha", type="password")
+            _lg_ok = st.form_submit_button("Entrar", type="primary")
+        if _lg_ok:
+            _ok_lg, _res_lg = auth_db.autenticar(_lg_user, _lg_senha)
+            if _ok_lg:
+                st.session_state["usuario_logado"] = _res_lg
+                st.rerun()
+            else:
+                st.error(_res_lg)
 
-# Renderiza o formulário de login. O resultado fica no st.session_state.
-_authenticator.login(
-    location="main",
-    fields={
-        "Form name": "Acesso ao IA-Licita",
-        "Username": "Usuário",
-        "Password": "Senha",
-        "Login": "Entrar",
-    },
-)
+    with _t_cadastro:
+        st.caption("Primeiro acesso? Crie sua conta — ela será liberada "
+                   "após aprovação do administrador.")
+        with st.form("form_cadastro"):
+            _cd_nome = st.text_input("Nome completo")
+            _cd_user = st.text_input("Usuário (letras minúsculas, sem espaços)")
+            _cd_email = st.text_input("E-mail")
+            _cd_s1 = st.text_input("Senha (mínimo 8 caracteres)", type="password")
+            _cd_s2 = st.text_input("Confirme a senha", type="password")
+            _cd_ok = st.form_submit_button("Criar conta", type="primary")
+        if _cd_ok:
+            if _cd_s1 != _cd_s2:
+                st.error("As senhas não conferem.")
+            else:
+                _ok_cd, _msg_cd = auth_db.criar_conta(
+                    _cd_user, _cd_nome, _cd_email, _cd_s1
+                )
+                (st.success if _ok_cd else st.error)(_msg_cd)
 
-_status = st.session_state.get("authentication_status")
-if _status is False:
-    st.error("Usuário ou senha incorretos.")
-    st.stop()
-elif _status is None:
-    st.info("Informe seu usuário e senha para acessar o IA-Licita.")
+    with _t_esqueci:
+        st.caption("Enviaremos um código de verificação para o seu e-mail.")
+        with st.form("form_reset_pedido"):
+            _rs_email = st.text_input("E-mail cadastrado")
+            _rs_ok = st.form_submit_button("Enviar código")
+        if _rs_ok:
+            _ok_rs, _msg_rs = auth_db.solicitar_reset(_rs_email)
+            (st.success if _ok_rs else st.error)(_msg_rs)
+        st.divider()
+        st.caption("Já recebeu o código? Defina a nova senha:")
+        with st.form("form_reset_confirma"):
+            _rc_email = st.text_input("E-mail")
+            _rc_cod = st.text_input("Código recebido (6 dígitos)")
+            _rc_s1 = st.text_input("Nova senha (mínimo 8 caracteres)",
+                                   type="password")
+            _rc_s2 = st.text_input("Confirme a nova senha", type="password")
+            _rc_ok = st.form_submit_button("Redefinir senha", type="primary")
+        if _rc_ok:
+            if _rc_s1 != _rc_s2:
+                st.error("As senhas não conferem.")
+            else:
+                _ok_rc, _msg_rc = auth_db.redefinir_senha(
+                    _rc_email, _rc_cod, _rc_s1
+                )
+                (st.success if _ok_rc else st.error)(_msg_rc)
+
     st.stop()
 
 # A partir daqui, o usuário está autenticado.
+def _registrar_uso_app(modulo: str) -> None:
+    """Registra 1 relatório gerado (base da cobrança por uso).
+    Nunca interrompe a análise: falha de rede/banco é silenciosa aqui
+    e o admin confere a consolidação no painel."""
+    try:
+        uso_db.registrar_uso(_usuario_logado["usuario"], modulo)
+    except Exception:
+        pass
+
+
 with st.sidebar:
-    st.write(f"Olá, {st.session_state.get('name', '')}")
-    _authenticator.logout("Sair", "sidebar")
+    st.write(f"Olá, {_usuario_logado['nome']}")
+    if st.button("Sair", key="btn_sair"):
+        st.session_state.pop("usuario_logado", None)
+        st.rerun()
+
+    # --- Uso do mês do próprio usuário ---
+    _plano_info = precos.plano_info(_usuario_logado.get("plano"))
+    _n_uso_mes = uso_db.contagem_do_mes(_usuario_logado["usuario"])
+    _limite_plano = _plano_info.get("limite")
+    if _limite_plano:
+        st.caption(f"📊 Uso este mês: **{_n_uso_mes}** de "
+                   f"{_limite_plano} relatórios — plano {_plano_info['rotulo']}")
+        if _n_uso_mes > _limite_plano:
+            st.warning(f"Limite do plano {_plano_info['rotulo']} excedido "
+                       f"({_n_uso_mes}/{_limite_plano}). O excedente pode "
+                       "ser cobrado como avulso.")
+    else:
+        st.caption(f"📊 Uso este mês: **{_n_uso_mes}** relatório(s) — "
+                   f"plano {_plano_info['rotulo']}")
+
+    # --- Painel do administrador: aprovação e gestão de usuários ---
+    if _usuario_logado.get("is_admin"):
+        st.divider()
+        st.markdown("**👥 Administração de usuários**")
+        _ok_adm, _lista_usr = auth_db.listar_usuarios()
+        if not _ok_adm:
+            st.error(_lista_usr)
+        else:
+            _pendentes = [u for u in _lista_usr if u["status"] == "pendente"]
+            st.caption(f"{len(_lista_usr)} usuário(s) — "
+                       f"{len(_pendentes)} pendente(s)")
+            for _u in _pendentes:
+                st.write(f"🕓 {_u['nome']} (`{_u['usuario']}`)")
+                st.caption(_u["email"])
+                _c_ap, _c_rj = st.columns(2)
+                if _c_ap.button("✅ Aprovar", key=f"ap_{_u['usuario']}"):
+                    auth_db.definir_status(_u["usuario"], "aprovado")
+                    st.rerun()
+                if _c_rj.button("🚫 Recusar", key=f"rj_{_u['usuario']}"):
+                    auth_db.definir_status(_u["usuario"], "suspenso")
+                    st.rerun()
+            with st.expander("Todos os usuários"):
+                _planos_ordem = ["avulso", "basico", "profissional", "ilimitado"]
+                for _u in _lista_usr:
+                    _ic_u = {"aprovado": "🟢", "pendente": "🕓",
+                             "suspenso": "🔴"}.get(_u["status"], "❔")
+                    st.write(f"{_ic_u} `{_u['usuario']}` — {_u['nome']}")
+                    _plano_atual = _u.get("plano") or "avulso"
+                    _novo_plano = st.selectbox(
+                        "Plano",
+                        _planos_ordem,
+                        index=_planos_ordem.index(_plano_atual)
+                        if _plano_atual in _planos_ordem else 0,
+                        format_func=lambda p: precos.PLANOS[p]["rotulo"],
+                        key=f"plano_{_u['usuario']}",
+                        label_visibility="collapsed",
+                    )
+                    if _novo_plano != _plano_atual:
+                        auth_db.definir_plano(_u["usuario"], _novo_plano)
+                        st.rerun()
+                    if _u.get("is_admin"):
+                        st.caption("administrador")
+                    elif _u["status"] == "aprovado":
+                        if st.button("Suspender", key=f"sp_{_u['usuario']}"):
+                            auth_db.definir_status(_u["usuario"], "suspenso")
+                            st.rerun()
+                    elif _u["status"] == "suspenso":
+                        if st.button("Reativar", key=f"rt_{_u['usuario']}"):
+                            auth_db.definir_status(_u["usuario"], "aprovado")
+                            st.rerun()
+
+            # --- Consolidação de cobrança do mês ---
+            with st.expander("💰 Uso e cobrança do mês"):
+                from datetime import datetime as _dt_uso
+                _agora_uso = _dt_uso.now()
+                _mes_ref = st.selectbox(
+                    "Mês de referência",
+                    list(range(1, 13)),
+                    index=_agora_uso.month - 1,
+                    format_func=lambda m: f"{m:02d}/{_agora_uso.year}",
+                    key="adm_mes_ref",
+                )
+                _ok_res, _resumo = uso_db.resumo_do_mes(
+                    _agora_uso.year, _mes_ref
+                )
+                if not _ok_res:
+                    st.error(_resumo)
+                elif not _resumo:
+                    st.caption("Nenhum relatório gerado neste mês.")
+                else:
+                    _planos_por_usr = {
+                        u["usuario"]: (u.get("plano") or "avulso")
+                        for u in _lista_usr
+                    }
+                    _total_geral = 0.0
+                    for _usr_r, _r in sorted(_resumo.items()):
+                        _val, _obs = uso_db.cobranca_sugerida(
+                            _planos_por_usr.get(_usr_r, "avulso"), _r
+                        )
+                        _total_geral += _val
+                        st.markdown(
+                            f"**`{_usr_r}`** — {_r['total']} relatório(s) "
+                            f"(S:{_r['Simples']} M:{_r['Médio']} "
+                            f"A:{_r['Alto']})"
+                        )
+                        st.caption(
+                            f"Avulso equivalente: "
+                            f"{_fmt_brl(_r['valor_avulso'])} · "
+                            f"Cobrança sugerida: {_fmt_brl(_val)} ({_obs})"
+                        )
+                    st.metric("Total sugerido no mês",
+                              _fmt_brl(_total_geral))
 _logo_file = b.get("logo")
 _logo_path = os.path.join(AQUI, _logo_file) if _logo_file else ""
 _logo_visivel = False
@@ -237,6 +373,7 @@ with aba1:
                     except Exception as e:
                         st.info(f"IA indisponível ({e}). Exibindo apenas a camada automática de regras.")
                 pct, nivel = A.indice_de_risco(apont)
+                _registrar_uso_app("Auditoria de Edital")
         finally:
             os.unlink(caminho)
 
@@ -364,6 +501,7 @@ with aba2:
                 with st.spinner("Gerando parecer de integridade com IA..."):
                     parecer = ia_ddi.analisar(_dados_analise, fid)
                 st.session_state["ddi_parecer"] = parecer
+                _registrar_uso_app("DDI")
                 st.session_state["ddi_fid"] = fid
                 st.session_state["ddi_dados"] = _dados_analise
                 st.session_state["ddi_etapa"] = 3
@@ -477,6 +615,7 @@ with aba3:
                     _texto_etp, _avisos_etp = etp_extrator.extrair_texto(_arqs_etp)
                     _parecer_etp = ia_etp.analisar_etp(_texto_etp, _api_key_etp, _modelo_etp)
                 st.session_state["etp_parecer"] = _parecer_etp
+                _registrar_uso_app("Auditoria de ETP")
                 st.session_state["etp_avisos"] = _avisos_etp
                 st.session_state["etp_nomes"] = [f.name for f in _arqs_etp]
             except ValueError as e:
@@ -588,6 +727,7 @@ with aba4:
                         st.session_state.get("ddi_parecer"),
                     )
                 st.session_state["pip_parecer"] = _parecer_pip
+                _registrar_uso_app("Diagnóstico de Integridade")
                 st.session_state["pip_municipio"] = _municipio_pip
                 st.session_state["pip_avisos"] = _avisos_pip
                 _nome_pip = _municipio_pip.replace("/", "-").replace(" ", "_")
@@ -794,6 +934,7 @@ with aba5:
                         )
                     st.session_state["pi_respostas"] = _respostas_pi
                     st.session_state["pi_parecer"] = _parecer_pi
+                    _registrar_uso_app("Avaliação de PI")
                     st.session_state["pi_tipo_entidade"] = _tipo_pi
                     st.session_state["pi_etapa"] = 3
                     _razao_pi = st.session_state["pi_dados"].get("razao_social") or ""
@@ -1034,6 +1175,7 @@ with aba6:
                             _modelo_cont,
                         )
                     st.session_state["cont_parecer"] = _parecer_cont
+                    _registrar_uso_app("Alterações Contratuais")
                     st.session_state["cont_dados"] = _dados_cont
                     try:
                         st.session_state["cont_pdf"] = relatorio_contratos.gerar_pdf(
@@ -1223,6 +1365,7 @@ with aba6:
                             _modelo_recv,
                         )
                     st.session_state["recv_parecer"] = _parecer_recv
+                    _registrar_uso_app("Recebimento")
                     st.session_state["recv_dados"] = _dados_recv
                     try:
                         st.session_state["recv_pdf"] = relatorio_recebimento.gerar_pdf(
@@ -1321,6 +1464,7 @@ with aba7:
                     _texto_tr, _avisos_tr = etp_extrator.extrair_texto(_arq_tr)
                     _parecer_tr = ia_tr.analisar_tr(_texto_tr, _tipo_tr, _api_key_tr, _modelo_tr)
                 st.session_state["tr_parecer"] = _parecer_tr
+                _registrar_uso_app("Auditoria de TR")
                 st.session_state["tr_avisos"] = _avisos_tr
                 st.session_state["tr_tipo_selecionado"] = _tipo_tr
                 st.session_state["tr_nome"] = _arq_tr[0].name if _arq_tr else "TR"
@@ -1485,6 +1629,7 @@ with aba8:
                         )
 
                     st.session_state["sanc_parecer"]    = _parecer_sanc
+                    _registrar_uso_app("Dosimetria de Sanções")
                     st.session_state["sanc_minuta"]     = _minuta_sanc
                     st.session_state["sanc_dados"]      = _dados_sanc
                     st.session_state["sanc_avisos"]     = _avisos_sanc
@@ -1864,6 +2009,7 @@ with aba9:
                         )
                     st.session_state["reab_respostas"]  = _respostas_reab
                     st.session_state["reab_parecer"]    = _parecer_reab
+                    _registrar_uso_app("Reabilitação de Fornecedor")
                     st.session_state["reab_etapa"]      = 3
 
                     try:
@@ -1962,130 +2108,241 @@ with aba10:
 
     _api_key_pm = _get_api_key()
 
-    _objeto_pm = st.text_input(
-        "Objeto da pesquisa (descrição curta)",
-        placeholder="ex.: Contratação de serviços de consultoria em tecnologia da informação",
-        key="pm_objeto_input",
-    )
-    _tr_pm = st.file_uploader(
-        "Termo de Referência (PDF ou DOCX)",
-        type=["pdf", "docx"],
-        key="pm_tr_arquivo",
-    )
 
-    if st.button(
-        "Extrair Itens →",
-        type="primary",
-        key="btn_pm_extrair",
-        disabled=not (_objeto_pm and _tr_pm),
-    ):
-        for _k in ("pm_etapa", "pm_objeto", "pm_itens_tr",
-                   "pm_resultado", "pm_pdf_mapa", "pm_pdf_relatorio"):
-            st.session_state.pop(_k, None)
-        if not _api_key_pm:
-            st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
-        else:
-            try:
-                with st.spinner("Extraindo texto do TR..."):
-                    _texto_tr_pm, _avisos_tr_pm = etp_extrator.extrair_texto([_tr_pm])
-                for _av in _avisos_tr_pm:
-                    st.warning(_safe_md(_av))
-                with st.spinner("Identificando itens com IA..."):
-                    _itens_pm = ia_pesquisa_mercado.extrair_itens_tr(
-                        _texto_tr_pm, _api_key_pm
-                    )
-                st.session_state["pm_objeto"]   = _objeto_pm
-                st.session_state["pm_itens_tr"] = _itens_pm
-                st.session_state["pm_etapa"]    = 1
-            except Exception as _e_pm:
-                _msg_pm = str(_e_pm)
-                if isinstance(_e_pm, ValueError):
-                    _msg_pm += " Verifique se o arquivo não é uma imagem sem OCR."
-                st.error(_msg_pm)
+    _sub_pm_upload, _sub_pm_pncp = st.tabs([
+        "📎 Orçamentos de fornecedores",
+        "🌐 Busca automática no PNCP",
+    ])
 
-    if st.session_state.get("pm_etapa", 0) >= 1:
-        st.divider()
-        st.markdown("#### Itens identificados no TR")
-        _itens_extr = st.session_state.get("pm_itens_tr") or []
-        if _itens_extr:
-            def _safe_cell(s: object) -> str:
-                return _safe_md(s).replace("|", "∣").replace("\n", " ")
-
-            _tbl_header = "| # | Descrição | Unidade | Qtd estimada |\n|---|-----------|---------|-------------|\n"
-            _tbl_rows   = "\n".join(
-                f"| {i.get('id', idx + 1)} | {_safe_cell(i.get('descricao', ''))} "
-                f"| {_safe_cell(i.get('unidade', 'un'))} "
-                f"| {i.get('quantidade_estimada', '—')} |"
-                for idx, i in enumerate(_itens_extr)
-            )
-            st.markdown(_tbl_header + _tbl_rows)
-        else:
-            st.warning("Nenhum item identificado. Verifique se o TR contém lista de itens.")
-
-        _orcamentos_pm = st.file_uploader(
-            "Orçamentos dos fornecedores (PDF ou DOCX, múltiplos arquivos)",
+    with _sub_pm_upload:
+        _objeto_pm = st.text_input(
+            "Objeto da pesquisa (descrição curta)",
+            placeholder="ex.: Contratação de serviços de consultoria em tecnologia da informação",
+            key="pm_objeto_input",
+        )
+        _tr_pm = st.file_uploader(
+            "Termo de Referência (PDF ou DOCX)",
             type=["pdf", "docx"],
-            accept_multiple_files=True,
-            key="pm_orcamentos",
+            key="pm_tr_arquivo",
         )
 
         if st.button(
-            "Analisar Pesquisa de Mercado →",
+            "Extrair Itens →",
             type="primary",
-            key="btn_pm_analisar",
-            disabled=not _orcamentos_pm,
+            key="btn_pm_extrair",
+            disabled=not (_objeto_pm and _tr_pm),
         ):
+            for _k in ("pm_etapa", "pm_objeto", "pm_itens_tr",
+                       "pm_resultado", "pm_pdf_mapa", "pm_pdf_relatorio"):
+                st.session_state.pop(_k, None)
             if not _api_key_pm:
                 st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
             else:
                 try:
-                    with st.spinner("Extraindo texto dos orçamentos..."):
-                        _texto_orc_pm, _avisos_orc_pm = etp_extrator.extrair_texto(
-                            _orcamentos_pm
-                        )
-                    for _av in _avisos_orc_pm:
+                    with st.spinner("Extraindo texto do TR..."):
+                        _texto_tr_pm, _avisos_tr_pm = etp_extrator.extrair_texto([_tr_pm])
+                    for _av in _avisos_tr_pm:
                         st.warning(_safe_md(_av))
-                    with st.spinner("Analisando pesquisa de mercado com IA..."):
-                        _resultado_pm = ia_pesquisa_mercado.analisar(
-                            st.session_state["pm_itens_tr"],
-                            _texto_orc_pm,
-                            _api_key_pm,
+                    with st.spinner("Identificando itens com IA..."):
+                        _itens_pm = ia_pesquisa_mercado.extrair_itens_tr(
+                            _texto_tr_pm, _api_key_pm
                         )
-                    st.session_state["pm_resultado"] = _resultado_pm
-                    st.session_state["pm_etapa"]     = 3
-                    try:
-                        st.session_state["pm_pdf_mapa"] = (
-                            relatorio_pesquisa_mercado.gerar_mapa_precos(
-                                st.session_state["pm_objeto"],
-                                _resultado_pm["itens_avaliados"],
-                                _resultado_pm["fornecedores"],
-                                _resultado_pm["valor_total_estimado"],
-                            )
-                        )
-                    except Exception as _e_mapa:
-                        st.session_state.pop("pm_pdf_mapa", None)
-                        st.warning(f"Mapa de Preços indisponível: {_e_mapa}")
-                    try:
-                        st.session_state["pm_pdf_relatorio"] = (
-                            relatorio_pesquisa_mercado.gerar_relatorio_pesquisa(
-                                st.session_state["pm_objeto"],
-                                _resultado_pm["itens_avaliados"],
-                                _resultado_pm["fornecedores"],
-                                _resultado_pm["parecer_narrativo"],
-                                _resultado_pm["status_geral"],
-                                _resultado_pm["valor_total_estimado"],
-                            )
-                        )
-                    except Exception as _e_rel:
-                        st.session_state.pop("pm_pdf_relatorio", None)
-                        st.warning(f"Relatório de Pesquisa indisponível: {_e_rel}")
-                except Exception as _e_pm2:
-                    _msg_pm2 = str(_e_pm2)
-                    if isinstance(_e_pm2, ValueError):
-                        _msg_pm2 += " Verifique se o arquivo não é uma imagem sem OCR."
-                    st.error(_msg_pm2)
+                    st.session_state["pm_objeto"]   = _objeto_pm
+                    st.session_state["pm_itens_tr"] = _itens_pm
+                    st.session_state["pm_etapa"]    = 1
+                except Exception as _e_pm:
+                    _msg_pm = str(_e_pm)
+                    if isinstance(_e_pm, ValueError):
+                        _msg_pm += " Verifique se o arquivo não é uma imagem sem OCR."
+                    st.error(_msg_pm)
 
-    if st.session_state.get("pm_etapa", 0) >= 3:
+        if st.session_state.get("pm_etapa", 0) >= 1:
+            st.divider()
+            st.markdown("#### Itens identificados no TR")
+            _itens_extr = st.session_state.get("pm_itens_tr") or []
+            if _itens_extr:
+                def _safe_cell(s: object) -> str:
+                    return _safe_md(s).replace("|", "∣").replace("\n", " ")
+
+                _tbl_header = "| # | Descrição | Unidade | Qtd estimada |\n|---|-----------|---------|-------------|\n"
+                _tbl_rows   = "\n".join(
+                    f"| {i.get('id', idx + 1)} | {_safe_cell(i.get('descricao', ''))} "
+                    f"| {_safe_cell(i.get('unidade', 'un'))} "
+                    f"| {i.get('quantidade_estimada', '—')} |"
+                    for idx, i in enumerate(_itens_extr)
+                )
+                st.markdown(_tbl_header + _tbl_rows)
+            else:
+                st.warning("Nenhum item identificado. Verifique se o TR contém lista de itens.")
+
+            _orcamentos_pm = st.file_uploader(
+                "Orçamentos dos fornecedores (PDF ou DOCX, múltiplos arquivos)",
+                type=["pdf", "docx"],
+                accept_multiple_files=True,
+                key="pm_orcamentos",
+            )
+
+            if st.button(
+                "Analisar Pesquisa de Mercado →",
+                type="primary",
+                key="btn_pm_analisar",
+                disabled=not _orcamentos_pm,
+            ):
+                if not _api_key_pm:
+                    st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
+                else:
+                    try:
+                        with st.spinner("Extraindo texto dos orçamentos..."):
+                            _texto_orc_pm, _avisos_orc_pm = etp_extrator.extrair_texto(
+                                _orcamentos_pm
+                            )
+                        for _av in _avisos_orc_pm:
+                            st.warning(_safe_md(_av))
+                        with st.spinner("Analisando pesquisa de mercado com IA..."):
+                            _resultado_pm = ia_pesquisa_mercado.analisar(
+                                st.session_state["pm_itens_tr"],
+                                _texto_orc_pm,
+                                _api_key_pm,
+                            )
+                        st.session_state["pm_resultado"] = _resultado_pm
+                        _registrar_uso_app("Pesquisa de Mercado")
+                        st.session_state["pm_etapa"]     = 3
+                        try:
+                            st.session_state["pm_pdf_mapa"] = (
+                                relatorio_pesquisa_mercado.gerar_mapa_precos(
+                                    st.session_state["pm_objeto"],
+                                    _resultado_pm["itens_avaliados"],
+                                    _resultado_pm["fornecedores"],
+                                    _resultado_pm["valor_total_estimado"],
+                                )
+                            )
+                        except Exception as _e_mapa:
+                            st.session_state.pop("pm_pdf_mapa", None)
+                            st.warning(f"Mapa de Preços indisponível: {_e_mapa}")
+                        try:
+                            st.session_state["pm_pdf_relatorio"] = (
+                                relatorio_pesquisa_mercado.gerar_relatorio_pesquisa(
+                                    st.session_state["pm_objeto"],
+                                    _resultado_pm["itens_avaliados"],
+                                    _resultado_pm["fornecedores"],
+                                    _resultado_pm["parecer_narrativo"],
+                                    _resultado_pm["status_geral"],
+                                    _resultado_pm["valor_total_estimado"],
+                                )
+                            )
+                        except Exception as _e_rel:
+                            st.session_state.pop("pm_pdf_relatorio", None)
+                            st.warning(f"Relatório de Pesquisa indisponível: {_e_rel}")
+                    except Exception as _e_pm2:
+                        _msg_pm2 = str(_e_pm2)
+                        if isinstance(_e_pm2, ValueError):
+                            _msg_pm2 += " Verifique se o arquivo não é uma imagem sem OCR."
+                        st.error(_msg_pm2)
+
+    with _sub_pm_pncp:
+        st.caption(
+            "Busca preços reais de contratações públicas no PNCP — fonte "
+            "prioritária conforme a IN SEGES/MGI 65/2021. Não requer chave de IA."
+        )
+        _termo_pncp = st.text_input(
+            "Termo a pesquisar (descrição curta do item)",
+            placeholder="ex.: notebook",
+            key="pncp_termo_input",
+        )
+        _col_pncp1, _col_pncp2 = st.columns(2)
+        with _col_pncp1:
+            _unidade_pncp = st.text_input(
+                "Unidade", value="un", key="pncp_unidade_input"
+            )
+        with _col_pncp2:
+            _qtd_pncp = st.number_input(
+                "Quantidade estimada (opcional; 0 = não calcular subtotal)",
+                min_value=0.0, value=0.0, step=1.0, key="pncp_qtd_input",
+            )
+        _ufs_todas = [
+            "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO",
+            "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR",
+            "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
+        ]
+        _col_pncp3, _col_pncp4 = st.columns(2)
+        with _col_pncp3:
+            _ufs_pncp = st.multiselect(
+                "UFs a pesquisar (vazio = Brasil todo, mais lento)",
+                _ufs_todas,
+                default=["SE", "SP", "MG", "RS", "PR", "SC"],
+                key="pncp_ufs_input",
+            )
+        with _col_pncp4:
+            _dias_pncp = st.selectbox(
+                "Período da pesquisa",
+                [90, 180, 365],
+                index=1,
+                format_func=lambda _d: f"Últimos {_d} dias",
+                key="pncp_dias_input",
+            )
+        if st.button(
+            "Buscar Preços no PNCP →",
+            type="primary",
+            key="btn_pncp_buscar",
+            disabled=not _termo_pncp,
+        ):
+            for _k in ("pm_etapa", "pm_objeto", "pm_itens_tr",
+                       "pm_resultado", "pm_pdf_mapa", "pm_pdf_relatorio"):
+                st.session_state.pop(_k, None)
+            _barra_pncp = st.progress(0.0, text="Consultando o PNCP...")
+
+            def _progresso_pncp(_i, _total, _texto):
+                try:
+                    _barra_pncp.progress(
+                        min(_i / _total, 1.0) if _total else 0.0,
+                        text=f"{_texto} ({_i}/{_total})",
+                    )
+                except Exception:
+                    pass
+
+            try:
+                _resultado_pncp = pncp_busca.buscar_precos_pncp(
+                    _termo_pncp.strip(),
+                    unidade=(_unidade_pncp or "un").strip(),
+                    quantidade_estimada=_qtd_pncp if _qtd_pncp > 0 else None,
+                    progresso=_progresso_pncp,
+                    ufs=_ufs_pncp,
+                    dias=_dias_pncp,
+                )
+                _barra_pncp.progress(1.0, text="Busca concluída.")
+                st.session_state["pm_objeto"]    = _termo_pncp.strip()
+                st.session_state["pm_resultado"] = _resultado_pncp
+                _registrar_uso_app("Pesquisa de Mercado")
+                try:
+                    st.session_state["pm_pdf_mapa"] = (
+                        relatorio_pesquisa_mercado.gerar_mapa_precos(
+                            st.session_state["pm_objeto"],
+                            _resultado_pncp["itens_avaliados"],
+                            _resultado_pncp["fornecedores"],
+                            _resultado_pncp["valor_total_estimado"],
+                        )
+                    )
+                except Exception as _e_mapa_pncp:
+                    st.session_state.pop("pm_pdf_mapa", None)
+                    st.warning(f"Mapa de Preços indisponível: {_e_mapa_pncp}")
+                try:
+                    st.session_state["pm_pdf_relatorio"] = (
+                        relatorio_pesquisa_mercado.gerar_relatorio_pesquisa(
+                            st.session_state["pm_objeto"],
+                            _resultado_pncp["itens_avaliados"],
+                            _resultado_pncp["fornecedores"],
+                            _resultado_pncp["parecer_narrativo"],
+                            _resultado_pncp["status_geral"],
+                            _resultado_pncp["valor_total_estimado"],
+                        )
+                    )
+                except Exception as _e_rel_pncp:
+                    st.session_state.pop("pm_pdf_relatorio", None)
+                    st.warning(f"Relatório de Pesquisa indisponível: {_e_rel_pncp}")
+            except Exception as _e_pncp:
+                st.error(f"Falha na busca no PNCP: {_e_pncp}")
+
+    if st.session_state.get("pm_resultado"):
         _res_pm = st.session_state.get("pm_resultado") or {}
         if _res_pm:
             st.divider()
@@ -2100,6 +2357,13 @@ with aba10:
             st.subheader(
                 f"{_icone_pm.get(_status_pm, '⚪')} {_safe_md(_status_pm)}"
             )
+            if _res_pm.get("fonte") == "PNCP":
+                _diag_pm = _res_pm.get("diagnostico") or {}
+                st.caption(
+                    f"🌐 Fonte: PNCP — {_diag_pm.get('contratacoes', 0)} contratação(ões) "
+                    f"consultada(s), {_diag_pm.get('aceitos', 0)} preço(s) aceito(s), "
+                    f"{_diag_pm.get('descartados', 0)} descartado(s)."
+                )
 
             for _item_pm in (_res_pm.get("itens_avaliados") or []):
                 _desc_i = _safe_md(_item_pm.get("descricao") or "")
@@ -2240,6 +2504,7 @@ with aba11:
                         _api_key_fid,
                     )
                 st.session_state["fid_parecer"]         = _parecer_fid
+                _registrar_uso_app("Instituto da Diligência")
                 st.session_state["fid_dados_licitante"] = _dados_licitante_fid
                 st.session_state["fid_fase_sel"]        = _fase_fid
                 st.session_state["fid_etapa"]           = 1

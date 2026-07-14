@@ -1,5 +1,9 @@
 config.yaml
 .streamlit/secrets.toml
+migracao_usuarios.sql
+files.zip
+teste_relatorio_notebook.pdf
+~$*
 *.env
 .env
 gerar_hashes.py

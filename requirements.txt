@@ -1,7 +1,10 @@
-streamlit>=1.30
-pdfplumber>=0.10
-python-docx>=1.1
+# Dependências de produção do RM IA-Licita
+streamlit>=1.37
+pdfplumber>=0.11
 reportlab>=4.0
-requests>=2.31
-streamlit-authenticator>=0.4
+python-docx>=1.1
 PyYAML>=6.0
+
+# Autenticação (usuários no Supabase + senhas bcrypt)
+supabase>=2.4
+bcrypt>=4.0
