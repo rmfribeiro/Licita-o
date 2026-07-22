@@ -48,7 +48,7 @@ PLANOS = {
     "avulso": {
         "rotulo": "Avulso",
         "mensalidade": 0.0,
-        "limite": None,          # paga por relatorio
+        "limite": 3,             # cortesia mensal p/ experimentar; depois bloqueia
     },
     "basico": {
         "rotulo": "Básico",

@@ -68,7 +68,7 @@ PALAVRAS_EXCLUSAO = [
     "fonte para", "gabinete", "carrinho de recarga",
 ]
 PALAVRAS_EXCLUSAO_INTEIRAS = [
-    "capa", "case", "peca", "pecas", "mouse", "teclado",
+    "capa", "case", "hd", "ssd", "cabo", "peca", "pecas", "mouse", "teclado",
 ]
 
 PISO_MINIMO_REAIS = 10.0
@@ -134,11 +134,29 @@ def _baixar_pagina(modalidade, uf, pagina, ini, fim):
 
 
 def _combina(c: dict, termo_norm: str, relaxada: bool) -> bool:
-    """Objeto precisa conter o termo. MEDIDO em 17/07/2026: aceitar objetos
-    genericos (aquisicao/compra/...) tem taxa de acerto 0% - deixa passar 88%
-    de tudo (larvicida, onibus, gaze). Itens especificos sao raros (~0,1%);
-    o unico filtro com acerto real e o termo no objeto."""
-    return termo_norm in _norm(c.get("objetoCompra"))
+    """Decide se a contratacao interessa.
+
+    DESCOBERTA (diagnostico de 16/07/2026 na API real): o termo quase NUNCA
+    aparece no objeto da contratacao. Numa amostra de 50 contratacoes reais,
+    ZERO tinham "notebook" no objeto, mas 38 tinham objeto generico
+    ("Aquisicao de equipamentos de informatica" etc.). Por isso a busca aceita
+    objetos genericos DESDE O INICIO - o filtro fino pelo termo acontece depois,
+    item a item, dentro de cada contratacao.
+
+    relaxada=False (1a passada): objeto contem o termo OU e um objeto generico
+                                 de compra de bens (o caso comum).
+    relaxada=True  (2a passada): qualquer objeto que nao seja claramente de
+                                 servico - rede de seguranca para termos raros.
+    """
+    obj = _norm(c.get("objetoCompra"))
+    if termo_norm in obj:
+        return True
+    if any(g in obj for g in OBJETOS_GENERICOS):
+        return True
+    if relaxada:
+        # 2a passada: aceita quase tudo, menos objetos claramente de servico
+        return not any(s in obj for s in ("servico", "obra", "reforma", "locacao"))
+    return False
 
 
 def _iterar_contratacoes(termo: str, ufs=None, dias=None, relaxada: bool = False):

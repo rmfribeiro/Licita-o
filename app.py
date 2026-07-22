@@ -41,6 +41,7 @@ import relatorio_pesquisa_mercado
 import pncp_busca
 import ia_fid
 import relatorio_fid
+import ia_utils
 from ia_utils import fmt_brl as _fmt_brl, AVISO_CAMPO_VAZIO as _AVISO_CAMPO_VAZIO
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -184,6 +185,17 @@ def _registrar_uso_app(modulo: str) -> None:
         pass
 
 
+# --- Controle de acesso pelo plano contratado ---
+# Avulso: 3 relatórios de cortesia/mês. Básico: 20. Profissional: 50.
+# Ilimitado: sem trava. Ao atingir o limite, a geração é BLOQUEADA
+# (trava central em ia_utils + travas próprias do PNCP e da aba 1).
+_pode_gerar_agora, _msg_limite_plano, _uso_mes_atual, _limite_mes = uso_db.pode_gerar(
+    _usuario_logado.get("plano"), _usuario_logado["usuario"]
+)
+if _usuario_logado.get("is_admin"):
+    _pode_gerar_agora, _msg_limite_plano = True, ""
+ia_utils.BLOQUEIO_LIMITE_PLANO = None if _pode_gerar_agora else _msg_limite_plano
+
 with st.sidebar:
     st.write(f"Olá, {_usuario_logado['nome']}")
     if st.button("Sair", key="btn_sair"):
@@ -192,18 +204,14 @@ with st.sidebar:
 
     # --- Uso do mês do próprio usuário ---
     _plano_info = precos.plano_info(_usuario_logado.get("plano"))
-    _n_uso_mes = uso_db.contagem_do_mes(_usuario_logado["usuario"])
-    _limite_plano = _plano_info.get("limite")
-    if _limite_plano:
-        st.caption(f"📊 Uso este mês: **{_n_uso_mes}** de "
-                   f"{_limite_plano} relatórios — plano {_plano_info['rotulo']}")
-        if _n_uso_mes > _limite_plano:
-            st.warning(f"Limite do plano {_plano_info['rotulo']} excedido "
-                       f"({_n_uso_mes}/{_limite_plano}). O excedente pode "
-                       "ser cobrado como avulso.")
+    if _limite_mes:
+        st.caption(f"📊 Uso este mês: **{_uso_mes_atual}** de "
+                   f"{_limite_mes} relatórios — plano {_plano_info['rotulo']}")
     else:
-        st.caption(f"📊 Uso este mês: **{_n_uso_mes}** relatório(s) — "
+        st.caption(f"📊 Uso este mês: **{_uso_mes_atual}** relatório(s) — "
                    f"plano {_plano_info['rotulo']}")
+    if not _pode_gerar_agora:
+        st.error(_msg_limite_plano)
 
     # --- Painel do administrador: aprovação e gestão de usuários ---
     if _usuario_logado.get("is_admin"):
@@ -357,6 +365,9 @@ with aba1:
                 if _resolved:
                     os.environ["ANTHROPIC_API_KEY"] = _resolved
 
+            if not _pode_gerar_agora:
+                st.error(_msg_limite_plano)
+                st.stop()
             with st.spinner("Analisando o edital…"):
                 texto, paginas = A.extrair_texto(caminho)
                 if A.precisa_ocr(texto, paginas):
@@ -2286,6 +2297,9 @@ with aba10:
             key="btn_pncp_buscar",
             disabled=not _termo_pncp,
         ):
+            if not _pode_gerar_agora:
+                st.error(_msg_limite_plano)
+                st.stop()
             for _k in ("pm_etapa", "pm_objeto", "pm_itens_tr",
                        "pm_resultado", "pm_pdf_mapa", "pm_pdf_relatorio"):
                 st.session_state.pop(_k, None)

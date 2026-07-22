@@ -70,6 +70,27 @@ def contagem_do_mes(usuario: str,
     return len(dados) if ok else 0
 
 
+def pode_gerar(plano: str, usuario: str):
+    """Controle de acesso pelo plano contratado.
+    Devolve (pode, mensagem, usados_no_mes, limite).
+    Limites: Avulso 3 (cortesia) | Básico 20 | Profissional 50 | Ilimitado ∞.
+    O admin deve ser isentado pelo chamador."""
+    info = precos.plano_info(plano)
+    limite = info.get("limite")
+    usados = contagem_do_mes(usuario)
+    if limite is None or usados < limite:
+        return True, "", usados, limite
+    if info["mensalidade"] > 0:
+        msg = (f"Limite do plano {info['rotulo']} atingido: {usados} de "
+               f"{limite} relatórios neste mês. Para continuar gerando, "
+               f"fale com o administrador sobre ampliar o plano.")
+    else:
+        msg = (f"Os {limite} relatórios de cortesia deste mês já foram "
+               f"usados. Para continuar gerando, contrate um plano com o "
+               f"administrador.")
+    return False, msg, usados, limite
+
+
 def resumo_do_mes(ano: int | None = None, mes: int | None = None):
     """Consolidacao de cobranca por usuario.
     Devolve (ok, {usuario: {"Simples": n, "Médio": n, "Alto": n,

@@ -49,6 +49,12 @@ def fmt_brl(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+# Bloqueio por plano contratado: o app.py define esta variável a cada
+# recarregamento. Quando preenchida, TODA chamada de IA falha com a
+# mensagem do limite — nenhuma análise consome API além do plano.
+BLOQUEIO_LIMITE_PLANO = None
+
+
 def chamar_anthropic(
     prompt: str,
     api_key: str,
@@ -57,6 +63,8 @@ def chamar_anthropic(
     *,
     max_tokens: int = 4000,
 ) -> str:
+    if BLOQUEIO_LIMITE_PLANO:
+        raise RuntimeError(BLOQUEIO_LIMITE_PLANO)
     corpo = json.dumps({
         "model": modelo,
         "max_tokens": max_tokens,
