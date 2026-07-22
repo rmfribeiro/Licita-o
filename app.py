@@ -178,7 +178,10 @@ if not _usuario_logado:
 def _registrar_uso_app(modulo: str) -> None:
     """Registra 1 relatório gerado (base da cobrança por uso).
     Nunca interrompe a análise: falha de rede/banco é silenciosa aqui
-    e o admin confere a consolidação no painel."""
+    e o admin confere a consolidação no painel.
+    O admin NÃO registra uso: testes do coordenador não entram na cobrança."""
+    if _usuario_logado.get("is_admin"):
+        return
     try:
         uso_db.registrar_uso(_usuario_logado["usuario"], modulo)
     except Exception:
@@ -2326,7 +2329,12 @@ with aba10:
                 _barra_pncp.progress(1.0, text="Busca concluída.")
                 st.session_state["pm_objeto"]    = _termo_pncp.strip()
                 st.session_state["pm_resultado"] = _resultado_pncp
-                _registrar_uso_app("Pesquisa de Mercado")
+                # Só cobra se a busca produziu cotações de verdade —
+                # resultado vazio (termo sem achados ou API instável)
+                # não é relatório para o cliente.
+                _itens_pncp_ok = _resultado_pncp.get("itens_avaliados") or []
+                if _itens_pncp_ok and _itens_pncp_ok[0].get("cotacoes_validas"):
+                    _registrar_uso_app("Pesquisa de Mercado")
                 try:
                     st.session_state["pm_pdf_mapa"] = (
                         relatorio_pesquisa_mercado.gerar_mapa_precos(

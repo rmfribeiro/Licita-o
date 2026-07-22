@@ -106,18 +106,28 @@ def _norm(s) -> str:
     return s.encode("ascii", "ignore").decode().lower().strip()
 
 
+# Contador de falhas HTTP da busca em andamento. Sem ele, uma queda da API
+# do PNCP aparece para o usuario como "nenhuma contratacao encontrada" —
+# diagnostico errado (aconteceu em 22/07: madrugada, API instavel, tela
+# dizia que nao havia notebooks no Brasil inteiro).
+FALHAS_HTTP = 0
+
+
 def _get(url: str, tentativas: int = 3):
+    global FALHAS_HTTP
     req = urllib.request.Request(url, headers=_HEADERS)
     for t in range(1, tentativas + 1):
         try:
             with urllib.request.urlopen(req, context=_CTX, timeout=40) as resp:
                 return True, json.loads(resp.read().decode("utf-8", errors="replace"))
         except urllib.error.HTTPError:
+            FALHAS_HTTP += 1
             return False, None
         except Exception:
             if t < tentativas:
                 time.sleep(2)
                 continue
+            FALHAS_HTTP += 1
             return False, None
     return False, None
 
@@ -275,6 +285,8 @@ def _coletar_precos(termo: str, progresso=None, ufs=None, dias=None):
     compra de bens e filtra pelo termo item a item.
     Devolve (aceitos, descartados, n_contratacoes_vistas).
     """
+    global FALHAS_HTTP
+    FALHAS_HTTP = 0  # zera o contador desta busca
     termo_norm = _norm(termo)
     aceitos: list[dict] = []
     descartados: list[dict] = []
@@ -374,19 +386,29 @@ def buscar_precos_pncp(
     )
 
     if not aceitos and n_contratacoes == 0:
+        if FALHAS_HTTP > 0:
+            _parecer_vazio = (
+                f"A API do PNCP apresentou {FALHAS_HTTP} falha(s) de comunicação "
+                f"durante a busca — o portal pode estar instável ou em manutenção "
+                f"neste horário. NÃO significa que não existam contratações de "
+                f"'{termo}'. Tente novamente em alguns minutos."
+            )
+        else:
+            _parecer_vazio = (
+                f"Nenhuma contratacao encontrada no PNCP para o termo '{termo}' "
+                f"nos ultimos {_dias} dias. Sugestao: usar termo mais generico, "
+                f"ampliar o periodo ou incluir mais UFs."
+            )
         return {
             "status_geral":         ia_pesquisa_mercado.STATUS_PESQUISA["INVÁLIDA"],
             "itens_avaliados":      [],
             "fornecedores":         [],
             "valor_total_estimado": None,
-            "parecer_narrativo": (
-                f"Nenhuma contratacao encontrada no PNCP para o termo '{termo}' "
-                f"nos ultimos {_dias} dias. Sugestao: usar termo mais generico, "
-                f"ampliar o periodo ou incluir mais UFs."
-            ),
+            "parecer_narrativo":    _parecer_vazio,
             "base_legal": ["Art. 23, Lei 14.133/2021", "IN SEGES/MGI 65/2021"],
             "fonte": "PNCP",
-            "diagnostico": {"contratacoes": 0, "aceitos": 0, "descartados": 0},
+            "diagnostico": {"contratacoes": 0, "aceitos": 0, "descartados": 0,
+                            "falhas_http": FALHAS_HTTP},
         }
 
     # Piso minimo (remove precos irrisorios antes de mandar ao calculo)
