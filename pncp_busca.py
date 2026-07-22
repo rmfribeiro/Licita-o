@@ -46,6 +46,11 @@ MAX_CONTRATACOES     = 120      # teto de seguranca. Alto de proposito: como o t
                                 # genericos e so uma FRACAO tera o item buscado.
                                 # A parada inteligente (ALVO) encerra antes disso.
 ALVO_PRECOS_VALIDOS  = 12       # PARA de buscar ao juntar este tanto de precos aceitos
+MAX_PAGINAS_POR_FONTE = 40      # teto de paginas por UF+modalidade (40 x 50 =
+                                # 2.000 contratacoes varridas por fonte). Sem
+                                # teto, 180 dias de busca ampla = milhares de
+                                # paginas e o servidor gratis do Streamlit
+                                # derruba a execucao no meio (visto em 21/07).
 PAUSA_ENTRE_CHAMADAS = 0.0
 TAMANHO_PAGINA       = 50
 WORKERS_PARALELOS    = 8        # buscas de itens simultaneas
@@ -141,9 +146,12 @@ def _combina(c: dict, termo_norm: str, relaxada: bool) -> bool:
     return termo_norm in _norm(c.get("objetoCompra"))
 
 
-def _iterar_contratacoes(termo: str, ufs=None, dias=None, relaxada: bool = False):
+def _iterar_contratacoes(termo: str, ufs=None, dias=None,
+                         relaxada: bool = False, aviso=None):
     """Gera contratacoes que combinam com o termo.
     Otimizado: filtra por UF (menos volume) e baixa paginas EM PARALELO.
+    aviso(texto): callback opcional p/ feedback durante a varredura
+    (sem ele, buscas longas ficam minutos em silencio na interface).
     """
     if dias is None:
         dias = DIAS_PARA_TRAS
@@ -162,7 +170,11 @@ def _iterar_contratacoes(termo: str, ufs=None, dias=None, relaxada: bool = False
             if vistas >= MAX_CONTRATACOES:
                 return
             # 1a pagina: descobre quantas paginas existem
+            if aviso:
+                aviso(f"varrendo {uf or 'Brasil'}…")
             lista, total_paginas = _baixar_pagina(modalidade, uf, 1, ini, fim)
+            # Teto de varredura: paginas mais recentes primeiro ja bastam
+            total_paginas = min(total_paginas, MAX_PAGINAS_POR_FONTE)
             for c in lista:
                 if _combina(c, termo_norm, relaxada):
                     vistas += 1
@@ -173,6 +185,9 @@ def _iterar_contratacoes(termo: str, ufs=None, dias=None, relaxada: bool = False
             # Demais paginas: baixa em PARALELO, em blocos
             pagina = 2
             while pagina <= total_paginas and vistas < MAX_CONTRATACOES:
+                if aviso:
+                    aviso(f"varrendo {uf or 'Brasil'}: página "
+                          f"{pagina}/{total_paginas}")
                 bloco = list(range(pagina, min(pagina + PAGINAS_PARALELAS, total_paginas + 1)))
                 with ThreadPoolExecutor(max_workers=PAGINAS_PARALELAS) as ex:
                     futuros = {
@@ -288,8 +303,14 @@ def _coletar_precos(termo: str, progresso=None, ufs=None, dias=None):
         nonlocal n_contratacoes
         rotulo = "ampliando (objetos genericos)" if relaxada else ""
         lote: list[dict] = []
+
+        def aviso(txt):
+            if progresso:
+                txt_full = f"{txt} — {rotulo}" if rotulo else txt
+                progresso(len(aceitos), ALVO_PRECOS_VALIDOS, txt_full)
+
         for c in _iterar_contratacoes(termo, ufs=ufs, dias=dias,
-                                      relaxada=relaxada):
+                                      relaxada=relaxada, aviso=aviso):
             n_contratacoes += 1
             lote.append(c)
             if progresso:
@@ -310,9 +331,11 @@ def _coletar_precos(termo: str, progresso=None, ufs=None, dias=None):
         processa_lote(lote)
         return len(aceitos) >= ALVO_PRECOS_VALIDOS
 
-    # 1a passada: objeto exato. Se faltar preco, 2a passada: objetos genericos.
-    if not passada(relaxada=False):
-        passada(relaxada=True)
+    # Passada unica: o termo precisa estar no objeto da contratacao.
+    # (A 2a passada por "objetos genericos" foi removida em 21/07: medicao de
+    # 17/07 mostrou acerto 0% — e, com o _combina atual, ela so DUPLICAVA as
+    # cotacoes da 1a passada.)
+    passada(relaxada=False)
 
     return aceitos, descartados, n_contratacoes
 
