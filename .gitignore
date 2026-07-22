@@ -4,6 +4,13 @@ migracao_usuarios.sql
 files.zip
 teste_relatorio_notebook.pdf
 ~$*
+# Horos (app de imagens médicas) insiste em recriar o banco dele aqui —
+# nunca deixar entrar no repositório:
+**/Horos Data/
+supabase_schema_ialicita.sql/
+# rascunhos e backups locais
+*_BACKUP.py
+diag_uf.py
 *.env
 .env
 gerar_hashes.py
