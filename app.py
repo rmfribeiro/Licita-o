@@ -207,7 +207,11 @@ with st.sidebar:
 
     # --- Uso do mês do próprio usuário ---
     _plano_info = precos.plano_info(_usuario_logado.get("plano"))
-    if _limite_mes:
+    if _limite_mes and _plano_info.get("cortesia_unica"):
+        # Avulso: a cortesia é concedida uma única vez, não a cada mês.
+        st.caption(f"🎁 Cortesia de boas-vindas: **{_uso_mes_atual}** de "
+                   f"{_limite_mes} relatórios utilizados")
+    elif _limite_mes:
         st.caption(f"📊 Uso este mês: **{_uso_mes_atual}** de "
                    f"{_limite_mes} relatórios — plano {_plano_info['rotulo']}")
     else:

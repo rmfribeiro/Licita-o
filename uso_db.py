@@ -70,14 +70,27 @@ def contagem_do_mes(usuario: str,
     return len(dados) if ok else 0
 
 
+def contagem_total(usuario: str) -> int:
+    """Quantos relatorios o usuario ja gerou desde o cadastro (0 em erro).
+    Base da cortesia de boas-vindas, que e concedida UMA vez."""
+    try:
+        dados = (auth_db._cli().table(TABELA_USO).select("id")
+                 .eq("usuario", usuario).execute().data)
+        return len(dados)
+    except Exception:
+        return 0
+
+
 def pode_gerar(plano: str, usuario: str):
     """Controle de acesso pelo plano contratado.
-    Devolve (pode, mensagem, usados_no_mes, limite).
-    Limites: Avulso 3 (cortesia) | Básico 20 | Profissional 50 | Ilimitado ∞.
+    Devolve (pode, mensagem, usados, limite).
+    - Avulso: 3 relatorios de cortesia UMA VEZ (total desde o cadastro).
+    - Basico 20/mes | Profissional 50/mes | Ilimitado sem trava.
     O admin deve ser isentado pelo chamador."""
     info = precos.plano_info(plano)
     limite = info.get("limite")
-    usados = contagem_do_mes(usuario)
+    cortesia_unica = bool(info.get("cortesia_unica"))
+    usados = contagem_total(usuario) if cortesia_unica else contagem_do_mes(usuario)
     if limite is None or usados < limite:
         return True, "", usados, limite
     if info["mensalidade"] > 0:
@@ -85,9 +98,9 @@ def pode_gerar(plano: str, usuario: str):
                f"{limite} relatórios neste mês. Para continuar gerando, "
                f"fale com o administrador sobre ampliar o plano.")
     else:
-        msg = (f"Os {limite} relatórios de cortesia deste mês já foram "
-               f"usados. Para continuar gerando, contrate um plano com o "
-               f"administrador.")
+        msg = (f"Seus {limite} relatórios de cortesia para conhecer o sistema "
+               f"já foram utilizados. Para continuar gerando relatórios, "
+               f"contrate um plano com o administrador.")
     return False, msg, usados, limite
 
 

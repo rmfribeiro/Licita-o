@@ -48,7 +48,10 @@ PLANOS = {
     "avulso": {
         "rotulo": "Avulso",
         "mensalidade": 0.0,
-        "limite": 3,             # cortesia mensal p/ experimentar; depois bloqueia
+        "limite": 3,             # cortesia de boas-vindas...
+        "cortesia_unica": True,  # ...uma unica vez, NAO todo mes: o limite vale
+                                 # sobre o total ja gerado pelo usuario. Depois
+                                 # disso ele precisa contratar um plano.
     },
     "basico": {
         "rotulo": "Básico",
