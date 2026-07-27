@@ -1,5 +1,5 @@
 -- ==========================================================================
--- RM IA-Licita — schema de usuários (rodar no SQL Editor do Supabase)
+-- RM Lisura — schema de usuários (rodar no SQL Editor do Supabase)
 -- ==========================================================================
 create table if not exists usuarios (
   id            bigint generated always as identity primary key,

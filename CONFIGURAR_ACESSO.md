@@ -1,4 +1,4 @@
-# Configurar a página de acesso (Supabase) — RM IA-Licita
+# Configurar a página de acesso (Supabase) — RM Lisura
 
 A autenticação agora usa banco **Supabase**: cadastro com aprovação do
 administrador, login com usuário ou e-mail e "esqueci a senha" por código
@@ -43,7 +43,7 @@ SMTP_SENHA = "senha-de-app-do-gmail"
 ## 5. Senha de app do Gmail (para o "esqueci a senha")
 
 1. https://myaccount.google.com/apppasswords (exige verificação em 2 etapas ativa)
-2. Crie uma senha de app "IA-Licita" → copie as 16 letras em `SMTP_SENHA`
+2. Crie uma senha de app "RM Lisura" → copie as 16 letras em `SMTP_SENHA`
 
 Sem essas chaves o app funciona normalmente — só o envio do código por
 e-mail fica desativado (o usuário é orientado a falar com o administrador).

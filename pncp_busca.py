@@ -1,7 +1,7 @@
 from __future__ import annotations
 """
 =============================================================================
- pncp_busca.py  -  RM IA-Licita / RM Vertice Digital
+ pncp_busca.py  -  RM Lisura / RM Vertice Digital
  Ponte entre a busca de precos no PNCP e o modulo de pesquisa de mercado.
 =============================================================================
  O que faz:
@@ -90,7 +90,7 @@ OBJETOS_GENERICOS = [
 _CTX = ssl.create_default_context()
 _HEADERS = {
     "Accept": "application/json",
-    "User-Agent": "RM-IA-Licita/1.0 (pesquisa de precos PNCP)",
+    "User-Agent": "RM-Lisura/1.0 (pesquisa de precos PNCP)",
 }
 BASE_CONSULTA = "https://pncp.gov.br/api/consulta"
 BASE_PNCP     = "https://pncp.gov.br/api/pncp"

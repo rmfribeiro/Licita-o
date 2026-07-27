@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
- auth_db.py  -  RM IA-Licita / RM Vertice Digital
+ auth_db.py  -  RM Lisura / RM Vertice Digital
  Autenticacao de usuarios com banco Supabase (Postgres via API REST).
 =============================================================================
  O que faz:
@@ -289,14 +289,14 @@ def _enviar_email_reset(email: str, nome: str, codigo: str):
                        "sua senha manualmente.")
     corpo = (
         f"Olá, {nome}!\n\n"
-        f"Seu código para redefinir a senha do RM IA-Licita é:\n\n"
+        f"Seu código para redefinir a senha do RM Lisura é:\n\n"
         f"    {codigo}\n\n"
         f"Ele vale por {RESET_VALIDADE_MIN} minutos. Se você não pediu "
         f"esta redefinição, ignore este e-mail.\n\n"
         f"RM Vértice Digital"
     )
     msg = MIMEText(corpo, "plain", "utf-8")
-    msg["Subject"] = "RM IA-Licita — código para redefinir a senha"
+    msg["Subject"] = "RM Lisura — código para redefinir a senha"
     msg["From"] = smtp_usuario
     msg["To"] = email
     try:

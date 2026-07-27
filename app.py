@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-IA-Licita — demo web (Streamlit).
+RM Lisura — demo web (Streamlit).
 Sobe um edital em PDF e mostra a auditoria na hora. Para publicar, ver DEPLOY.md.
 Rodar localmente:  streamlit run app.py
 """
@@ -92,7 +92,7 @@ def _get_api_key():
 
 
 b = branding.carregar()
-st.set_page_config(page_title="IA-Licita — Auditoria de Editais", page_icon="📄", layout="wide")
+st.set_page_config(page_title="RM Lisura — Auditoria de Editais", page_icon="📄", layout="wide")
 
 # =====================================================================
 # --- Autenticação por usuário (Supabase) ---
@@ -109,7 +109,7 @@ if _erro_auth_cfg:
 _usuario_logado = st.session_state.get("usuario_logado")
 
 if not _usuario_logado:
-    st.title("Acesso ao IA-Licita")
+    st.title("Acesso ao RM Lisura")
     _t_login, _t_cadastro, _t_esqueci = st.tabs(
         ["🔑 Entrar", "🆕 Criar conta", "🔓 Esqueci a senha"]
     )
@@ -320,7 +320,7 @@ if _logo_file and os.path.isfile(_logo_path):
 if not _logo_visivel:
     st.markdown(f"#### {b['empresa']}")
     st.caption(b["tagline"])
-st.title("IA-Licita — Conformidade e Integridade nas Contratações Públicas")
+st.title("RM Lisura — Conformidade e Integridade nas Contratações Públicas")
 
 aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9, aba10, aba11 = st.tabs([
     "📄 Auditoria de Edital",

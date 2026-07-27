@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
- precos.py  -  RM IA-Licita / RM Vertice Digital
+ precos.py  -  RM Lisura / RM Vertice Digital
  Tabela de precos oficial do app (Anexo de precos / Item II da parceria).
 =============================================================================
  - Cada modulo pertence a um NIVEL (Simples / Medio / Alto).
  - VALOR_REFERENCIA e o preco avulso por relatorio usado na consolidacao
    de cobranca (ponto medio da faixa da tabela; ajuste aqui para calibrar).
  - PLANOS mensais dao desconto e previsibilidade.
- Fonte: Tabela_Precos_RM_IA-Licita.docx (documento de trabalho).
+ Fonte: Tabela_Precos_RM_Lisura.docx (documento de trabalho).
 =============================================================================
 """
 

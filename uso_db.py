@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================================
- uso_db.py  -  RM IA-Licita / RM Vertice Digital
+ uso_db.py  -  RM Lisura / RM Vertice Digital
  Contador de relatorios gerados (base da cobranca por uso - Fase 2).
 =============================================================================
  - registrar_uso(usuario, modulo): grava 1 relatorio na tabela
