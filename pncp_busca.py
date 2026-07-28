@@ -56,6 +56,15 @@ TAMANHO_PAGINA       = 50
 WORKERS_PARALELOS    = 8        # buscas de itens simultaneas
 LOTE_CONTRATACOES    = 16       # itens de N contratacoes por vez, em paralelo
 
+# --- Limites de tempo (medicao real de 27/07: buscas levavam 7 a 18 MINUTOS,
+# porque a API do PNCP fica lenta e cada pagina esperava ate 40 s x 3 tentativas).
+TEMPO_MAXIMO_SEG     = 180      # teto global: encerra e devolve o que ja juntou
+TIMEOUT_REQUISICAO   = 12       # segundos por chamada (era 40)
+TENTATIVAS_PADRAO    = 2        # (era 3) — com 12 s, 2 tentativas bastam
+MIN_FONTES_DESEJADAS = 3        # abaixo disso o parecer sai com RESSALVA:
+                                # a IN 65/2021 pede contratacoes de OUTROS entes,
+                                # e 4 precos do mesmo orgao nao sustentam a mediana.
+
 # UFs a pesquisar.
 # ATENCAO: o parametro 'uf' da API do PNCP esta QUEBRADO (testado em 16/07/2026:
 # retorna HTTP 500 "Erro na comunicacao com o banco de dados"). Os nomes
@@ -112,20 +121,39 @@ def _norm(s) -> str:
 # dizia que nao havia notebooks no Brasil inteiro).
 FALHAS_HTTP = 0
 
+# Relogio da busca em andamento: quando estoura TEMPO_MAXIMO_SEG, a coleta
+# para e devolve o que ja tem (com aviso no parecer), em vez de deixar o
+# usuario esperando minutos a fio.
+_INICIO = None
+TEMPO_ESGOTADO = False
 
-def _get(url: str, tentativas: int = 3):
+
+def _tempo_esgotado() -> bool:
+    global TEMPO_ESGOTADO
+    if _INICIO is None:
+        return False
+    if time.monotonic() - _INICIO > TEMPO_MAXIMO_SEG:
+        TEMPO_ESGOTADO = True
+        return True
+    return False
+
+
+def _get(url: str, tentativas: int = TENTATIVAS_PADRAO):
     global FALHAS_HTTP
+    if _tempo_esgotado():
+        return False, None
     req = urllib.request.Request(url, headers=_HEADERS)
     for t in range(1, tentativas + 1):
         try:
-            with urllib.request.urlopen(req, context=_CTX, timeout=40) as resp:
+            with urllib.request.urlopen(req, context=_CTX,
+                                        timeout=TIMEOUT_REQUISICAO) as resp:
                 return True, json.loads(resp.read().decode("utf-8", errors="replace"))
         except urllib.error.HTTPError:
             FALHAS_HTTP += 1
             return False, None
         except Exception:
-            if t < tentativas:
-                time.sleep(2)
+            if t < tentativas and not _tempo_esgotado():
+                time.sleep(1)
                 continue
             FALHAS_HTTP += 1
             return False, None
@@ -177,7 +205,7 @@ def _iterar_contratacoes(termo: str, ufs=None, dias=None,
 
     for modalidade in MODALIDADES:
         for uf in ufs:
-            if vistas >= MAX_CONTRATACOES:
+            if vistas >= MAX_CONTRATACOES or _tempo_esgotado():
                 return
             # 1a pagina: descobre quantas paginas existem
             if aviso:
@@ -194,7 +222,8 @@ def _iterar_contratacoes(termo: str, ufs=None, dias=None,
 
             # Demais paginas: baixa em PARALELO, em blocos
             pagina = 2
-            while pagina <= total_paginas and vistas < MAX_CONTRATACOES:
+            while (pagina <= total_paginas and vistas < MAX_CONTRATACOES
+                   and not _tempo_esgotado()):
                 if aviso:
                     aviso(f"varrendo {uf or 'Brasil'}: página "
                           f"{pagina}/{total_paginas}")
@@ -285,8 +314,10 @@ def _coletar_precos(termo: str, progresso=None, ufs=None, dias=None):
     compra de bens e filtra pelo termo item a item.
     Devolve (aceitos, descartados, n_contratacoes_vistas).
     """
-    global FALHAS_HTTP
-    FALHAS_HTTP = 0  # zera o contador desta busca
+    global FALHAS_HTTP, _INICIO, TEMPO_ESGOTADO
+    FALHAS_HTTP = 0          # zera o contador desta busca
+    TEMPO_ESGOTADO = False
+    _INICIO = time.monotonic()  # dispara o relogio do teto de tempo
     termo_norm = _norm(termo)
     aceitos: list[dict] = []
     descartados: list[dict] = []
@@ -470,9 +501,19 @@ def buscar_precos_pncp(
         "subtotal_estimado":   subtotal,
     }
 
+    # Quantas FONTES (orgaos) distintas sustentam a cesta. A IN 65/2021 fala
+    # em contratacoes similares de OUTROS entes: varias cotacoes de um unico
+    # orgao nao dao a mesma seguranca que precos de entes diferentes.
+    n_fontes = len(fornecedores)
+    poucas_fontes = n_fontes < MIN_FONTES_DESEJADAS
+
     # Status geral
     if ref["status"] == ia_pesquisa_mercado.STATUS_ITEM["VALIDO"]:
-        status_geral = ia_pesquisa_mercado.STATUS_PESQUISA["VÁLIDA"]
+        status_geral = (
+            ia_pesquisa_mercado.STATUS_PESQUISA["COM RESSALVAS"]
+            if (poucas_fontes or TEMPO_ESGOTADO or FALHAS_HTTP)
+            else ia_pesquisa_mercado.STATUS_PESQUISA["VÁLIDA"]
+        )
     else:
         status_geral = ia_pesquisa_mercado.STATUS_PESQUISA["INVÁLIDA"]
 
@@ -486,10 +527,30 @@ def buscar_precos_pncp(
             f"(contratacoes similares de outros entes publicos). Foram consultadas "
             f"{n_contratacoes} contratacao(oes) dos ultimos {_dias} dias. "
             f"Apos saneamento (exclusao de servicos/pecas/acessorios e outliers), "
-            f"{n_val} cotacao(oes) valida(s) compuseram a cesta, com {n_exc} exclusao(oes) "
+            f"{n_val} cotacao(oes) valida(s) de {n_fontes} fonte(s) distinta(s) "
+            f"compuseram a cesta, com {n_exc} exclusao(oes) "
             f"devidamente justificada(s). O preco de referencia foi calculado pela mediana, "
             f"resultando em {_fmt(ref['preco_referencia'])}/{unidade}."
         )
+        if poucas_fontes:
+            parecer += (
+                f" RESSALVA: as cotacoes provem de apenas {n_fontes} fonte(s). "
+                f"A IN SEGES/MGI 65/2021 privilegia contratacoes de entes "
+                f"DIVERSOS; recomenda-se ampliar o periodo de busca ou "
+                f"complementar com outras fontes (fornecedores, tabelas oficiais) "
+                f"antes de adotar este valor como preco estimado."
+            )
+        if TEMPO_ESGOTADO:
+            parecer += (
+                f" ATENCAO: a varredura foi encerrada ao atingir o tempo limite "
+                f"de {TEMPO_MAXIMO_SEG}s — o PNCP pode nao ter sido percorrido "
+                f"por completo. Repetir a busca pode trazer mais cotacoes."
+            )
+        if FALHAS_HTTP:
+            parecer += (
+                f" A API do PNCP apresentou {FALHAS_HTTP} falha(s) de comunicacao "
+                f"durante a coleta; parte das contratacoes pode nao ter sido lida."
+            )
     else:
         parecer = (
             f"Pesquisa junto ao PNCP resultou em apenas {n_val} cotacao(oes) valida(s), "
@@ -507,9 +568,12 @@ def buscar_precos_pncp(
         "base_legal": ["Art. 23, Lei 14.133/2021", "IN SEGES/MGI 65/2021"],
         "fonte": "PNCP",
         "diagnostico": {
-            "contratacoes": n_contratacoes,
-            "aceitos":      len(precos_aceitos),
-            "descartados":  len(descartados_desc) + len(excluidas_piso),
+            "contratacoes":   n_contratacoes,
+            "aceitos":        len(precos_aceitos),
+            "descartados":    len(descartados_desc) + len(excluidas_piso),
+            "fontes":         n_fontes,
+            "falhas_http":    FALHAS_HTTP,
+            "tempo_esgotado": TEMPO_ESGOTADO,
         },
     }
 
