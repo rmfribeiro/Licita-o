@@ -1,0 +1,20 @@
+name: Manter o app acordado
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Visitar o app
+        run: |
+          URL="https://licita-o-o6lxthd8oqe7qjck7wzzwr.streamlit.app"
+          echo "Visitando $URL"
+          CODIGO=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 120 "$URL")
+          echo "Resposta HTTP: $CODIGO"
+          if [ "$CODIGO" != "200" ]; then
+            echo "::warning::App respondeu $CODIGO (pode estar acordando)."
+          fi
