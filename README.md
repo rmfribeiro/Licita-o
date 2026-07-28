@@ -1,112 +1,110 @@
-# IA-Licita — Auditoria de Editais
+# RM Lisura — Conformidade e Integridade nas Contratações Públicas
 
-Ferramenta de auditoria automática de editais de licitação pública com base na **Lei 14.133/2021** (Nova Lei de Licitações). Desenvolvida pela **RM Vértice Digital**.
+Plataforma de auditoria e apoio à decisão em contratações públicas, com base na
+**Lei 14.133/2021**. Desenvolvida pela **RM Vértice Digital Inova Simples (I.S.)**
+(CNPJ 68.118.290/0001-06). Marca depositada no INPI (processo nº 944589618).
+
+> O nome vem de *lisura do certame* — é isso que a ferramenta ajuda a garantir.
 
 ---
 
 ## O que faz
 
-- Recebe um edital em PDF e gera um relatório de conformidade em segundos
-- Detecta inconformidades, alertas e pontos a revisar com fundamento no texto da lei
-- Calcula um índice de risco de nulidade (0–100)
-- Gera relatório em HTML para download e envio ao cliente
-- Suporta editais de qualquer modalidade (pregão, concorrência, credenciamento) e tamanho (testado de 0.5 MB a 22 MB)
+Recebe documentos do processo licitatório e devolve, em minutos, relatórios
+técnicos em PDF com fundamento legal citado artigo por artigo.
+
+**Onde atua:** enquanto outras plataformas ajudam o órgão a *elaborar* os
+documentos da fase preparatória, o RM Lisura **audita** o que já está pronto e
+acompanha também a execução, a sanção e a defesa.
+
+### Módulos
+
+| Módulo | O que entrega |
+|---|---|
+| Auditoria de Edital | Conformidade com a Lei 14.133/2021 + índice de risco de nulidade (0–100) |
+| Auditoria de TR | 9 dimensões obrigatórias (IN SEGES/MGI 81/2022) |
+| Auditoria de ETP | Análise do Estudo Técnico Preliminar |
+| Pesquisa de Mercado | Preços reais do **PNCP** ou de orçamentos, com mapa de preços e mediana saneada (IN SEGES/MGI 65/2021) |
+| Due Diligence de Integridade | Consultas CEIS, CNEP, Pro-Ética e situação cadastral |
+| Diagnóstico de Integridade | Maturidade do processo licitatório do órgão |
+| Avaliação de PI | Programa de Integridade de empresas |
+| Alterações Contratuais | Reajuste, repactuação e reequilíbrio |
+| Monitor de Recebimento | Art. 140 da Lei 14.133/2021 |
+| Dosimetria de Sanções | Dosimetria e minuta de decisão |
+| Reabilitação de Fornecedor | Requisitos e minuta |
+| Instituto da Diligência | Saneamento de falhas formais |
 
 ### Duas camadas de análise
 
 | Camada | O que faz | Requisito |
 |--------|-----------|-----------|
-| Regras automáticas | 30 checklist items com regex e lógica determinística | Nenhum |
-| IA semântica | Análise contextual com Claude Haiku, detecta incoerências internas, erros aritméticos, datas conflitantes, URLs malformadas | Chave de API Anthropic |
+| Regras automáticas | Checklist determinístico com regex e lógica | Nenhum |
+| IA semântica | Incoerências internas, erros aritméticos, datas conflitantes | Chave de API Anthropic |
+
+---
+
+## Acesso e cobrança
+
+- **Cadastro com aprovação**: quem se cadastra fica pendente até o administrador liberar.
+- **Login** por usuário ou e-mail, senha em bcrypt, recuperação por código enviado por e-mail.
+- **Cobrança por uso**: cada relatório é registrado com nível e preço de referência.
+  Planos: Avulso (3 relatórios de cortesia, uma única vez), Básico (20/mês),
+  Profissional (50/mês) e Ilimitado. Ao atingir o limite, a geração é bloqueada.
+- Painel do administrador mostra uso e cobrança sugerida por cliente.
+
+Configuração completa em [CONFIGURAR_ACESSO.md](CONFIGURAR_ACESSO.md).
 
 ---
 
 ## Como rodar localmente
 
-### Requisitos
-
-- Python 3.9+
-- Conta na [Anthropic](https://console.anthropic.com) com créditos (opcional, para análise por IA)
-
-### Instalação
-
 ```bash
 git clone https://github.com/rmfribeiro/Licita-o.git
 cd Licita-o
-pip install -r requirements-dev.txt   # inclui pytest para rodar os testes
-```
+pip install -r requirements.txt
 
-### Rodar os testes
-
-```bash
-python3 -m pytest tests/ -v
-```
-
-### Executar
-
-```bash
-# Configure os segredos locais (chaves de API, senha)
 cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-# Edite .streamlit/secrets.toml com seus valores reais
+# preencha SUPABASE_URL, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY e (opcional) SMTP
 
-streamlit run app.py
+python3 -m streamlit run app.py
 ```
 
-Acesse `http://localhost:8501`, envie um PDF e aguarde o resultado.
+Testes: `python3 -m pytest tests/ -q`
 
 ---
 
 ## Estrutura
 
 ```
-app.py                    — Interface Streamlit (6 abas)
-analisador.py             — Motor de regras e cálculo de risco de edital
-ia_semantica.py           — Análise semântica de edital (Claude)
-ia_utils.py               — Utilitários compartilhados: API Anthropic, helpers
-ia_integridade.py         — Diagnóstico de integridade do processo licitatório
-ia_etp.py                 — Análise do Estudo Técnico Preliminar (ETP)
-ia_ddi.py                 — Due Diligence de Integridade do licitante
-ia_contratos.py           — Análise de alterações contratuais (reajuste/repactuação/reequilíbrio)
-ia_recebimento.py         — Monitor de Recebimento Contratual (Art. 140 Lei 14.133/2021)
-ia_pi_empresas.py         — Avaliação de Programa de Integridade
-ddi_consultas.py          — Consultas CGU: CEIS, CNEP, Pro-Ética, CNPJ
-etp_extrator.py           — Extração de texto de ETP em PDF/DOCX
-rag.py                    — Busca semântica nos artigos da lei
-branding.py               — Logo e identidade visual
-relatorio_contratos.py    — PDF de alterações contratuais
-relatorio_ddi.py          — PDF de Due Diligence de Integridade
-relatorio_etp.py          — PDF de análise de ETP
-relatorio_integridade.py  — PDF de diagnóstico de integridade
-relatorio_pi_empresas.py  — PDF de avaliação de PI
-relatorio_recebimento.py  — PDF de recebimento contratual
-regras_14133.json         — Checklist de regras da Lei 14.133/2021
-base_juridica.json        — Artigos da lei para fundamentos legais
-branding.json             — Configuração de marca (nome, logo, cores)
-requirements.txt          — Dependências de produção
-requirements-dev.txt      — Dependências de desenvolvimento (pytest)
-DEPLOY.md                 — Guia de publicação no Streamlit Community Cloud
+app.py                      — Interface Streamlit (11 módulos em abas)
+auth_db.py                  — Autenticação (Supabase): cadastro, aprovação, senha
+uso_db.py                   — Contador de relatórios e limites por plano
+precos.py                   — Tabela de preços, níveis e planos
+analisador.py               — Motor de regras e índice de risco do edital
+ia_*.py                     — Análises por IA de cada módulo
+relatorio_*.py              — Geradores de PDF
+pncp_busca.py               — Busca de preços reais no PNCP
+ddi_consultas.py            — Consultas CGU (CEIS, CNEP, Pro-Ética)
+supabase_schema_ialicita.sql— Schema do banco (usuários e uso)
 ```
 
 ---
 
-## Configuração avançada
+## Publicação
 
-| Variável de ambiente | Padrão | Descrição |
-|---------------------|--------|-----------|
-| `ANTHROPIC_API_KEY` | — | Chave de API para análise por IA |
-| `IA_LICITA_MODELO` | `claude-haiku-4-5-20251001` | Modelo Claude a usar |
-
----
-
-## Deploy na nuvem
-
-Veja [DEPLOY.md](DEPLOY.md) para publicar gratuitamente no **Streamlit Community Cloud**.
+Streamlit Community Cloud a partir deste repositório; segredos no painel de
+Secrets. Ver [DEPLOY.md](DEPLOY.md). Uma rotina do GitHub Actions
+(`.github/workflows/manter-acordado.yml`) visita o app a cada 4 horas para
+evitar a hibernação do plano gratuito.
 
 ---
 
 ## Aviso legal
 
-Ferramenta de apoio — não substitui o parecer jurídico. Os apontamentos devem ser confirmados por profissional habilitado.
+Ferramenta de apoio — **não substitui o parecer jurídico**. Os apontamentos,
+cálculos e fundamentos legais, gerados inclusive por inteligência artificial,
+devem ser conferidos e validados por profissional habilitado antes de qualquer
+uso oficial.
 
 ---
 
