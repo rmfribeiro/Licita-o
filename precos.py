@@ -31,17 +31,17 @@ NIVEIS = {
     "Diagnóstico de Integridade": "Alto",
 }
 
-# Faixas da tabela (documentacao) e valor de referencia usado na cobranca
-FAIXAS = {
-    "Simples": (30.0, 50.0),
-    "Médio":   (60.0, 90.0),
-    "Alto":    (120.0, 180.0),
-}
+# PRECO POR RELATORIO (decisao do Roberto em 28/07/2026): valor unico por
+# nivel, no teto das faixas que constavam da tabela enviada a Daysival em
+# 09/07 (30-50 / 60-90 / 120-180). Faixa aberta gera ruido na negociacao;
+# preco unico e mais simples de defender e de cobrar.
 VALOR_REFERENCIA = {
-    "Simples": 40.0,
-    "Médio":   75.0,
-    "Alto":    150.0,
+    "Simples": 50.0,
+    "Médio":   90.0,
+    "Alto":    180.0,
 }
+# Mantido para exibicao/documentacao: hoje o piso e o teto coincidem.
+FAIXAS = {nivel: (v, v) for nivel, v in VALOR_REFERENCIA.items()}
 
 # Pacotes mensais. limite=None -> sem limite numerico.
 PLANOS = {
@@ -53,19 +53,23 @@ PLANOS = {
                                  # sobre o total ja gerado pelo usuario. Depois
                                  # disso ele precisa contratar um plano.
     },
+    # Mensalidades recalculadas em 28/07/2026, junto com a subida do avulso
+    # para 50/90/180: os pacotes mantem desconto de ~35% (Basico), ~45%
+    # (Profissional) e ~65% (Ilimitado) sobre o equivalente avulso. Sem isso,
+    # o Basico ficaria 58% abaixo do avulso e a tabela perderia coerencia.
     "basico": {
         "rotulo": "Básico",
-        "mensalidade": 900.0,
+        "mensalidade": 1400.0,
         "limite": 20,
     },
     "profissional": {
         "rotulo": "Profissional",
-        "mensalidade": 1900.0,
+        "mensalidade": 2900.0,
         "limite": 50,
     },
     "ilimitado": {
         "rotulo": "Ilimitado",
-        "mensalidade": 3500.0,
+        "mensalidade": 4500.0,
         "limite": None,
         "uso_justo": 120,        # referencia p/ conversa de reenquadramento
     },
