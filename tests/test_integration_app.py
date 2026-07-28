@@ -71,7 +71,7 @@ class TestAppInicialization:
         at = _make_at()
         at.run()
         all_text = " ".join(str(e.value) for e in at.title)
-        assert "IA-Licita" in all_text
+        assert "RM Lisura" in all_text
 
     def test_onze_abas_existem(self):
         at = _make_at()

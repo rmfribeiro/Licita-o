@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Runner de lote do IA-Licita.
+Runner de lote do RM Lisura.
 -----------------------------
 Audita varios editais de uma vez e gera a estatistica de validacao
 (% de editais com inconformidade, % com achado grave, achados mais comuns,
@@ -120,7 +120,7 @@ def painel_html(resultados, agg):
 
     return f"""<!DOCTYPE html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel de validacao - IA-Licita</title><style>
+<title>Painel de validacao - RM Lisura</title><style>
   body {{ font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#1f2d3d; background:#f5f7fa; margin:0; }}
   .wrap {{ max-width:920px; margin:0 auto; padding:28px 20px 60px; }}
   h1 {{ color:#1F4E79; font-size:23px; margin:0 0 4px; }}
@@ -144,7 +144,7 @@ def painel_html(resultados, agg):
   <h1>Painel de validacao &mdash; auditoria em lote</h1>
   <div class="sub">{agg['n_editais']} edital(is) processado(s) &middot; {agg['n_analisados']} analisado(s)
     {('&middot; ' + str(agg['n_sem_texto']) + ' sem texto (OCR)') if agg['n_sem_texto'] else ''}
-    &middot; Lei 14.133/2021 &middot; gerado em {data} &middot; IA-Licita (piloto)</div>
+    &middot; Lei 14.133/2021 &middot; gerado em {data} &middot; RM Lisura (piloto)</div>
   <div class="cards">{cards_html}</div>
   <h2>Editais (ordenados por risco)</h2>
   <table><tr><th>Edital</th><th>Risco</th><th>Inconformidades</th><th>Alertas</th><th>Graves</th></tr>{linhas}</table>

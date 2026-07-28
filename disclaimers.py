@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-disclaimers.py — Avisos legais centralizados do IA-Licita.
+disclaimers.py — Avisos legais centralizados do RM Lisura.
 
 Centraliza todos os textos de disclaimer em um único lugar.
 Para ajustar a redação, edite AQUI e todas as abas/PDFs se atualizam.

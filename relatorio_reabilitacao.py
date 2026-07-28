@@ -84,7 +84,7 @@ def gerar_relatorio_tecnico(
     )
     story = []
 
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _TITULO))
     story.append(Paragraph("Reabilitação de Fornecedor — Relatório Técnico", _H1))
     story.append(Paragraph("Art. 163, Par. Único, Lei 14.133/2021", _PEQUENO))
     story.append(Paragraph(
@@ -166,7 +166,7 @@ def gerar_relatorio_tecnico(
 
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita - RM Vertice Digital.",
+        "Gerado por RM Lisura - RM Vertice Digital.",
         _PEQUENO,
     ))
 
@@ -264,7 +264,7 @@ def gerar_minuta_requerimento(
     story.append(Spacer(1, 0.5*cm))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Minuta gerada por IA-Licita - RM Vertice Digital.",
+        "Minuta gerada por RM Lisura - RM Vertice Digital.",
         _PEQUENO,
     ))
 

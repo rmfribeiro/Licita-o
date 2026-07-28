@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-IA-Licita - Prototipo do analisador de editais (piloto)
+RM Lisura - Prototipo do analisador de editais (piloto)
 --------------------------------------------------------
 Fluxo: PDF -> extracao de texto -> checagem das regras (Lei 14.133/2021)
        -> indice de risco -> relatorio explicavel em HTML.
@@ -292,7 +292,7 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     return f"""<!DOCTYPE html>
 <html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Relatorio de Conformidade - IA-Licita</title>
+<title>Relatorio de Conformidade - RM Lisura</title>
 <style>
   * {{ box-sizing: border-box; }}
   body {{ font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#1f2d3d; margin:0; background:#f5f7fa; }}
@@ -324,7 +324,7 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
 </style></head><body><div class="wrap">
   <header>
     <h1>Relatorio de Conformidade &mdash; Lei 14.133/2021</h1>
-    <div class="sub">Edital analisado: <b>{e(nome_arquivo)}</b> &middot; {n_paginas} pagina(s) &middot; gerado em {data} &middot; <b>IA-Licita (piloto)</b></div>
+    <div class="sub">Edital analisado: <b>{e(nome_arquivo)}</b> &middot; {n_paginas} pagina(s) &middot; gerado em {data} &middot; <b>RM Lisura (piloto)</b></div>
   </header>
 
   <div class="risco">

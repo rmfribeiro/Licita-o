@@ -111,7 +111,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
     story = []
 
     # ── Cabeçalho ────────────────────────────────────────────────────────────
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Dosimetria de Sanções Administrativas", _ESTILO_H1))
     story.append(Paragraph(
         "Arts. 156-159 e 178 — Lei 14.133/2021",
@@ -280,7 +280,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
     # ── Rodapé final (texto adicional no fim do conteúdo) ─────────────────────
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital.",
+        "Gerado por RM Lisura — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 

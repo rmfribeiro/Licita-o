@@ -47,7 +47,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Auditoria de ETP — Estudo Técnico Preliminar", _ESTILO_H1))
     story.append(Paragraph("IN SEGES/MGI 58/2022 · Lei 14.133/2021, art. 18, I", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))
@@ -123,7 +123,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital. Sujeito a verificacao humana. "
+        "Gerado por RM Lisura — RM Vértice Digital. Sujeito a verificacao humana. "
         "Nao substitui parecer juridico.",
         _ESTILO_PEQUENO,
     ))

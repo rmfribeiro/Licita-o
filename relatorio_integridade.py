@@ -60,7 +60,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Diagnóstico do Programa de Integridade Pública", _ESTILO_H1))
     story.append(Paragraph(
         "Decreto 11.129/2022 · IN CGU 21/2021 · Lei 12.846/2013, art. 7º, III · Decreto 8.420/2015",
@@ -149,7 +149,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital.",
+        "Gerado por RM Lisura — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 

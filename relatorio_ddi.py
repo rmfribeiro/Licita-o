@@ -78,7 +78,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Due Diligence de Integridade (DDI)", _ESTILO_H1))
     story.append(Paragraph("Portaria SEGES/ME 8.678/2021, art. 2 III - Decreto 12.304/2024", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))
@@ -231,7 +231,7 @@ def gerar_pdf(cnpj: str, valor_contrato: float | None, dados: dict, fid: dict, p
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(f"Validade do FID: {html.escape(str(parecer.get('validade_fid') or '12 meses'))}", _ESTILO_PEQUENO))
     story.append(Paragraph(
-        "Gerado por IA-Licita - RM Vértice Digital. Sujeito a verificação humana. "
+        "Gerado por RM Lisura - RM Vértice Digital. Sujeito a verificação humana. "
         "Não substitui parecer jurídico.",
         _ESTILO_PEQUENO
     ))

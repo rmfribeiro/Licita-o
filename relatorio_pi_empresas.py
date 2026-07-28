@@ -69,7 +69,7 @@ def gerar_pdf(
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Avaliação do Programa de Integridade (PI)", _ESTILO_H1))
     story.append(Paragraph("Decreto 12.304/2024 · Lei 14.133/2021 · Lei 12.846/2013", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))
@@ -200,7 +200,7 @@ def gerar_pdf(
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital.",
+        "Gerado por RM Lisura — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 

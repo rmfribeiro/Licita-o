@@ -78,7 +78,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Analisador de Alterações Contratuais", _ESTILO_H1))
     story.append(Paragraph(
         "Art. 124 II 'd' · Art. 25 §8º · Art. 137 §2º — Lei 14.133/2021 · Art. 37 XXI CF/88",
@@ -190,7 +190,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital.",
+        "Gerado por RM Lisura — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 

@@ -115,7 +115,7 @@ def gerar_pdf(
     tipo_label = _TIPO_LABEL.get(tipo_objeto, tipo_objeto)
 
     # Cabeçalho
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Auditoria de Termo de Referência", _ESTILO_H1))
     story.append(Paragraph("IN SEGES/MGI 81/2022 · Lei 14.133/2021, art. 6º, XXIII", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Tipo de objeto: {html.escape(tipo_label)}", _ESTILO_PEQUENO))
@@ -189,7 +189,7 @@ def gerar_pdf(
     # Rodapé
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital.",
+        "Gerado por RM Lisura — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 

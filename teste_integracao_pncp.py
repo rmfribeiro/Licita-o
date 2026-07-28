@@ -3,7 +3,7 @@
 """
 =============================================================================
  TESTE DE INTEGRACAO  -  pncp_busca.py + ia_pesquisa_mercado.py
- RM IA-Licita / RM Vertice Digital
+ RM Lisura / RM Vertice Digital
 =============================================================================
  Objetivo: confirmar, no SEU Mac, que o modulo pncp_busca.py funciona de
  verdade - buscando no PNCP real E reaproveitando o seu ia_pesquisa_mercado.

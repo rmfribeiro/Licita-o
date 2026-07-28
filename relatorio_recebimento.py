@@ -130,7 +130,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
     )
     story = []
 
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _ESTILO_TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
     story.append(Paragraph("Monitor de Recebimento Contratual", _ESTILO_H1))
     story.append(Paragraph("Art. 140, I e II — Lei 14.133/2021", _ESTILO_PEQUENO))
     story.append(Paragraph(
@@ -187,7 +187,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
 
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita — RM Vértice Digital.",
+        "Gerado por RM Lisura — RM Vértice Digital.",
         _ESTILO_PEQUENO,
     ))
 

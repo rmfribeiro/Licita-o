@@ -3,7 +3,7 @@ import html
 import io
 import unicodedata
 from datetime import datetime
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
@@ -66,13 +66,17 @@ def gerar_mapa_precos(
     valor_total_estimado: float | None,
 ) -> bytes:
     buf = io.BytesIO()
+    # Com muitas fontes consultadas (típico da busca no PNCP), a tabela não
+    # cabe em retrato: vira paisagem para as colunas continuarem legíveis.
+    _muitos = len(fornecedores) > 4
+    _pagina = landscape(A4) if _muitos else A4
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2.5*cm,
+        buf, pagesize=_pagina,
+        leftMargin=1.5*cm, rightMargin=1.5*cm, topMargin=2*cm, bottomMargin=2.5*cm,
     )
     story: list = []
 
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _TITULO))
     story.append(Paragraph("Mapa de Preços", _H1))
     story.append(Paragraph(html.escape(objeto), _H2))
     story.append(Paragraph(
@@ -80,14 +84,23 @@ def gerar_mapa_precos(
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
+    # Células em Paragraph para o texto QUEBRAR dentro da coluna; como string
+    # pura o ReportLab não quebra linha e os nomes se sobrepõem.
+    _cel_cab = ParagraphStyle("cel_cab", fontName="Helvetica-Bold", fontSize=7,
+                              leading=8, textColor=colors.white)
+    _cel = ParagraphStyle("cel", fontName="Helvetica", fontSize=7, leading=8)
+
     nomes_forn = [
-        html.escape(f.get("nome") or f"Fornecedor {i + 1}")
+        Paragraph(html.escape(f.get("nome") or f"Fornecedor {i + 1}"), _cel_cab)
         for i, f in enumerate(fornecedores)
     ]
-    header = ["#", "Descrição", "Un", "Qtd"] + nomes_forn + ["Ref (mediana)", "Subtotal"]
+    header = ([Paragraph(t, _cel_cab) for t in ("#", "Descrição", "Un", "Qtd")]
+              + nomes_forn
+              + [Paragraph(t, _cel_cab) for t in ("Ref (mediana)", "Subtotal")])
     linhas: list[list] = [header]
     notas: list[str] = []
     nota_num = 1
+    _total_exibidos = 0   # quantos preços realmente aparecem na tabela
 
     for item in itens_avaliados:
         cots_dict: dict = {}
@@ -120,6 +133,7 @@ def gerar_mapa_precos(
         }
 
         celulas_forn: list[str] = []
+        _precos_exibidos = 0
         for forn in fornecedores:
             nome = forn.get("nome") or ""
             preco = cots_dict.get(_norm(nome))
@@ -134,28 +148,42 @@ def gerar_mapa_precos(
                 celulas_forn.append(f"EXC.{tag}")
             else:
                 celulas_forn.append(_fmt_brl_opcional(preco))
+                _precos_exibidos += 1
 
+        _total_exibidos += _precos_exibidos
         ref_str = _fmt_brl_opcional(item.get("preco_referencia"), default="INSUF.")
         sub_str = _fmt_brl_opcional(item.get("subtotal_estimado"), default="—")
         _qtd = item.get("quantidade_estimada")
         qtd_str = "—" if _qtd is None else str(_qtd)
 
         linhas.append([
-            str(item["item_id"]),
-            html.escape(str(item.get("descricao") or "")),
-            html.escape(str(item.get("unidade") or "un")),
-            qtd_str,
-        ] + celulas_forn + [ref_str, sub_str])
+            Paragraph(str(item["item_id"]), _cel),
+            Paragraph(html.escape(str(item.get("descricao") or "")), _cel),
+            Paragraph(html.escape(str(item.get("unidade") or "un")), _cel),
+            Paragraph(qtd_str, _cel),
+        ] + [Paragraph(c, _cel) for c in celulas_forn]
+          + [Paragraph(ref_str, _cel), Paragraph(sub_str, _cel)])
 
     total_str = _fmt_brl_opcional(valor_total_estimado, default="—")
     linhas.append(
-        ["", "VALOR TOTAL ESTIMADO", "", ""] + [""] * len(fornecedores) + ["", total_str]
+        ["", Paragraph("VALOR TOTAL ESTIMADO", _cel), "", ""]
+        + [""] * len(fornecedores) + ["", Paragraph(total_str, _cel)]
     )
 
-    _usable = A4[0] - 4 * cm
-    _fixed  = 0.7*cm + 4.5*cm + 1*cm + 1.2*cm + 3*cm + 2.5*cm
-    _forn_w = max(1.5*cm, (_usable - _fixed) / max(len(fornecedores), 1))
-    col_w   = [0.7*cm, 4.5*cm, 1*cm, 1.2*cm] + [_forn_w] * len(fornecedores) + [3*cm, 2.5*cm]
+    # Larguras SEMPRE dentro da página: as colunas fixas encolhem quando há
+    # muitas fontes, e o que sobra é dividido igualmente entre elas.
+    _usable = _pagina[0] - 3 * cm            # margens de 1,5 cm de cada lado
+    _n = max(len(fornecedores), 1)
+    _desc_w = 4.5*cm if _n <= 4 else 3.2*cm
+    _ref_w  = 2.6*cm if _n <= 4 else 2.2*cm
+    _sub_w  = 2.4*cm if _n <= 4 else 2.0*cm
+    _fixed  = 0.7*cm + _desc_w + 0.9*cm + 1.1*cm + _ref_w + _sub_w
+    _forn_w = max(1.2*cm, (_usable - _fixed) / _n)
+    # Se ainda assim estourar (muitíssimas fontes), reparte o disponível.
+    if _fixed + _forn_w * _n > _usable:
+        _forn_w = (_usable - _fixed) / _n
+    col_w = ([0.7*cm, _desc_w, 0.9*cm, 1.1*cm]
+             + [_forn_w] * _n + [_ref_w, _sub_w])
 
     t = Table(linhas, colWidths=col_w)
     t.setStyle(TableStyle([
@@ -169,6 +197,17 @@ def gerar_mapa_precos(
         ("FONTNAME",   (0, -1), (-1, -1), "Helvetica-Bold"),
     ]))
     story.append(t)
+
+    # Quando a mesma fonte tem várias cotações (comum no PNCP), o mapa mostra
+    # a menor delas — sem esta nota o leitor estranha o total do relatório.
+    _n_validas = sum(len(i.get("cotacoes_validas") or []) for i in itens_avaliados)
+    if _n_validas > _total_exibidos:
+        story.append(Spacer(1, 0.3*cm))
+        story.append(Paragraph(
+            f"Nota: cada coluna apresenta a menor cotação válida da fonte. "
+            f"O total de {_n_validas} cotações válidas que compõem a mediana "
+            f"está detalhado no Relatório de Pesquisa de Preços.", _PEQUENO
+        ))
 
     if notas:
         story.append(Spacer(1, 0.4*cm))
@@ -198,7 +237,7 @@ def gerar_relatorio_pesquisa(
     )
     story: list = []
 
-    story.append(Paragraph("IA-Licita — RM Vértice Digital", _TITULO))
+    story.append(Paragraph("RM Lisura — RM Vértice Digital", _TITULO))
     story.append(Paragraph("Relatório de Pesquisa de Preços de Mercado", _H1))
     story.append(Paragraph("Art. 23, Lei 14.133/2021 + IN SEGES/MGI 65/2021", _PEQUENO))
     story.append(Paragraph(
@@ -278,7 +317,7 @@ def gerar_relatorio_pesquisa(
     ))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     story.append(Paragraph(
-        "Gerado por IA-Licita - RM Vertice Digital. Revisar antes de anexar ao processo.",
+        "Gerado por RM Lisura - RM Vertice Digital. Revisar antes de anexar ao processo.",
         _PEQUENO,
     ))
 

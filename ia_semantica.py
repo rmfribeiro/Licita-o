@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Camada de IA semantica do IA-Licita (integracao real).
+Camada de IA semantica do RM Lisura (integracao real).
 -------------------------------------------------------
 Substitui o stub do prototipo: monta o prompt ancorado nos artigos recuperados
 pelo RAG, chama a API de um LLM e devolve os achados estruturados em JSON.
