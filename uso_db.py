@@ -9,7 +9,7 @@
    (snapshot: se a tabela de precos mudar, o historico nao muda).
  - uso_do_mes / resumo_do_mes: consultas para o painel do usuario e a
    consolidacao de cobranca do administrador.
- Tabela: ver supabase_schema_ialicita.sql (uso_relatorios).
+ Tabela: ver schema_supabase.sql.txt (uso_relatorios).
 =============================================================================
 """
 from __future__ import annotations

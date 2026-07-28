@@ -14,7 +14,7 @@ mais usados.
 ## 2. Criar a tabela e migrar os usuários
 
 1. No projeto, abra **SQL Editor**
-2. Cole e rode o conteúdo de `supabase_schema_ialicita.sql`
+2. Cole e rode o conteúdo de `schema_supabase.sql.txt`
 3. Depois cole e rode o `migracao_usuarios.sql` — isso recria os usuários
    `roberto` (administrador) e `daysival` **com as mesmas senhas de hoje**
 
@@ -68,7 +68,7 @@ aba "Criar conta", veja-a aparecer como pendente, aprove e entre com ela.
 
 ## Fase 2 — cobrança por uso (já incluída)
 
-O mesmo `supabase_schema_ialicita.sql` também cria a tabela
+O mesmo `schema_supabase.sql.txt` também cria a tabela
 `uso_relatorios` e a coluna `plano` em `usuarios`. Se você já tinha rodado
 uma versão anterior do schema, **pode rodar o arquivo inteiro de novo** —
 os comandos são idempotentes (`if not exists`).
@@ -89,7 +89,7 @@ Como funciona:
 | `auth_db.py` | Toda a lógica de autenticação (novo) |
 | `uso_db.py` | Registro e consolidação do uso (novo, Fase 2) |
 | `precos.py` | Tabela de preços, níveis e planos (novo, Fase 2) |
-| `supabase_schema_ialicita.sql` | Cria `usuarios`, `uso_relatorios` e coluna `plano` |
+| `schema_supabase.sql.txt` | Cria `usuarios`, `uso_relatorios` e coluna `plano` |
 | `migracao_usuarios.sql` | Recria roberto/daysival com as senhas atuais |
 | `app.py` | Página de acesso, painel admin, contador de uso |
 | `requirements.txt` | + `supabase`, `bcrypt` (− `streamlit-authenticator`) |

@@ -85,7 +85,7 @@ ia_*.py                     — Análises por IA de cada módulo
 relatorio_*.py              — Geradores de PDF
 pncp_busca.py               — Busca de preços reais no PNCP
 ddi_consultas.py            — Consultas CGU (CEIS, CNEP, Pro-Ética)
-supabase_schema_ialicita.sql— Schema do banco (usuários e uso)
+schema_supabase.sql.txt— Schema do banco (usuários e uso)
 ```
 
 ---

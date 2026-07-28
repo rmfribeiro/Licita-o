@@ -16,7 +16,7 @@
    SMTP_USUARIO         = "seuemail@gmail.com"        (p/ esqueci a senha)
    SMTP_SENHA           = "senha de app do Gmail"     (idem)
 
- Tabela: ver supabase_schema_ialicita.sql
+ Tabela: ver schema_supabase.sql.txt
 =============================================================================
 """
 import os
