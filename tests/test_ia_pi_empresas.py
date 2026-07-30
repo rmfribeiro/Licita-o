@@ -76,10 +76,30 @@ class TestCalcularScores:
         s = ia_pi_empresas.calcular_scores(r)
         assert s["nivel"] == "CONSOLIDADO"
 
-    def test_resposta_ausente_conta_como_nao_existe(self):
-        r = {}  # nenhuma resposta
+    def test_sem_respostas_nao_vira_score_zero(self):
+        """Regra de negocio alterada em 29/07/2026: formulario em branco NAO
+        pode virar '0/100 INEXISTENTE'. Isso afirmaria que a empresa nao tem
+        programa de integridade quando, na verdade, nada foi informado —
+        conclusao falsa e juridicamente arriscada (caso Itau Unibanco)."""
+        s = ia_pi_empresas.calcular_scores({})   # nenhuma resposta
+        assert s["geral"] is None
+        assert s["nivel"] == ia_pi_empresas.NAO_AVALIADO
+        assert s["suficiente"] is False
+        assert s["avaliados"] == 0
+
+    def test_poucas_respostas_ainda_e_nao_avaliado(self):
+        r = {"p1": "Implementado"}               # 1 de N parametros
         s = ia_pi_empresas.calcular_scores(r)
+        assert s["suficiente"] is False
+        assert s["nivel"] == ia_pi_empresas.NAO_AVALIADO
+
+    def test_responder_nao_existe_continua_pontuando_zero(self):
+        """'Respondeu que nao tem' e diferente de 'nao respondeu': o primeiro
+        e uma avaliacao valida e deve gerar nota."""
+        s = ia_pi_empresas.calcular_scores(_respostas_todos_nao_existem())
+        assert s["suficiente"] is True
         assert s["geral"] == 0.0
+        assert s["nivel"] == "INEXISTENTE"
 
     def test_score_por_dimensao_media_simples_dos_parametros(self):
         # Comprometimento (p1, p2, p3): p1=100, p2=0, p3=0 → media=33.3

@@ -84,8 +84,24 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     piso = _aplicar_piso(dados, fid)
 
+    # As bases CEIS/CNEP so foram efetivamente consultadas se havia chave da
+    # CGU. Sem isso, listas vazias significam "nao consultei", e NAO "empresa
+    # sem sancoes" — atestar idoneidade sem verificacao e o erro mais grave
+    # que este modulo pode cometer (visto em 29/07/2026: dimensao "Sancoes e
+    # Punicoes" saiu como [OK] com descricao vazia, sem nenhuma consulta).
+    _consultou_sancoes = bool(dados.get("ceis_disponivel"))
+    _aviso_sancoes = "" if _consultou_sancoes else (
+        "\nATENÇÃO: as bases CEIS e CNEP NÃO foram consultadas nesta análise "
+        "(chave da API da CGU ausente ou indisponível). É PROIBIDO afirmar que "
+        "a empresa não possui sanções ou marcar a dimensão 'sancoes' como "
+        "'ok'. Use status 'alerta' e descreva que a verificação de sanções "
+        "está PENDENTE, recomendando consulta manual em "
+        "portaldatransparencia.gov.br/sancoes antes de qualquer contratação.\n"
+    )
+
     prompt = (
-        f"Dados do licitante:\n{json.dumps(dados, ensure_ascii=False, indent=2)}\n\n"
+        f"Dados do licitante:\n{json.dumps(dados, ensure_ascii=False, indent=2)}\n"
+        f"{_aviso_sancoes}\n"
         f"Respostas do FID:\n"
         f"- Código de Ética ou Conduta formal: {fid.get('q1', 'Não sei')}\n"
         f"- Canal de denúncias ativo: {fid.get('q2', 'Não sei')}\n"
@@ -137,5 +153,24 @@ def analisar(dados: dict, fid: dict) -> dict:
 
     if _aviso_risco_val is not None:
         parecer["_aviso_risco"] = _aviso_risco_val
+
+    # Trava final (nao depende da IA obedecer ao prompt): sem consulta as bases,
+    # a dimensao de sancoes nunca sai como "ok".
+    if not _consultou_sancoes:
+        _dims = parecer.get("dimensoes")
+        if isinstance(_dims, dict):
+            _s = _dims.get("sancoes")
+            if not isinstance(_s, dict):
+                _s = {}
+            _s["status"] = "alerta"
+            _s["descricao"] = (
+                "VERIFICAÇÃO PENDENTE: as bases CEIS e CNEP não foram "
+                "consultadas (chave da API da CGU não configurada). A ausência "
+                "de sanções NÃO foi confirmada. Consulte manualmente em "
+                "portaldatransparencia.gov.br/sancoes antes de contratar."
+            )
+            _s.setdefault("achados", [])
+            _dims["sancoes"] = _s
+        parecer["sancoes_verificadas"] = False
 
     return parecer

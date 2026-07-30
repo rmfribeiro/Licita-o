@@ -14,6 +14,8 @@ from ia_pi_empresas import DIMENSOES_PI, HIPOTESES_POR_TIPO, QUESTOES_PI, TIPOS_
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _COR_MATURIDADE = {k: colors.HexColor(v) for k, v in _COR_MATURIDADE_HEX.items()}
+# Cinza neutro: "não avaliado" não é uma nota ruim, é ausência de avaliação.
+_COR_MATURIDADE.setdefault("NÃO AVALIADO", colors.HexColor("#6C757D"))
 
 _estilos_base   = getSampleStyleSheet()
 _ESTILO_TITULO  = ParagraphStyle("pi_titulo",  parent=_estilos_base["Title"],    fontSize=16, spaceAfter=4)
@@ -98,16 +100,18 @@ def gerar_pdf(
 
     # Score geral + nível de maturidade
     scores = parecer.get("scores") or {}
-    score_geral = scores.get("geral", 0.0)
-    nivel = str(scores.get("nivel") or "INEXISTENTE").strip().upper()
+    score_geral = scores.get("geral")
+    nivel = str(scores.get("nivel") or "NÃO AVALIADO").strip().upper()
     cor_nivel = _COR_MATURIDADE.get(nivel, colors.grey)
+    # Sem base suficiente NÃO se exibe nota: um "0/100" seria lido como
+    # "a empresa não tem programa", quando o correto é "não foi avaliado".
+    _sem_base = (score_geral is None) or (scores.get("suficiente") is False)
 
     story.append(Paragraph("Score Geral de Aderência", _ESTILO_H2))
+    _badge_txt = (f"<b>{html.escape(nivel)}</b>" if _sem_base
+                  else f"<b>{html.escape(nivel)} — {score_geral:.0f}/100</b>")
     t_badge = Table(
-        [[Paragraph(
-            f"<b>{html.escape(nivel)} — {score_geral:.0f}/100</b>",
-            _ESTILO_BADGE,
-        )]],
+        [[Paragraph(_badge_txt, _ESTILO_BADGE)]],
         colWidths=[17*cm],
     )
     t_badge.setStyle(TableStyle([
@@ -116,6 +120,19 @@ def gerar_pdf(
         ("PADDING", (0, 0), (-1, -1), 10),
     ]))
     story.append(t_badge)
+    if _sem_base:
+        story.append(Spacer(1, 0.2*cm))
+        _n_av = scores.get("avaliados", 0)
+        _n_tot = scores.get("total_questoes", 0)
+        story.append(Paragraph(
+            f"<b>Avaliação prejudicada por insuficiência de evidências:</b> "
+            f"apenas {_n_av} de {_n_tot} parâmetros foram informados. "
+            "Este resultado NÃO significa que a empresa deixe de possuir "
+            "programa de integridade — significa que a documentação "
+            "necessária não foi apresentada ou não pôde ser analisada. "
+            "Solicite as evidências e repita a avaliação.",
+            _ESTILO_CORPO,
+        ))
     story.append(Spacer(1, 0.4*cm))
 
     # Score por dimensão
@@ -123,8 +140,9 @@ def gerar_pdf(
     por_dimensao = scores.get("por_dimensao") or {}
     linhas_dim = [["Dimensão", "Score"]]
     for dim_key, (dim_label, _) in DIMENSOES_PI.items():
-        s = por_dimensao.get(dim_key, 0.0)
-        linhas_dim.append([html.escape(dim_label), f"{s:.0f}/100"])
+        s = por_dimensao.get(dim_key)
+        linhas_dim.append([html.escape(dim_label),
+                           "não avaliado" if s is None else f"{s:.0f}/100"])
     t_dim = Table(linhas_dim, colWidths=[13*cm, 4*cm])
     t_dim.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),

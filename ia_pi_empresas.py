@@ -118,25 +118,75 @@ def nivel_maturidade(score: float) -> str:
     return "INEXISTENTE"
 
 
+NAO_AVALIADO = "NÃO AVALIADO"
+
+# Quando esta fracao dos parametros fica sem resposta, o resultado geral deixa
+# de ser um score e passa a ser NAO AVALIADO. Motivo (incidente de 29/07/2026):
+# um relatorio do Itau Unibanco saiu "INEXISTENTE — 0/100" afirmando
+# "inexistencia absoluta de comprometimento da alta direcao" apenas porque
+# nenhum parametro havia sido preenchido. Ausencia de evidencia NAO e evidencia
+# de ausencia — e afirmar o contrario sobre uma empresa real e falso e
+# juridicamente arriscado.
+LIMITE_NAO_AVALIADO = 0.5
+
+
+def _respondido(valor) -> bool:
+    """Distingue 'nao respondido' de 'respondeu que nao existe'."""
+    if valor is None:
+        return False
+    txt = str(valor).strip()
+    if not txt:
+        return False
+    return txt.lower() not in ("não avaliado", "nao avaliado", "-", "n/a", "na")
+
+
 def calcular_scores(respostas: dict) -> dict:
-    por_parametro: dict[str, int] = {}
+    por_parametro: dict[str, int | None] = {}   # None = nao avaliado
     for p in QUESTOES_PI:
-        resp = str(respostas.get(p) or "Não existe")
-        por_parametro[p] = _VALORES_RESPOSTA.get(resp, 0)
+        bruto = respostas.get(p)
+        if not _respondido(bruto):
+            por_parametro[p] = None
+            continue
+        por_parametro[p] = _VALORES_RESPOSTA.get(str(bruto).strip(), 0)
 
-    por_dimensao: dict[str, float] = {}
+    avaliados = [p for p, v in por_parametro.items() if v is not None]
+    nao_avaliados = [p for p, v in por_parametro.items() if v is None]
+    total = len(QUESTOES_PI) or 1
+    proporcao_vazia = len(nao_avaliados) / total
+
+    # Score por dimensao considera SOMENTE os parametros respondidos.
+    por_dimensao: dict[str, float | None] = {}
     for dim_key, (_, params) in DIMENSOES_PI.items():
-        scores_dim = [por_parametro[p] for p in params]
-        por_dimensao[dim_key] = sum(scores_dim) / len(scores_dim)
+        vals = [por_parametro[p] for p in params if por_parametro[p] is not None]
+        por_dimensao[dim_key] = (sum(vals) / len(vals)) if vals else None
 
-    geral = sum(por_dimensao[d] * PESOS_DIMENSAO[d] for d in por_dimensao)
-    geral = round(geral, 1)
+    if not avaliados or proporcao_vazia >= LIMITE_NAO_AVALIADO:
+        # Sem base suficiente: nao emitir nota, nem afirmar ausencia.
+        return {
+            "por_parametro":  por_parametro,
+            "por_dimensao":   por_dimensao,
+            "geral":          None,
+            "nivel":          NAO_AVALIADO,
+            "nao_avaliados":  nao_avaliados,
+            "avaliados":      len(avaliados),
+            "total_questoes": total,
+            "suficiente":     False,
+        }
+
+    # Media ponderada apenas entre as dimensoes com resposta (repesa o restante).
+    dims_ok = {d: v for d, v in por_dimensao.items() if v is not None}
+    peso_total = sum(PESOS_DIMENSAO[d] for d in dims_ok) or 1
+    geral = round(sum(v * PESOS_DIMENSAO[d] for d, v in dims_ok.items()) / peso_total, 1)
 
     return {
-        "por_parametro": por_parametro,
-        "por_dimensao":  por_dimensao,
-        "geral":         geral,
-        "nivel":         nivel_maturidade(geral),
+        "por_parametro":  por_parametro,
+        "por_dimensao":   por_dimensao,
+        "geral":          geral,
+        "nivel":          nivel_maturidade(geral),
+        "nao_avaliados":  nao_avaliados,
+        "avaliados":      len(avaliados),
+        "total_questoes": total,
+        "suficiente":     True,
     }
 
 
@@ -241,16 +291,35 @@ def avaliar(
         raise RuntimeError(f"tipo_entidade desconhecido: '{tipo_entidade}'")
     scores = calcular_scores(respostas)
 
+    _geral_txt = (f"{scores['geral']}/100 ({scores['nivel']})"
+                  if scores.get("suficiente") else NAO_AVALIADO)
     partes = [
         f"Avaliação do Programa de Integridade — Hipótese: {HIPOTESES_POR_TIPO[tipo_entidade].get(hipotese, hipotese)}\n"
-        f"Score geral calculado: {scores['geral']}/100 ({scores['nivel']})\n"
+        f"Score geral calculado: {_geral_txt}\n"
     ]
-    for dim_key, (dim_label, params) in DIMENSOES_PI.items():
+    if not scores.get("suficiente"):
+        # Guarda-corpo contra o erro mais grave possivel neste modulo: afirmar
+        # que uma empresa nao tem programa de integridade quando, na verdade,
+        # nada foi informado sobre ela.
         partes.append(
-            f"\n=== {dim_label} (score: {scores['por_dimensao'][dim_key]:.0f}/100) ==="
+            "\nATENÇÃO — BASE INSUFICIENTE: apenas "
+            f"{scores['avaliados']} de {scores['total_questoes']} parâmetros "
+            "foram informados. NÃO afirme que a empresa não possui programa de "
+            "integridade, nem use expressões como 'inexistência', 'ausência "
+            "absoluta' ou 'nenhum controle identificado'. O correto é registrar "
+            "que a documentação NÃO FOI APRESENTADA/AVALIADA e que a avaliação "
+            "fica prejudicada até a apresentação das evidências. Liste o que "
+            "precisa ser solicitado à empresa."
         )
+    for dim_key, (dim_label, params) in DIMENSOES_PI.items():
+        _dim_score = scores["por_dimensao"][dim_key]
+        _dim_txt = f"{_dim_score:.0f}/100" if _dim_score is not None else NAO_AVALIADO
+        partes.append(f"\n=== {dim_label} (score: {_dim_txt}) ===")
         for p in params:
             valor = scores["por_parametro"][p]
+            if valor is None:
+                partes.append(f"- {QUESTOES_PI[p]} → NÃO INFORMADO (sem evidência apresentada)")
+                continue
             resp_txt = _TEXTO_POR_VALOR.get(valor, str(valor))
             partes.append(f"- {QUESTOES_PI[p]} → {resp_txt} ({valor}/100)")
 

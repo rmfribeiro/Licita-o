@@ -23,6 +23,17 @@ def _norm(s):
 _STOP = set("de da do das dos a o e que em para com no na nos nas ao aos por se os as um uma "
             "sera serao deste desta neste nesta entre sobre ou the".split())
 
+# Similaridade minima (cosseno TF-IDF) para um artigo ser aceito como
+# fundamento. Abaixo disso a recuperacao e ruido: melhor devolver nada.
+#
+# Calibrado em 29/07/2026 com os erros reais do relatorio de credenciamento:
+# as citacoes ERRADAS pontuaram 0,169 (art. 56 num achado sobre prazos), 0,21
+# (art. 156 num achado sobre fundamentacao) e 0,27 (art. 41). As citacoes
+# CORRETAS mais fortes ficaram em 0,31 a 0,44. O corte em 0,30 elimina todas as
+# erradas; perde-se alguma citacao fraca, o que e aceitavel — num parecer
+# juridico, silencio custa menos que erro.
+SCORE_MINIMO = 0.30
+
 def _tokens(s):
     return [t for t in re.findall(r"[a-z0-9]+", _norm(s)) if t not in _STOP and len(t) > 1]
 
@@ -51,7 +62,29 @@ class BaseRAG:
     def _vec(self, counter):
         return {t: (1 + math.log(f)) * self.idf.get(t, 0.0) for t, f in counter.items()}
 
-    def buscar(self, consulta, k=2):
+    def por_artigo(self, numero):
+        """Devolve (art, texto) do artigo pedido, ou None se nao estiver na base.
+        Usado quando a propria analise ja identificou o artigo aplicavel — nesse
+        caso nao faz sentido 'adivinhar' por similaridade."""
+        alvo = re.sub(r"\D", "", str(numero))
+        if not alvo:
+            return None
+        for d in self.docs:
+            if re.sub(r"\D", "", str(d["art"])) == alvo:
+                return (d["art"], d["texto"])
+        return None
+
+    def buscar(self, consulta, k=2, score_minimo=SCORE_MINIMO):
+        """Devolve ate k artigos ORDENADOS por similaridade, descartando os que
+        ficarem abaixo de score_minimo.
+
+        O corte existe porque a busca sempre teria um "melhor colocado", ainda
+        que sem relacao alguma com a consulta: em 29/07/2026 um achado sobre
+        fundamentacao legal (arts. 74 e 79) veio acompanhado do art. 156
+        (sancoes), e outro sobre prazos veio com o art. 56 (modo de disputa).
+        Num parecer juridico, citar artigo fora de contexto e pior do que nao
+        citar nada — destroi a confianca no documento inteiro.
+        """
         q = self._vec(Counter(_tokens(consulta)))
         if not q:
             return []
@@ -63,6 +96,8 @@ class BaseRAG:
         scores.sort(reverse=True)
         out = []
         for sc, i in scores[:k]:
+            if sc < score_minimo:
+                continue
             d = self.docs[i]
             out.append((d["art"], round(sc, 3), d["texto"]))
         return out

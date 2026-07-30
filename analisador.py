@@ -185,6 +185,50 @@ def aplicar_pareceres(apont, pareceres_path, base_rag_path):
         pareceres = json.load(f)["pareceres"]
     return aplicar_pareceres_lista(apont, pareceres, base_rag_path)
 
+_RE_ARTIGO_CITADO = re.compile(r"\bart(?:igo|\.)?\s*(\d{1,3})", re.IGNORECASE)
+
+
+def _fundamento_do_achado(rag, pz):
+    """Escolhe o fundamento legal a exibir para um achado da IA.
+
+    Regra (aprendida em 29/07/2026, quando um achado sobre os arts. 74 e 79 saiu
+    citando o art. 156 — sanções — e outro sobre prazos citou o art. 56 — modo
+    de disputa):
+
+    1. Se o próprio achado JÁ cita artigos, usar esses — a análise sabe do que
+       está falando melhor do que uma busca por similaridade de palavras.
+    2. Só se o achado não citar nenhum artigo, recorrer à busca no RAG, e ainda
+       assim respeitando o score mínimo.
+    3. Se nada disso der resultado confiável, devolver vazio: num parecer
+       jurídico, citação fora de contexto é pior do que ausência de citação.
+    """
+    if not rag:
+        return ""
+
+    texto_achado = " ".join(str(pz.get(c) or "") for c in ("item", "detalhe", "trecho"))
+    citados = _RE_ARTIGO_CITADO.findall(texto_achado)
+    vistos = []
+    for num in citados:
+        if num not in vistos:
+            vistos.append(num)
+    for num in vistos[:2]:                      # no máximo 2 artigos citados
+        achado = rag.por_artigo(num)
+        if achado:
+            art, txt = achado
+            return f"Art. {art}: {txt}"
+
+    if pz.get("consulta_rag"):
+        hits = rag.buscar(pz["consulta_rag"], k=1)
+        if hits:
+            art, _sc, txt = hits[0]
+            # Se o achado citou artigos e o RAG trouxe OUTRO, é sinal de
+            # divergência: melhor não exibir nada do que confundir o leitor.
+            if vistos and re.sub(r"\D", "", str(art)) not in [re.sub(r"\D", "", n) for n in vistos]:
+                return ""
+            return f"Art. {art}: {txt}"
+    return ""
+
+
 def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     """Mescla a camada de IA (pareceres semanticos) e anexa o fundamento legal
     recuperado via RAG. Recebe a lista de achados (de arquivo ou da IA ao vivo)."""
@@ -204,12 +248,7 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     for pz in pareceres:
         sev    = str(pz.get("severidade", "media")).strip().lower()
         status = str(pz.get("status",     "revisar")).strip().lower()
-        fundamento = ""
-        if rag and pz.get("consulta_rag"):
-            hits = rag.buscar(pz["consulta_rag"], k=1)
-            if hits:
-                art, sc, txt = hits[0]
-                fundamento = f"Art. {art}: {txt}"
+        fundamento = _fundamento_do_achado(rag, pz)
         novos.append({
             "id":        str(pz.get("id", f"P{len(novos)+1}")).strip(),
             "categoria": str(pz.get("categoria", "")).strip() or "Analise semantica",
