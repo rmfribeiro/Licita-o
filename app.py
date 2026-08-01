@@ -482,23 +482,23 @@ with aba2:
 
         q1 = st.radio(
             "1. A empresa possui Codigo de Etica ou Conduta formal e publico?",
-            ["Sim", "Nao", "Nao sei"], horizontal=True, key="ddi_q1"
+            ["Sim", "Nao", "Nao sei"], index=None, horizontal=True, key="ddi_q1"
         )
         q2 = st.radio(
             "2. Ha canal de denuncias ativo e acessivel a terceiros?",
-            ["Sim", "Nao", "Nao sei"], horizontal=True, key="ddi_q2"
+            ["Sim", "Nao", "Nao sei"], index=None, horizontal=True, key="ddi_q2"
         )
         q3 = st.radio(
             "3. A empresa realiza treinamentos periodicos de integridade?",
-            ["Sim", "Nao", "Nao sei"], horizontal=True, key="ddi_q3"
+            ["Sim", "Nao", "Nao sei"], index=None, horizontal=True, key="ddi_q3"
         )
         q4 = st.radio(
             "4. Ha politica de conflito de interesses documentada?",
-            ["Sim", "Nao", "Nao sei"], horizontal=True, key="ddi_q4"
+            ["Sim", "Nao", "Nao sei"], index=None, horizontal=True, key="ddi_q4"
         )
         q5 = st.radio(
             "5. A empresa possui auditorias internas ou externas de integridade?",
-            ["Sim", "Nao", "Nao sei"], horizontal=True, key="ddi_q5"
+            ["Sim", "Nao", "Nao sei"], index=None, horizontal=True, key="ddi_q5"
         )
 
         _dados_etapa2 = st.session_state.get("ddi_dados", {})
@@ -511,7 +511,12 @@ with aba2:
             pro_etica_manual = False
 
         if st.button("Gerar Parecer DDI", type="primary", key="btn_ddi_parecer"):
-            fid = {"q1": q1, "q2": q2, "q3": q3, "q4": q4, "q5": q5}
+            # Sem resposta = "Nao sei". O radio comeca vazio (index=None) para
+            # nao induzir um "Sim" que o usuario nunca marcou: em 29/07/2026 um
+            # DDI saiu afirmando estrutura de integridade completa apenas porque
+            # o Streamlit pre-selecionava a primeira opcao.
+            fid = {k: (v if v is not None else "Nao sei") for k, v in
+                   {"q1": q1, "q2": q2, "q3": q3, "q4": q4, "q5": q5}.items()}
             _dados_analise = {**st.session_state["ddi_dados"]}
             if pro_etica_manual:
                 _dados_analise = {**_dados_analise, "pro_etica": True}
@@ -711,12 +716,29 @@ with aba4:
         (k, f"{i}. {label}")
         for i, (k, label) in enumerate(ia_integridade.QUESTOES_PIP, 1)
     ]
+    st.caption(
+        "Responda com base em documentos e fatos verificáveis. Perguntas não "
+        "respondidas ficam registradas como **não informadas** — o diagnóstico "
+        "não presume nem cumprimento nem descumprimento."
+    )
     _respostas_pip = {}
     for _chave_pip, _pergunta_pip in _PERGUNTAS_PIP:
+        # index=None: sem isso o Streamlit deixa "Sim" pré-selecionado nas 12
+        # perguntas, e o diagnóstico afirmaria que a prefeitura cumpre tudo sem
+        # ninguém ter respondido (mesma causa do incidente do PI em 29/07).
         _respostas_pip[_chave_pip] = st.selectbox(
             _pergunta_pip,
             ["Sim", "Não", "Parcialmente"],
+            index=None,
+            placeholder="Selecione…",
             key=f"pip_{_chave_pip}",
+        )
+    _n_resp_pip = sum(1 for _v in _respostas_pip.values() if _v is not None)
+    _n_tot_pip = len(_PERGUNTAS_PIP)
+    if _n_resp_pip < _n_tot_pip:
+        st.warning(
+            f"{_n_resp_pip} de {_n_tot_pip} perguntas respondidas. As demais "
+            "constarão como NÃO INFORMADAS no diagnóstico."
         )
 
     _arqs_pip = st.file_uploader(
@@ -897,17 +919,48 @@ with aba5:
         st.divider()
         st.markdown("### Etapa 2 — Questionário (17 parâmetros)")
 
+        st.caption(
+            "Responda apenas o que puder comprovar com evidências. "
+            "Parâmetros deixados em branco entram no relatório como "
+            "**não avaliados** — nunca como inexistentes."
+        )
         _respostas_pi = {}
         for _dim_key, (_dim_label, _params) in ia_pi_empresas.DIMENSOES_PI.items():
-            with st.expander(f"**{_dim_label}** ({len(_params)} parâmetros)"):
+            _resp_dim = sum(
+                1 for _p in _params if st.session_state.get(f"pi_{_p}") is not None
+            )
+            with st.expander(
+                f"**{_dim_label}** ({_resp_dim}/{len(_params)} respondidos)"
+            ):
                 for _p in _params:
                     _rotulo_p = ia_pi_empresas.QUESTOES_PI[_p]
+                    # index=None: o radio começa SEM seleção. Sem isso, o
+                    # Streamlit marca a 1ª opção ("Não existe") sozinho e o
+                    # relatório sai afirmando que a empresa não tem os
+                    # controles — foi o que produziu o "Itaú 0/100" em 29/07.
                     _respostas_pi[_p] = st.radio(
                         _rotulo_p,
                         options=["Não existe", "Parcialmente", "Implementado"],
+                        index=None,
                         key=f"pi_{_p}",
                         horizontal=True,
                     )
+        _n_resp_pi = sum(1 for _v in _respostas_pi.values() if _v is not None)
+        _n_tot_pi = len(ia_pi_empresas.QUESTOES_PI)
+        if _n_resp_pi == 0:
+            st.info(
+                f"Nenhum dos {_n_tot_pi} parâmetros foi respondido — o relatório "
+                "sairá como **NÃO AVALIADO**, apenas indicando quais evidências "
+                "devem ser solicitadas à empresa."
+            )
+        elif _n_resp_pi < _n_tot_pi / 2:
+            st.warning(
+                f"Apenas {_n_resp_pi} de {_n_tot_pi} parâmetros respondidos: "
+                "sem base suficiente, o relatório sairá como **NÃO AVALIADO** "
+                "(não será atribuída nota)."
+            )
+        else:
+            st.caption(f"📝 {_n_resp_pi} de {_n_tot_pi} parâmetros respondidos.")
 
         _arqs_pi = st.file_uploader(
             "Documentos da empresa (opcional — PDF ou Word): regulamento interno, "

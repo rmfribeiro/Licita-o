@@ -109,8 +109,24 @@ def diagnosticar(
     parecer_ddi: dict | None = None,
 ) -> dict:
     partes = ["Questionário sobre o Programa de Integridade Pública da prefeitura:\n"]
+    _sem_resposta = 0
     for chave, pergunta in QUESTOES_PIP:
-        partes.append(f"- {pergunta} Resposta: {respostas.get(chave, 'Não informado')}")
+        # `or` (e nao o default do .get): quando o formulario nao foi respondido
+        # o valor vem como None PRESENTE no dicionario, e o default nao seria
+        # aplicado — o prompt receberia a string "None".
+        _r = respostas.get(chave) or "NÃO INFORMADO"
+        if _r == "NÃO INFORMADO":
+            _sem_resposta += 1
+        partes.append(f"- {pergunta} Resposta: {_r}")
+    if _sem_resposta:
+        partes.append(
+            f"\nATENÇÃO: {_sem_resposta} de {len(QUESTOES_PIP)} perguntas ficaram "
+            "SEM RESPOSTA. Para essas, não presuma cumprimento nem "
+            "descumprimento: registre como 'não informado / não avaliado' e "
+            "indique que a verificação depende de informação do órgão. "
+            "O nível de maturidade deve refletir apenas o que foi efetivamente "
+            "informado ou comprovado por documento."
+        )
 
     if texto_docs:
         partes.append(f"\nDocumentos da prefeitura fornecidos:\n{texto_docs[:30000]}")
