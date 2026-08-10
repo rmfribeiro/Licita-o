@@ -312,6 +312,15 @@ with st.sidebar:
                         )
                     st.metric("Total sugerido no mês",
                               _fmt_brl(_total_geral))
+# --- Rodapé: documentos legais (RM Vértice Digital) ---
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    '<div style="font-size:0.78rem; line-height:1.7;">'
+    '<a href="https://rmverticedigital.com/privacidade.html" target="_blank">Política de Privacidade</a><br>'
+    '<a href="https://rmverticedigital.com/termos.html" target="_blank">Termos de Uso</a>'
+    '</div>',
+    unsafe_allow_html=True,
+)
 _logo_file = b.get("logo")
 _logo_path = os.path.join(AQUI, _logo_file) if _logo_file else ""
 _logo_visivel = False
