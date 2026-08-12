@@ -109,6 +109,12 @@ def _mostrar_logo(largura: int = 170) -> bool:
         _esq, _meio, _dir = st.columns([1, 2, 1])
         with _meio:
             st.image(_p, width=largura)
+        st.markdown(
+            "<p style='text-align:center;color:#5a6b7b;font-size:0.82rem;"
+            "margin-top:-6px;margin-bottom:2px'>"
+            f"{branding.assinatura()}</p>",
+            unsafe_allow_html=True,
+        )
         return True
     except Exception:
         return False

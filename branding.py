@@ -45,6 +45,25 @@ def carregar():
             pass
     return dict(_PADRAO)
 
+def assinatura() -> str:
+    """Linha que acompanha a logomarca em toda peca do produto."""
+    return f"Um produto da {carregar()['empresa']}"
+
+
+def logo_base64(chave: str = "logo_timbre") -> str:
+    """Devolve a logomarca como data URI, para embutir em HTML que o usuario
+    baixa como arquivo unico (link para arquivo local nao funcionaria)."""
+    import base64
+    p = caminho(chave)
+    if not p:
+        return ""
+    try:
+        with open(p, "rb") as fh:
+            return "data:image/png;base64," + base64.b64encode(fh.read()).decode("ascii")
+    except Exception:
+        return ""
+
+
 def cabecalho_pdf(estilo_titulo, altura_mm: float = 26.0):
     """Cabecalho de marca para os relatorios em PDF (ReportLab).
 
@@ -67,6 +86,7 @@ def cabecalho_pdf(estilo_titulo, altura_mm: float = 26.0):
     _arq = caminho("logo_timbre")
     if not _arq:
         return [Paragraph(_rotulo, estilo_titulo)]
+    _assinatura = assinatura()
 
     try:
         from PIL import Image as _PILImage
@@ -82,8 +102,8 @@ def cabecalho_pdf(estilo_titulo, altura_mm: float = 26.0):
             textColor=colors.HexColor("#" + b["cor_primaria"]),
         )
         # A logomarca ja diz "RM LISURA"; repetir o nome do produto ao lado
-        # polui o topo. Fica so a razao social, que a imagem nao traz.
-        return [img, Spacer(1, 2), Paragraph(b["empresa"], _estilo_empresa)]
+        # poluiria o topo. Fica a assinatura, que amarra produto e empresa.
+        return [img, Spacer(1, 2), Paragraph(_assinatura, _estilo_empresa)]
     except Exception:
         return [Paragraph(_rotulo, estilo_titulo)]
 

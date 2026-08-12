@@ -290,6 +290,21 @@ _COR_NIVEL = {"BAIXO": _COR_STATUS_HEX["ok"], "MEDIO": _COR_STATUS_HEX["alerta"]
 
 def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     e = html.escape
+    # Marca no topo. A imagem vai embutida em base64 porque o usuario baixa
+    # o relatorio como arquivo unico — um <img src="logo.png"> ficaria quebrado
+    # assim que o arquivo saisse da pasta do projeto.
+    try:
+        import branding as _branding
+        _logo_uri = _branding.logo_base64()
+        _assinatura = _branding.assinatura()
+    except Exception:
+        _logo_uri, _assinatura = "", "Um produto da RM Vértice Digital"
+    _marca_html = (
+        f'<div class="marca"><img src="{_logo_uri}" alt="RM Lisura">'
+        f'<div class="marca-sub">{e(_assinatura)}</div></div>'
+        if _logo_uri else
+        f'<div class="marca"><div class="marca-sub">{e(_assinatura)}</div></div>'
+    )
     n_inc = sum(1 for a in apont if a["status"] == "inconformidade")
     n_ale = sum(1 for a in apont if a["status"] == "alerta")
     n_rev = sum(1 for a in apont if a["status"] == "revisar")
@@ -360,7 +375,11 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
   .fonte {{ font-size:11px; font-weight:600; }}
   .badge {{ color:#fff; font-size:11.5px; padding:5px 9px; border-radius:20px; white-space:nowrap; display:inline-block; }}
   .nota {{ font-size:12px; color:#7a8a99; margin-top:22px; line-height:1.6; }}
+  .marca {{ text-align:center; margin-bottom:14px; }}
+  .marca img {{ width:150px; height:auto; }}
+  .marca-sub {{ font-size:11.5px; color:#5a6b7b; margin-top:2px; letter-spacing:.2px; }}
 </style></head><body><div class="wrap">
+  {_marca_html}
   <header>
     <h1>Relatorio de Conformidade &mdash; Lei 14.133/2021</h1>
     <div class="sub">Edital analisado: <b>{e(nome_arquivo)}</b> &middot; {n_paginas} pagina(s) &middot; gerado em {data} &middot; <b>RM Lisura (piloto)</b></div>

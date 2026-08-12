@@ -84,6 +84,17 @@ def agregar(resultados):
 def painel_html(resultados, agg):
     e = html.escape
     data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    try:
+        import branding as _branding
+        _logo_uri, _assinatura = _branding.logo_base64(), _branding.assinatura()
+    except Exception:
+        _logo_uri, _assinatura = "", "Um produto da RM Vértice Digital"
+    _marca_html = (
+        f'<div class="marca"><img src="{_logo_uri}" alt="RM Lisura">'
+        f'<div class="marca-sub">{e(_assinatura)}</div></div>'
+        if _logo_uri else
+        f'<div class="marca"><div class="marca-sub">{e(_assinatura)}</div></div>'
+    )
     cards = [
         ("Editais auditados", agg["n_editais"], "#1F4E79"),
         ("% com inconformidade", f'{agg["pct_com_inconformidade"]}%', "#C0392B"),
@@ -140,7 +151,11 @@ def painel_html(resultados, agg):
   .bfill {{ height:100%; background:#2E75B6; }}
   .bval {{ width:24px; text-align:right; color:#5a6b7b; }}
   .nota {{ font-size:12px; color:#7a8a99; margin-top:22px; line-height:1.6; }}
+  .marca {{ text-align:center; margin-bottom:14px; }}
+  .marca img {{ width:150px; height:auto; }}
+  .marca-sub {{ font-size:11.5px; color:#5a6b7b; margin-top:2px; }}
 </style></head><body><div class="wrap">
+  {_marca_html}
   <h1>Painel de validacao &mdash; auditoria em lote</h1>
   <div class="sub">{agg['n_editais']} edital(is) processado(s) &middot; {agg['n_analisados']} analisado(s)
     {('&middot; ' + str(agg['n_sem_texto']) + ' sem texto (OCR)') if agg['n_sem_texto'] else ''}
