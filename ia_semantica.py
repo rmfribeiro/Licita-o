@@ -15,7 +15,7 @@ Uso:
     from ia_semantica import gerar_pareceres
     achados = gerar_pareceres(texto_edital, regras, "base_juridica.json")
 """
-import os, json, re, uuid, urllib.error
+import os, json, re, hashlib, urllib.error
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
 MODELO_PADRAO = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
@@ -111,10 +111,19 @@ def montar_prompt(texto_edital, regras_semanticas, rag):
         '\"severidade\":\"alta|media|baixa\",\"status\":\"inconformidade|alerta|revisar|ok\",'
         '\"detalhe\":\"...\",\"trecho\":\"trecho literal do edital\"}]}'
     )
-    # Isolamento do conteudo nao confiavel: o edital vai entre marcas com um nonce
-    # aleatorio. Removemos qualquer ocorrencia do nonce no texto para que o edital
+    # Isolamento do conteudo nao confiavel: o edital vai entre marcas com um
+    # nonce. Removemos qualquer ocorrencia do nonce no texto para que o edital
     # nao consiga "fechar" o bloco e injetar instrucoes fora dele.
-    nonce = uuid.uuid4().hex
+    #
+    # O nonce era uuid4() — ALEATORIO A CADA EXECUCAO. Como ele entra no prompt,
+    # o mesmo edital gerava prompts diferentes e, mesmo com temperature=0, a IA
+    # devolvia achados diferentes. Agora deriva do proprio conteudo: mesmo
+    # edital -> mesmo prompt -> mesmo parecer.
+    #
+    # Continua seguro contra injecao: para fechar o bloco, o edital precisaria
+    # conter o SHA-256 de um texto que ja inclui esse mesmo hash — um problema
+    # de ponto fixo em SHA-256, computacionalmente inviavel de construir.
+    nonce = hashlib.sha256(texto_edital.encode("utf-8")).hexdigest()
     edital = _selecionar_trecho_relevante(
         texto_edital, regras_semanticas, nonce
     )
