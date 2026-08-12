@@ -68,6 +68,12 @@ def chamar_anthropic(
     corpo = json.dumps({
         "model": modelo,
         "max_tokens": max_tokens,
+        # temperature=0 e OBRIGATORIO aqui. Sem esse parametro a API usa 1.0
+        # (maxima variabilidade) e o mesmo edital, analisado duas vezes,
+        # devolve conjuntos diferentes de achados — o que destroi a confianca
+        # no parecer: dois relatorios do mesmo processo nao podem divergir.
+        # Nao elimina 100% da variacao do modelo, mas a reduz drasticamente.
+        "temperature": 0,
         "system": sistema,
         "messages": [{"role": "user", "content": prompt}],
     }).encode("utf-8")
