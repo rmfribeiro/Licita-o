@@ -100,19 +100,24 @@ st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
 
 
 def _mostrar_logo(largura: int = 170) -> bool:
-    """Exibe a logomarca centralizada. Devolve False se nao houver arquivo,
-    para quem chama decidir o texto substituto."""
-    _p = branding.caminho("logo")
-    if not _p:
+    """Exibe a logomarca com a assinatura logo abaixo, ambas centralizadas.
+    Devolve False se nao houver arquivo, para quem chama decidir o texto
+    substituto.
+
+    Por que HTML e nao st.image: dentro de uma coluna o st.image alinha a
+    imagem a ESQUERDA, enquanto o texto abaixo dela e centralizado de fato —
+    os dois saem desalinhados. Desenhando imagem e assinatura no mesmo bloco
+    com text-align:center, elas ficam no mesmo eixo em qualquer largura de tela.
+    """
+    _uri = branding.logo_base64("logo")
+    if not _uri:
         return False
     try:
-        _esq, _meio, _dir = st.columns([1, 2, 1])
-        with _meio:
-            st.image(_p, width=largura)
         st.markdown(
-            "<p style='text-align:center;color:#5a6b7b;font-size:0.82rem;"
-            "margin-top:-6px;margin-bottom:2px'>"
-            f"{branding.assinatura()}</p>",
+            f"""<div style="text-align:center;margin:0 0 6px">
+  <img src="{_uri}" alt="RM Lisura" style="width:{largura}px;max-width:70%;height:auto">
+  <div style="color:#5a6b7b;font-size:0.82rem;margin-top:2px">{branding.assinatura()}</div>
+</div>""",
             unsafe_allow_html=True,
         )
         return True
