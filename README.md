@@ -108,4 +108,4 @@ uso oficial.
 
 ---
 
-**RM Vértice Digital** — contato@rmverticedigital.com.br
+**RM Vértice Digital** — contato@rmverticedigital.com

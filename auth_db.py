@@ -40,6 +40,7 @@ except ImportError:
     create_client = None
 
 TABELA = "usuarios"
+TERMOS_VERSAO = "1.0"          # versao dos documentos aceitos no cadastro
 RESET_VALIDADE_MIN = 30
 
 _RE_USUARIO = re.compile(r"^[a-z0-9_.\-]{3,30}$")
@@ -148,6 +149,8 @@ def criar_conta(usuario: str, nome: str, email: str, senha: str):
             "email": email,
             "senha_hash": _hash_senha(senha),
             "status": "pendente",
+            "termos_aceitos_em": datetime.now(timezone.utc).isoformat(),
+            "termos_versao": TERMOS_VERSAO,
         }).execute()
     except Exception as e:
         return False, f"Erro ao criar a conta: {e}"

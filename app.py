@@ -162,7 +162,12 @@ if not _usuario_logado:
             _cd_email = st.text_input("E-mail")
             _cd_s1 = st.text_input("Senha (mínimo 8 caracteres)", type="password")
             _cd_s2 = st.text_input("Confirme a senha", type="password")
+            st.markdown('Ao criar a conta você concorda com os <a href="https://rmverticedigital.com/termos.html" target="_blank">Termos de Uso</a> e a <a href="https://rmverticedigital.com/privacidade.html" target="_blank">Política de Privacidade</a>.', unsafe_allow_html=True)
+            _cd_aceite = st.checkbox("Li e aceito os documentos acima")
             _cd_ok = st.form_submit_button("Criar conta", type="primary")
+        if _cd_ok and not _cd_aceite:
+            st.error("É preciso aceitar os Termos de Uso e a Política de Privacidade para criar a conta.")
+            _cd_ok = False
         if _cd_ok:
             if _cd_s1 != _cd_s2:
                 st.error("As senhas não conferem.")
@@ -338,6 +343,15 @@ with st.sidebar:
                         )
                     st.metric("Total sugerido no mês",
                               _fmt_brl(_total_geral))
+# --- Rodapé: documentos legais (RM Vértice Digital) ---
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    '<div style="font-size:0.78rem; line-height:1.7;">'
+    '<a href="https://rmverticedigital.com/privacidade.html" target="_blank">Política de Privacidade</a><br>'
+    '<a href="https://rmverticedigital.com/termos.html" target="_blank">Termos de Uso</a>'
+    '</div>',
+    unsafe_allow_html=True,
+)
 if _mostrar_logo(240):
     st.markdown(
         "<h4 style='text-align:center;color:#033560;margin-top:-10px'>"
