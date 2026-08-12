@@ -18,6 +18,7 @@ from ia_utils import (
 )
 from ia_sancoes import LABEL_SANCAO as _LABEL_SANCAO
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
+import branding
 
 _COR_SANCAO = {
     "advertencia":  colors.HexColor("#F39C12"),
@@ -111,7 +112,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
     story = []
 
     # ── Cabeçalho ────────────────────────────────────────────────────────────
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
+    story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Dosimetria de Sanções Administrativas", _ESTILO_H1))
     story.append(Paragraph(
         "Arts. 156-159 e 178 — Lei 14.133/2021",

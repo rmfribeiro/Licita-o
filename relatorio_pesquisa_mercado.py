@@ -11,6 +11,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
+import branding
 import disclaimers  # >>> DISCLAIMER (1/4): importa os textos centralizados
 
 def _norm(s: str) -> str:
@@ -76,7 +77,7 @@ def gerar_mapa_precos(
     )
     story: list = []
 
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _TITULO))
+    story.extend(branding.cabecalho_pdf(_TITULO))
     story.append(Paragraph("Mapa de Preços", _H1))
     story.append(Paragraph(html.escape(objeto), _H2))
     story.append(Paragraph(
@@ -237,7 +238,7 @@ def gerar_relatorio_pesquisa(
     )
     story: list = []
 
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _TITULO))
+    story.extend(branding.cabecalho_pdf(_TITULO))
     story.append(Paragraph("Relatório de Pesquisa de Preços de Mercado", _H1))
     story.append(Paragraph("Art. 23, Lei 14.133/2021 + IN SEGES/MGI 65/2021", _PEQUENO))
     story.append(Paragraph(

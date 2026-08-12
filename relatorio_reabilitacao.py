@@ -10,6 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS
+import branding
 
 from ia_reabilitacao import TIPOS_SANCAO as _LABEL_SANCAO
 import disclaimers  # >>> DISCLAIMER (1/4): importa os textos centralizados
@@ -84,7 +85,7 @@ def gerar_relatorio_tecnico(
     )
     story = []
 
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _TITULO))
+    story.extend(branding.cabecalho_pdf(_TITULO))
     story.append(Paragraph("Reabilitação de Fornecedor — Relatório Técnico", _H1))
     story.append(Paragraph("Art. 163, Par. Único, Lei 14.133/2021", _PEQUENO))
     story.append(Paragraph(

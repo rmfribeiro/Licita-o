@@ -10,6 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import as_list as _as_list
+import branding
 from ia_fid import FASES_PROCESSO
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
@@ -67,7 +68,7 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
     )
     story: list = []
 
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
+    story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Instituto da Diligência", _ESTILO_H1))
     story.append(Paragraph(
         "Art. 42, §2º · Art. 59, §2º · Art. 64, I e II — Lei 14.133/2021",

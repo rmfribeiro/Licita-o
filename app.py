@@ -92,7 +92,26 @@ def _get_api_key():
 
 
 b = branding.carregar()
-st.set_page_config(page_title="RM Lisura — Auditoria de Editais", page_icon="📄", layout="wide")
+# Icone da aba do navegador: usa o monograma da marca quando o arquivo existe;
+# sem ele, mantem o emoji (o Streamlit quebra se receber caminho inexistente).
+_icone_marca = branding.caminho("icone") or "📄"
+st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
+                   page_icon=_icone_marca, layout="wide")
+
+
+def _mostrar_logo(largura: int = 280) -> bool:
+    """Exibe a logomarca centralizada. Devolve False se nao houver arquivo,
+    para quem chama decidir o texto substituto."""
+    _p = branding.caminho("logo")
+    if not _p:
+        return False
+    try:
+        _esq, _meio, _dir = st.columns([1, 2, 1])
+        with _meio:
+            st.image(_p, width=largura)
+        return True
+    except Exception:
+        return False
 
 # =====================================================================
 # --- Autenticação por usuário (Supabase) ---
@@ -109,7 +128,14 @@ if _erro_auth_cfg:
 _usuario_logado = st.session_state.get("usuario_logado")
 
 if not _usuario_logado:
-    st.title("Acesso ao RM Lisura")
+    if _mostrar_logo(300):
+        st.markdown(
+            "<p style='text-align:center;color:#555;margin-top:-8px'>"
+            "Conformidade e Integridade nas Contratações Públicas</p>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.title("Acesso ao RM Lisura")
     _t_login, _t_cadastro, _t_esqueci = st.tabs(
         ["🔑 Entrar", "🆕 Criar conta", "🔓 Esqueci a senha"]
     )
@@ -312,19 +338,16 @@ with st.sidebar:
                         )
                     st.metric("Total sugerido no mês",
                               _fmt_brl(_total_geral))
-_logo_file = b.get("logo")
-_logo_path = os.path.join(AQUI, _logo_file) if _logo_file else ""
-_logo_visivel = False
-if _logo_file and os.path.isfile(_logo_path):
-    try:
-        st.image(_logo_path, width=280)
-        _logo_visivel = True
-    except Exception:
-        pass
-if not _logo_visivel:
+if _mostrar_logo(240):
+    st.markdown(
+        "<h4 style='text-align:center;color:#033560;margin-top:-10px'>"
+        "Conformidade e Integridade nas Contratações Públicas</h4>",
+        unsafe_allow_html=True,
+    )
+else:
     st.markdown(f"#### {b['empresa']}")
     st.caption(b["tagline"])
-st.title("RM Lisura — Conformidade e Integridade nas Contratações Públicas")
+    st.title("RM Lisura — Conformidade e Integridade nas Contratações Públicas")
 
 aba1, aba2, aba3, aba4, aba5, aba6, aba7, aba8, aba9, aba10, aba11 = st.tabs([
     "📄 Auditoria de Edital",

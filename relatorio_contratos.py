@@ -10,6 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float, fmt_brl_opcional as _fmt_brl_opcional
+import branding
 from ia_contratos import TIPOS_ALTERACAO, NORM_PARECER_CONT as _NORM_PARECER_CONT
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
@@ -78,7 +79,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
+    story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Analisador de Alterações Contratuais", _ESTILO_H1))
     story.append(Paragraph(
         "Art. 124 II 'd' · Art. 25 §8º · Art. 137 §2º — Lei 14.133/2021 · Art. 37 XXI CF/88",

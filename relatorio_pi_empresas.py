@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
+import branding
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
@@ -71,7 +72,7 @@ def gerar_pdf(
     story = []
 
     # Cabeçalho
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
+    story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Avaliação do Programa de Integridade (PI)", _ESTILO_H1))
     story.append(Paragraph("Decreto 12.304/2024 · Lei 14.133/2021 · Lei 12.846/2013", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))

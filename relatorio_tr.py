@@ -16,6 +16,7 @@ from ia_utils import (
     aviso_adequacao_story as _aviso_adequacao_story,
 )
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
+import branding
 
 _COR_ADEQUACAO = {k: colors.HexColor(v) for k, v in _COR_ADEQUACAO_HEX.items()}
 
@@ -115,7 +116,7 @@ def gerar_pdf(
     tipo_label = _TIPO_LABEL.get(tipo_objeto, tipo_objeto)
 
     # Cabeçalho
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
+    story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Auditoria de Termo de Referência", _ESTILO_H1))
     story.append(Paragraph("IN SEGES/MGI 81/2022 · Lei 14.133/2021, art. 6º, XXIII", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Tipo de objeto: {html.escape(tipo_label)}", _ESTILO_PEQUENO))

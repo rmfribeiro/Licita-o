@@ -11,6 +11,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float, fmt_brl_opcional as _fmt_brl_opcional
+import branding
 from ia_recebimento import TIPOS_OBJETO, NORM_PARECER_RECV as _NORM_PARECER_RECV
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
@@ -130,7 +131,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
     )
     story = []
 
-    story.append(Paragraph("RM Lisura — RM Vértice Digital", _ESTILO_TITULO))
+    story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Monitor de Recebimento Contratual", _ESTILO_H1))
     story.append(Paragraph("Art. 140, I e II — Lei 14.133/2021", _ESTILO_PEQUENO))
     story.append(Paragraph(
