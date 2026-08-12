@@ -99,7 +99,7 @@ st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
 
 
-def _mostrar_logo(largura: int = 170) -> bool:
+def _mostrar_logo(largura: int = 130) -> bool:
     """Exibe a logomarca com a assinatura logo abaixo, ambas centralizadas.
     Devolve False se nao houver arquivo, para quem chama decidir o texto
     substituto.
@@ -142,7 +142,7 @@ if not _usuario_logado:
     # A logomarca e quase quadrada (o nome ocupa duas linhas sob o simbolo),
     # entao a largura em pixels rende bem mais altura do que se imagina —
     # numeros modestos aqui evitam que ela domine a tela.
-    if _mostrar_logo(190):
+    if _mostrar_logo(140):
         st.markdown(
             "<p style='text-align:center;color:#555;margin-top:-8px'>"
             "Conformidade e Integridade nas Contratações Públicas</p>",
@@ -366,7 +366,7 @@ st.sidebar.markdown(
     '</div>',
     unsafe_allow_html=True,
 )
-if _mostrar_logo(150):
+if _mostrar_logo(115):
     st.markdown(
         "<h4 style='text-align:center;color:#033560;margin-top:-10px'>"
         "Conformidade e Integridade nas Contratações Públicas</h4>",
