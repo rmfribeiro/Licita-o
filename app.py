@@ -92,8 +92,16 @@ def _get_api_key():
 
 
 b = branding.carregar()
-# Icone da aba do navegador: usa o monograma da marca quando o arquivo existe;
-# sem ele, mantem o emoji (o Streamlit quebra se receber caminho inexistente).
+
+# ---------------------------------------------------------------------------
+# VERSAO DO CODIGO NO AR
+# ---------------------------------------------------------------------------
+# O Streamlit Cloud mantem os modulos em cache depois do push: publicar nao
+# basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
+# o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
+# de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
+VERSAO_APP = "2026.08.12-1"
+VERSAO_NOTAS = "indice so por regras; filtro de truncamento; diagnostico de extracao"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -366,6 +374,7 @@ st.sidebar.markdown(
     '</div>',
     unsafe_allow_html=True,
 )
+st.sidebar.caption(f"versão {VERSAO_APP}")
 if _mostrar_logo(115):
     st.markdown(
         "<h4 style='text-align:center;color:#033560;margin-top:-10px'>"
