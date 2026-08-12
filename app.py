@@ -433,6 +433,28 @@ with aba1:
                                "— provável PDF escaneado. Aplique OCR e reenvie. Nenhum índice foi calculado "
                                "para não gerar resultado falso.")
                     st.stop()
+                # Qualidade da extracao pagina a pagina. O precisa_ocr acima so
+                # pega o PDF inteiramente escaneado; o caso comum e a extracao
+                # falhar em ALGUMAS paginas — e o parecer sair baseado num
+                # edital esburacado sem que ninguem perceba.
+                _diag = A.diagnosticar_extracao(paginas)
+                st.session_state["_diag_extracao_edital"] = _diag
+                if _diag["falhas"]:
+                    _lista = ", ".join(str(n) for n in _diag["falhas"][:12])
+                    _resto = "…" if len(_diag["falhas"]) > 12 else ""
+                    _msg = (
+                        f"Extração incompleta: {len(_diag['falhas'])} de {_diag['total']} "
+                        f"página(s) sem texto legível ({_diag['pct_falha']}%) — página(s) "
+                        f"{_lista}{_resto}. O que estava nessas páginas NÃO foi auditado."
+                    )
+                    if _diag["confiavel"]:
+                        st.warning(_msg + " Confira se nelas havia cláusula relevante.")
+                    else:
+                        st.error(
+                            _msg + " Volume alto demais para um parecer confiável: "
+                            "aplique OCR no arquivo (ou exporte o PDF de novo, "
+                            "com camada de texto) e reenvie."
+                        )
                 apont = A.analisar(texto, REGRAS)
                 if usar_ia:
                     try:

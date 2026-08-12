@@ -49,10 +49,53 @@ def extrair_texto(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         for i, page in enumerate(pdf.pages, 1):
             t = page.extract_text() or ""
+            # 2a tentativa com outro motor: o pdfplumber perde texto em certos
+            # layouts (colunas, tabelas, fontes embutidas de forma atipica),
+            # devolvendo pagina vazia ou truncada. Nesses casos o pypdf costuma
+            # recuperar o conteudo — fica com a extracao mais completa das duas.
+            if len(t.strip()) < 200:
+                try:
+                    from pypdf import PdfReader
+                    _alt = (PdfReader(pdf_path).pages[i - 1].extract_text() or "")
+                    if len(_alt.strip()) > len(t.strip()):
+                        t = _alt
+                except Exception:
+                    pass
             paginas.append((i, t))
     texto = "\n".join(t for _, t in paginas)
     # se o PDF for escaneado (sem texto), aqui entraria o OCR gerenciado
     return texto, paginas
+
+
+# Abaixo deste tamanho a pagina e tratada como falha de extracao. Uma pagina de
+# edital com texto de verdade passa facil de 400 caracteres; abaixo disso ou e
+# capa, ou e pagina de imagem/assinatura, ou o motor nao conseguiu ler.
+MIN_CHARS_POR_PAGINA = 250
+
+
+def diagnosticar_extracao(paginas):
+    """Mede a qualidade da extracao pagina a pagina.
+
+    O precisa_ocr() cobre so o caso extremo (PDF inteiro escaneado). O caso
+    frequente e pior: a maioria das paginas sai bem e ALGUMAS saem vazias ou
+    cortadas — o edital chega esburacado a analise, a IA aponta 'texto
+    truncado' e cada execucao aponta buracos diferentes. Aqui identificamos
+    exatamente quais paginas falharam, para avisar o usuario e a IA.
+    """
+    total = len(paginas)
+    if not total:
+        return {"total": 0, "falhas": [], "pct_falha": 0.0, "confiavel": False}
+    falhas = [n for n, t in paginas if len((t or "").strip()) < MIN_CHARS_POR_PAGINA]
+    pct = len(falhas) / total
+    return {
+        "total": total,
+        "falhas": falhas,
+        "pct_falha": round(pct * 100, 1),
+        # Acima de 15% de paginas falhas o parecer nao pode ser tratado como
+        # completo: pode haver clausula relevante justamente no que faltou.
+        "confiavel": pct <= 0.15,
+    }
+
 
 def precisa_ocr(texto, paginas):
     """Detecta PDF escaneado / sem camada de texto: ha paginas, mas quase nenhum

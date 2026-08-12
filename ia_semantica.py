@@ -133,17 +133,35 @@ def montar_prompt(texto_edital, regras_semanticas, rag):
     # como se fosse defeito do documento do orgao — achado falso que assusta o
     # cliente e polui o parecer.
     _recortado = len(texto_edital) > MAX_CHARS_EDITAL
+    # Aviso unico sobre a qualidade do texto. Vale para as duas origens de
+    # buraco: o recorte que NOS fazemos em editais longos e as falhas de
+    # extracao do PDF (paginas que o motor nao conseguiu ler). Em ambos os
+    # casos o defeito e do texto que entregamos, nao do edital do orgao —
+    # e listar esses buracos um a um enche o parecer de achado inutil e faz
+    # cada execucao apontar buracos diferentes.
+    _origem = (
+        f"por limite de tamanho, o edital ({len(texto_edital):,} caracteres) foi "
+        "RECORTADO POR ESTA FERRAMENTA: vao o inicio integral e, apos a marca [...], "
+        "apenas os trechos selecionados como relevantes"
+    ).replace(",", ".") if _recortado else (
+        "o texto foi extraido automaticamente de um PDF e a extracao PODE TER "
+        "FALHADO em partes do documento"
+    )
     _aviso_recorte = (
-        "\nAVISO SOBRE O TEXTO FORNECIDO: por limite de tamanho, o edital original "
-        f"({len(texto_edital):,} caracteres) foi RECORTADO POR ESTA FERRAMENTA — vao "
-        "o inicio integral e, apos a marca [...], apenas os trechos selecionados como "
-        "relevantes. Interrupcoes, saltos de numeracao e frases cortadas decorrem DESSE "
-        "RECORTE, nao de falha do edital. NAO registre achado de 'edital truncado', "
-        "'texto incompleto' ou 'documento interrompido'. Do mesmo modo, nao conclua que "
-        "uma clausula esta AUSENTE apenas por nao encontra-la: se o ponto do checklist "
-        "nao aparecer no texto recebido, use status 'revisar' explicando que a verificacao "
-        "depende do edital completo.\n"
-    ).replace(",", ".") if _recortado else ""
+        "\nAVISO SOBRE O TEXTO FORNECIDO: "
+        f"{_origem}. Portanto, frases cortadas, itens que comecam e nao terminam, "
+        "saltos de numeracao e secoes que parecem incompletas decorrem DO TEXTO QUE "
+        "VOCE RECEBEU, e nao de defeito do edital.\n"
+        "REGRAS DECORRENTES, de cumprimento obrigatorio:\n"
+        "1. NAO registre achados do tipo 'texto truncado', 'edital incompleto', "
+        "'item X incompleto', 'secao interrompida' ou equivalente. Eles nao sao "
+        "achados de auditoria e serao descartados.\n"
+        "2. NAO conclua que uma clausula esta AUSENTE apenas por nao encontra-la. "
+        "Se um ponto do checklist nao aparecer, use status 'revisar' dizendo que a "
+        "verificacao depende do documento integral.\n"
+        "3. Analise o que ESTA legivel. Um edital com trechos ilegiveis ainda permite "
+        "auditar tudo o que foi lido.\n"
+    )
     usuario = (
         f"{instrucoes}\n{_aviso_recorte}\n=== BASE LEGAL (Lei 14.133/2021) ===\n{base_legal}\n\n"
         f"=== CHECKLIST ===\n{checklist}\n\n"
@@ -155,6 +173,33 @@ def montar_prompt(texto_edital, regras_semanticas, rag):
     return usuario
 
 
+# Achados que descrevem defeito do TEXTO EXTRAIDO, nao do edital. O prompt ja
+# pede para nao produzi-los, mas prompt e pedido, nao garantia: aqui eles sao
+# descartados no codigo. Sem esta trava o parecer enche de "item 5.2 incompleto"
+# — ruido que muda a cada execucao e assusta o cliente com um defeito que e nosso.
+_RE_ACHADO_DE_TRUNCAMENTO = re.compile(
+    r"(texto|edital|documento|se[cç][aã]o|item|conte[uú]do|trecho|p[aá]gina)?\s*"
+    r"(truncad|incomplet|interrompid|cortad|ilegivel|ileg[ií]vel|n[aã]o fornecid|"
+    r"faltando parte|parcialmente extra)",
+    re.IGNORECASE,
+)
+
+
+def _e_achado_de_extracao(a: dict) -> bool:
+    """True quando o 'achado' apenas descreve buraco do texto que enviamos."""
+    alvo = f"{a.get('item','')} {a.get('detalhe','')}"[:400]
+    if not _RE_ACHADO_DE_TRUNCAMENTO.search(alvo):
+        return False
+    # Nao descarta quando o apontamento e substantivo: ausencia de anexo
+    # obrigatorio, por exemplo, e achado legitimo mesmo citando "nao fornecido".
+    substantivo = re.search(
+        r"art\.|artigo|lei 14\.133|obrigat[oó]ri|deve constar|exig[eê]ncia|"
+        r"veda|nulidade|il[eé]gal",
+        alvo, re.IGNORECASE,
+    )
+    return not substantivo
+
+
 def _normalizar_achados(achados):
     """Valida e normaliza a saida do LLM: descarta itens malformados, forca os
     enums de status/severidade e garante todos os campos esperados."""
@@ -163,6 +208,8 @@ def _normalizar_achados(achados):
     out = []
     for i, a in enumerate(achados):
         if not isinstance(a, dict):
+            continue
+        if _e_achado_de_extracao(a):
             continue
         status = str(a.get("status", "revisar")).strip().lower()
         if status not in STATUS_VALIDOS:
