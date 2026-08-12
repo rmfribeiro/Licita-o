@@ -313,13 +313,43 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     apont_restante    = [a for a in apont if a["id"] not in ids_ia_acionaveis]
     return novos_acionaveis + apont_restante
 
+def _e_da_ia(a) -> bool:
+    """Achado produzido pela camada semantica (LLM), e nao pelas regras."""
+    return a.get("fonte") == "IA (semantica)" or a.get("tipo") == "semantica"
+
+
 def indice_de_risco(apont):
-    # pontos de risco = soma dos pesos de inconformidades e alertas
-    risco = sum(PESO.get(a["severidade"], 0) for a in apont if a["status"] in ("inconformidade", "alerta"))
-    max_risco = sum(PESO.get(a["severidade"], 0) for a in apont)
+    """Indice 0-100 calculado SOMENTE sobre a camada automatica de regras.
+
+    Por que excluir a IA: o indice e o numero que o orgao le primeiro e o que
+    sustenta a decisao. A camada de regras e deterministica — o mesmo edital
+    devolve sempre o mesmo resultado, e cada ponto e rastreavel ate um artigo.
+    Ja o LLM oscila entre execucoes (medido: um mesmo item classificado ora
+    'alerta', ora 'revisar', movendo o indice de 5 para 0 no mesmo edital).
+    Um indice que muda sozinho e indefensavel perante o TCU e destroi a
+    confianca do cliente.
+
+    Os achados da IA NAO desaparecem: seguem no relatorio, contados a parte por
+    contar_atencao_ia(), como pontos que exigem leitura do jurista.
+    """
+    base = [a for a in apont if not _e_da_ia(a)]
+    risco = sum(PESO.get(a["severidade"], 0) for a in base
+                if a["status"] in ("inconformidade", "alerta"))
+    max_risco = sum(PESO.get(a["severidade"], 0) for a in base)
     pct = round(100 * risco / max_risco) if max_risco else 0
     nivel = "BAIXO" if pct < 25 else "MEDIO" if pct < 55 else "ALTO"
     return pct, nivel
+
+
+def contar_atencao_ia(apont) -> dict:
+    """Conta, a parte do indice, o que a camada de IA levantou."""
+    ia = [a for a in apont if _e_da_ia(a)]
+    return {
+        "total": len(ia),
+        "inconformidade": sum(1 for a in ia if a["status"] == "inconformidade"),
+        "alerta": sum(1 for a in ia if a["status"] == "alerta"),
+        "revisar": sum(1 for a in ia if a["status"] == "revisar"),
+    }
 
 # ----------------------------------------------------------------- relatorio
 COR_STATUS = {
@@ -347,6 +377,14 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
         f'<div class="marca-sub">{e(_assinatura)}</div></div>'
         if _logo_uri else
         f'<div class="marca"><div class="marca-sub">{e(_assinatura)}</div></div>'
+    )
+    # Os achados da IA nao entram no indice, mas precisam ser anunciados aqui —
+    # senao o leitor conclui que "risco 0" significa "nada a verificar".
+    _ia = contar_atencao_ia(apont)
+    bloco_ia = (
+        f'<br>A camada de IA levantou <b>{_ia["total"]} ponto(s) de atencao</b> '
+        "que NAO afetam este indice e dependem de leitura do jurista."
+        if _ia["total"] else ""
     )
     n_inc = sum(1 for a in apont if a["status"] == "inconformidade")
     n_ale = sum(1 for a in apont if a["status"] == "alerta")
@@ -435,6 +473,11 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
       <div class="track"><div class="fill"></div></div>
       <div style="margin-top:10px; font-size:13px;">Nivel de atencao: <b style="color:{cor_at}">{nivel_at}</b>
         <span style="color:#7a8a99">&mdash; {det_at}</span></div>
+      <div style="margin-top:8px; font-size:11.5px; color:#7a8a99; line-height:1.5">
+        Calculado <b>somente sobre a camada automatica de regras</b>, deterministica e
+        rastreavel artigo por artigo &mdash; o mesmo edital produz sempre o mesmo indice.
+        {bloco_ia}
+      </div>
     </div>
   </div>
 
