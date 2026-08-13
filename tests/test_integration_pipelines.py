@@ -145,7 +145,20 @@ class TestETPPipeline:
         _assert_valid_pdf(pdf)
 
     def test_adequacao_inadequado_no_relatorio(self):
-        parecer_api = {**self._PARECER_API, "adequacao_geral": "INADEQUADO"}
+        # A conclusao e derivada dos status: para sair INADEQUADO tem de haver
+        # dimensao critica. Antes bastava a IA escrever "INADEQUADO", o que
+        # permitia veredito incoerente com as dimensoes listadas logo abaixo.
+        parecer_api = {
+            **self._PARECER_API,
+            "adequacao_geral": "INADEQUADO",
+            "dimensoes": {
+                **self._PARECER_API.get("dimensoes", {}),
+                "levantamento_mercado": {
+                    "status": "critico",
+                    "descricao": "Sem pesquisa de precos.",
+                },
+            },
+        }
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer_api)):
             parecer = ia_etp.analisar_etp("ETP incompleto.", _KEY)
         assert parecer["adequacao_geral"] == "INADEQUADO"

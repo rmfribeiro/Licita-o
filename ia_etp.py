@@ -4,10 +4,25 @@ from ia_utils import chamar_api as _chamar_api, normalizar_adequacao as _normali
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
+# O sistema NOMEIA as 8 dimensões e pede descrição objetiva, espelhando o do
+# módulo de TR — que, com essa formulação, produziu dois pareceres idênticos.
+# A versão anterior dizia apenas "avalie as 8 dimensões obrigatórias", sem
+# nomeá-las: instrução vaga, e o resultado foi o mesmo ETP saindo "ADEQUADO COM
+# RESSALVAS" numa execução e "INADEQUADO" na seguinte, com 86 linhas de texto
+# divergente.
 _SISTEMA = (
     "Você é um auditor especialista em contratações públicas federais brasileiras. "
     "Analise o Estudo Técnico Preliminar (ETP) fornecido à luz da IN SEGES/MGI 58/2022 "
-    "e do art. 18 da Lei 14.133/2021. Avalie cada uma das 8 dimensões obrigatórias do ETP. "
+    "e do art. 18 da Lei 14.133/2021. Avalie as 8 dimensões obrigatórias: "
+    "descricao_necessidade, alinhamento_estrategico, requisitos_contratacao, "
+    "levantamento_mercado, estimativa_quantidade_valor, sustentabilidade, "
+    "parcelamento, posicionamento_conclusivo. "
+    "Para cada dimensão, atribua status ok/alerta/critico e uma descrição OBJETIVA "
+    "de no máximo 3 frases, citando o item do documento quando possível. "
+    "Use 'critico' apenas para falha que compromete a legalidade da contratação; "
+    "'alerta' para lacuna que exige complementação; 'ok' quando a dimensão está "
+    "atendida. Não emita juízo sobre a adequação geral: ela é calculada a partir "
+    "dos status que você atribuir. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
     + ia_utils.SUFIXO_SEGURANCA
 )

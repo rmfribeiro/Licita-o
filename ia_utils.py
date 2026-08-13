@@ -288,9 +288,54 @@ _ADEQ_VALIDOS: frozenset[str] = frozenset({"ADEQUADO", "ADEQUADO COM RESSALVAS",
 AVISO_CAMPO_VAZIO = "campo em branco"
 
 
+def adequacao_por_dimensoes(dimensoes: dict) -> str | None:
+    """Deriva a conclusão do parecer DOS STATUS das dimensões, por regra fixa.
+
+    POR QUE (medido em 13/08/2026 com um ETP real): a conclusão vinha da IA, e o
+    mesmo documento saiu "ADEQUADO COM RESSALVAS" numa execução e "INADEQUADO" na
+    seguinte. É a pior variação possível — é a linha que o gestor lê primeiro.
+
+    Além de instável, a conclusão livre podia ser INCOERENTE com o próprio
+    parecer: nada impedia "ADEQUADO" com uma dimensão marcada como crítica.
+
+    Regra (conservadora, e a mesma que um jurista aplicaria):
+      alguma dimensão crítica            -> INADEQUADO
+      alguma dimensão em alerta          -> ADEQUADO COM RESSALVAS
+      todas ok                           -> ADEQUADO
+
+    Devolve None quando não há dimensões avaliadas — aí o chamador preserva o
+    que veio da IA, para não inventar conclusão sobre o vazio.
+    """
+    if not isinstance(dimensoes, dict) or not dimensoes:
+        return None
+    status = []
+    for v in dimensoes.values():
+        s = (v or {}).get("status") if isinstance(v, dict) else None
+        if s:
+            status.append(str(s).strip().lower())
+    if not status:
+        return None
+    if any(s in ("critico", "crítico") for s in status):
+        return "INADEQUADO"
+    if any(s == "alerta" for s in status):
+        return "ADEQUADO COM RESSALVAS"
+    return "ADEQUADO"
+
+
 def normalizar_adequacao(parecer: dict, modulo: str) -> None:
-    """Pop stale advisory key, normalize adequacao_geral, set advisory when value is unrecognized."""
+    """Normaliza a conclusão do parecer e a DERIVA das dimensões quando possível.
+
+    A conclusão deixou de ser opinião do modelo: quando há dimensões avaliadas,
+    ela é calculada por regra fixa (ver adequacao_por_dimensoes). Isso resolve
+    de uma vez dois problemas medidos em 13/08/2026: a instabilidade (o mesmo
+    ETP saiu "ADEQUADO COM RESSALVAS" e "INADEQUADO" em duas execuções) e a
+    possível incoerência entre o veredito e os status listados logo abaixo dele.
+
+    Quando a IA discorda da regra, o valor original fica guardado em
+    `_adequacao_ia` — não se descarta informação, apenas não se decide por ela.
+    """
     parecer.pop("_aviso_adequacao", None)
+    parecer.pop("_adequacao_ia", None)
     _raw = parecer.get("adequacao_geral")
     _adeq = "INADEQUADO" if _raw is None else str(_raw).strip().upper()
     if _adeq not in _ADEQ_VALIDOS:
@@ -299,6 +344,16 @@ def normalizar_adequacao(parecer: dict, modulo: str) -> None:
         )
         parecer["_aviso_adequacao"] = _raw
         _adeq = "INADEQUADO"
+
+    _derivada = adequacao_por_dimensoes(parecer.get("dimensoes"))
+    if _derivada and _derivada != _adeq:
+        parecer["_adequacao_ia"] = _adeq
+        _logging.info(
+            "%s: adequacao da IA (%s) substituida pela derivada das dimensoes (%s)",
+            modulo, _adeq, _derivada,
+        )
+        _adeq = _derivada
+
     parecer["adequacao_geral"] = _adeq
 
 

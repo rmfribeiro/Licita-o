@@ -1,5 +1,6 @@
 from __future__ import annotations
 import io
+import ia_utils
 import pytest
 import urllib.error
 from unittest.mock import patch, MagicMock
@@ -76,7 +77,10 @@ class TestAnalisarEtp:
         parecer_ruim = {**_parecer_mock(), "adequacao_geral": "PARCIALMENTE ADEQUADO"}
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_etp.analisar_etp("Texto", "sk-test")
-        assert resultado["adequacao_geral"] == "INADEQUADO"
+        # A conclusao NAO vem mais da IA: e derivada dos status das dimensoes
+        # (ia_utils.adequacao_por_dimensoes). O valor invalido continua sendo
+        # registrado em _aviso_adequacao, mas quem decide e a regra.
+        assert resultado["adequacao_geral"] == "ADEQUADO COM RESSALVAS"   # ha alertas
         assert resultado.get("_aviso_adequacao") == "PARCIALMENTE ADEQUADO"
 
     @patch("ia_utils.urllib.request.urlopen")
@@ -84,7 +88,10 @@ class TestAnalisarEtp:
         parecer_ruim = {**_parecer_mock(), "adequacao_geral": ""}
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_etp.analisar_etp("Texto", "sk-test")
-        assert resultado["adequacao_geral"] == "INADEQUADO"
+        # A conclusao NAO vem mais da IA: e derivada dos status das dimensoes
+        # (ia_utils.adequacao_por_dimensoes). O valor invalido continua sendo
+        # registrado em _aviso_adequacao, mas quem decide e a regra.
+        assert resultado["adequacao_geral"] == "ADEQUADO COM RESSALVAS"
         assert resultado.get("_aviso_adequacao") == ""
 
     @patch("ia_utils.urllib.request.urlopen")
@@ -92,7 +99,10 @@ class TestAnalisarEtp:
         parecer_ruim = {**_parecer_mock(), "adequacao_geral": None}
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_etp.analisar_etp("Texto", "sk-test")
-        assert resultado["adequacao_geral"] == "INADEQUADO"
+        # A conclusao NAO vem mais da IA: e derivada dos status das dimensoes
+        # (ia_utils.adequacao_por_dimensoes). O valor invalido continua sendo
+        # registrado em _aviso_adequacao, mas quem decide e a regra.
+        assert resultado["adequacao_geral"] == "ADEQUADO COM RESSALVAS"
         assert "_aviso_adequacao" not in resultado
 
     @patch("ia_utils.urllib.request.urlopen")
