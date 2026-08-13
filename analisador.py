@@ -308,7 +308,20 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     # IA sobrescreve itens automáticos com mesmo ID, mas apenas quando encontrou algo
     # acionável (alerta/inconformidade/revisar). 'ok' da IA não suprime o 'revisar'
     # automático — preserva comportamento conservador.
-    novos_acionaveis  = [n for n in novos if n["status"] != "ok"]
+    #
+    # EXCECAO: as verificacoes cruzadas (X01..X05) sao perguntas obrigatorias e
+    # precisam constar do relatorio SEMPRE, inclusive quando a resposta e "ok" —
+    # registrar "conferido e conforme" e parte da entrega. Sem esta excecao, uma
+    # verificacao respondida como conforme simplesmente desaparecia da lista, e o
+    # leitor nao tinha como saber se ela foi feita (aconteceu com o X05 em
+    # 12/08/2026, gerando dois relatorios com quantidades diferentes de itens).
+    try:
+        from ia_semantica import VERIFICACOES_CRUZADAS as _VC
+        _ids_cruzadas = {c["id"] for c in _VC}
+    except ImportError:
+        _ids_cruzadas = set()
+    novos_acionaveis  = [n for n in novos
+                         if n["status"] != "ok" or n["id"] in _ids_cruzadas]
     ids_ia_acionaveis = {n["id"] for n in novos_acionaveis}
     apont_restante    = [a for a in apont if a["id"] not in ids_ia_acionaveis]
     return novos_acionaveis + apont_restante
@@ -408,7 +421,10 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     n_ale = sum(1 for a in _regras if a["status"] == "alerta")
     n_rev = sum(1 for a in _regras if a["status"] == "revisar")
     n_ok = sum(1 for a in _regras if a["status"] == "ok")
-    n_ia = _ia["total"]
+    n_ia   = _ia["total"]
+    ia_inc = _ia["inconformidade"]
+    ia_ale = _ia["alerta"]
+    ia_rev = _ia["revisar"]
     cor_nivel = _COR_NIVEL.get(nivel, "#888")
     # nivel de atencao: dirigido pela PIOR severidade entre inconformidades/alertas
     # DAS REGRAS, coerente com o indice.
@@ -507,16 +523,22 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
 
   <div class="rotulo-bloco">Camada automatica de regras &mdash; deterministica, base do indice</div>
   <div class="cards">
-    <div class="card"><div class="n" style="color:#C0392B">{n_inc}</div><div class="l">Inconformidades</div></div>
-    <div class="card"><div class="n" style="color:#E67E22">{n_ale}</div><div class="l">Alertas</div></div>
-    <div class="card"><div class="n" style="color:#2E75B6">{n_rev}</div><div class="l">A revisar</div></div>
+    <div class="card"><div class="n" style="color:#C0392B">{n_inc}</div><div class="l">Inconformidades (regras)</div></div>
+    <div class="card"><div class="n" style="color:#E67E22">{n_ale}</div><div class="l">Alertas (regras)</div></div>
+    <div class="card"><div class="n" style="color:#2E75B6">{n_rev}</div><div class="l">A revisar (regras)</div></div>
     <div class="card"><div class="n" style="color:#27AE60">{n_ok}</div><div class="l">Itens presentes</div></div>
   </div>
 
   <div class="rotulo-bloco">Camada de IA &mdash; apoio a leitura, fora do indice</div>
   <div class="cards">
+    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#C0392B">{ia_inc}</div>
+      <div class="l">Apontadas como inconformidade pela IA</div></div>
+    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#E67E22">{ia_ale}</div>
+      <div class="l">Alertas da IA</div></div>
+    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#6C3483">{ia_rev}</div>
+      <div class="l">A revisar (IA)</div></div>
     <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#6C3483">{n_ia}</div>
-      <div class="l">Pontos de atencao levantados pela IA</div></div>
+      <div class="l">Total de pontos da IA</div></div>
   </div>
   <div class="nota-camadas">
     Os numeros das duas camadas sao contados <b>separadamente</b> de proposito. A camada de

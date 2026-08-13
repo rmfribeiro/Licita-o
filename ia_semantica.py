@@ -378,7 +378,44 @@ def _consolidar_cruzadas(achados):
             a["categoria"] = a.get("categoria") or "Verificacao cruzada"
             cruzadas.append(a)
 
-    return demais + cruzadas + extras[:MAX_ACHADOS_EXTRA]
+    # Descarta o achado livre que apenas repete, com outras palavras, uma
+    # verificacao cruzada. O prompt proibe, mas o modelo reincide: em 12/08/2026
+    # os tres EXTRA de uma rodada eram copias do X01, do X02 e do X04. Repetir o
+    # mesmo apontamento em duas linhas faz o relatorio parecer descuidado e infla
+    # a contagem de pontos de atencao.
+    extras_uteis = [a for a in extras if not _duplica_cruzada(a, cruzadas)]
+    return demais + cruzadas + extras_uteis[:MAX_ACHADOS_EXTRA]
+
+
+# Assunto de cada verificacao cruzada, para reconhecer repeticao. Basta que o
+# achado livre toque no mesmo par de conceitos (ex.: "prazo" + "termo de
+# referencia") para ser tratado como copia.
+_ASSUNTO_CRUZADA = {
+    "X01": (("prazo",), ("entrega", "execucao", "execução")),
+    "X02": (("pagamento",), ("forma", "prazo", "vista", "dias", "divergen", "contradi")),
+    "X03": (("data", "exercicio", "exercício"), ("coeren", "incoeren", "divergen", "futur", "orcament", "orçament")),
+    "X04": (("anexo",), ("numera", "existe", "ausen", "incorret", "correspond", "incoeren")),
+    "X05": (("lei", "decreto", "norma", "instrucao", "instrução"), ("cita", "identifica", "localiz", "data", "vigenc", "vigênc")),
+}
+
+
+def _norm_simples(s: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFD", str(s or "").lower())
+    return "".join(c for c in s if unicodedata.category(c) != "Mn")
+
+
+def _duplica_cruzada(achado: dict, cruzadas: list) -> bool:
+    """True se o achado livre repete o assunto de uma verificacao cruzada."""
+    texto = _norm_simples(f"{achado.get('item','')} {achado.get('detalhe','')}")[:300]
+    presentes = {c["id"] for c in cruzadas}
+    for cid, (grupo_a, grupo_b) in _ASSUNTO_CRUZADA.items():
+        if cid not in presentes:
+            continue
+        if any(_norm_simples(t) in texto for t in grupo_a) and \
+           any(_norm_simples(t) in texto for t in grupo_b):
+            return True
+    return False
 
 
 def gerar_pareceres(texto_edital, regras, base_juridica_path,
