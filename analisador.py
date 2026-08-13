@@ -179,8 +179,19 @@ def analise_semantica(texto, regra):
 # -------------------------------------------------------------- motor de regras
 PESO = {"alta": 3, "media": 2, "baixa": 1}
 
+# Regras do checklist que foram SUBSTITUIDAS por verificacao deterministica.
+# Manter as duas produzia duas linhas sobre o mesmo assunto, e elas podiam se
+# contradizer no mesmo relatorio: o D01 concluia "42 dias uteis, prazo atendido"
+# enquanto o R03, avaliado pela IA, dizia "nao e possivel verificar". Diante do
+# cliente isso e pior do que nao ter a verificacao.
+REGRAS_SUBSTITUIDAS = {
+    "R03": "D01",   # prazo minimo do art. 55 -> verificacao_datas
+}
+
+
 def analisar(texto, regras):
     apontamentos = []
+    regras = [r for r in regras if r.get("id") not in REGRAS_SUBSTITUIDAS]
     red = {rid: msg_trecho for rid, *msg_trecho in detectores_red_flag(texto)}
 
     # Conferencia deterministica das datas (D01..D04). Fica FORA do laco das

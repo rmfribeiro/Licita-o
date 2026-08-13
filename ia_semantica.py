@@ -372,7 +372,13 @@ def _consolidar_cruzadas(achados):
     # mesmo apontamento em duas linhas faz o relatorio parecer descuidado e infla
     # a contagem de pontos de atencao.
     extras_uteis = [a for a in extras if not _duplica_cruzada(a, cruzadas)]
-    return demais + cruzadas + extras_uteis[:MAX_ACHADOS_EXTRA]
+    extras_uteis = extras_uteis[:MAX_ACHADOS_EXTRA]
+    # Renumera do zero. O id vinha do modelo e dependia de quantos achados foram
+    # descartados antes: o MESMO apontamento saia como EXTRA-2 numa execucao e
+    # EXTRA-3 na outra, fazendo dois relatorios identicos parecerem diferentes.
+    for i, a in enumerate(extras_uteis, 1):
+        a["id"] = f"EXTRA-{i}"
+    return demais + cruzadas + extras_uteis
 
 
 # Assunto de cada verificacao cruzada, para reconhecer repeticao. Basta que o
