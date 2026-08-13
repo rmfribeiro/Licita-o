@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-4"
-VERSAO_NOTAS = "detecta planilha de itens em anexo ausente e bloqueia a analise"
+VERSAO_APP = "2026.08.13-5"
+VERSAO_NOTAS = "corrige NameError quando a lista de itens vem vazia"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -2316,11 +2316,14 @@ with aba10:
             st.divider()
             st.markdown("#### Itens identificados no TR")
             _itens_extr = st.session_state.get("pm_itens_tr") or []
+            # _conf precisa existir nos DOIS caminhos: o bloqueio mais abaixo o
+            # consulta, e a lista vazia (resposta correta quando a planilha nao
+            # veio) caia no else, deixando a variavel indefinida.
+            _conf = {}
+            import ia_pesquisa_mercado as _ipm
             if _itens_extr:
                 def _safe_cell(s: object) -> str:
                     return _safe_md(s).replace("|", "∣").replace("\n", " ")
-
-                import ia_pesquisa_mercado as _ipm
 
                 def _qtd(v):
                     # Trata None, vazio E ZERO como ausencia. O zero era o caso
@@ -2366,7 +2369,22 @@ with aba10:
                         "Termo de Referência."
                     )
             else:
-                st.warning("Nenhum item identificado. Verifique se o TR contém lista de itens.")
+                # Lista vazia e a resposta CORRETA quando a planilha nao veio no
+                # arquivo. A conferencia identifica o motivo e da a orientacao.
+                try:
+                    _conf = _ipm.conferir_extracao(
+                        [], st.session_state.get("pm_texto_tr", "")
+                    )
+                except Exception:
+                    _conf = {}
+                if _conf.get("anexo_ausente"):
+                    st.error("⚠️ " + _conf["aviso"])
+                else:
+                    st.warning(
+                        "Nenhum item identificado. Verifique se o Termo de Referência "
+                        "contém a relação de itens (descrição e quantidade) neste mesmo "
+                        "arquivo — em muitos editais ela fica num anexo separado."
+                    )
 
             _orcamentos_pm = st.file_uploader(
                 "Orçamentos dos fornecedores (PDF ou DOCX, múltiplos arquivos)",
