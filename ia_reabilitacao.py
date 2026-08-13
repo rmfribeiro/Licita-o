@@ -1,5 +1,6 @@
 from __future__ import annotations
 import calendar
+import ia_utils
 import logging
 import types
 from datetime import date, datetime
@@ -217,7 +218,10 @@ def analisar(
     ]
 
     if texto_docs:
-        partes.append(f"\nDocumentos comprobatórios fornecidos:\n{texto_docs[:30000]}")
+        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
+        partes.append(f"\nDocumentos comprobatórios fornecidos:\n{_doc}")
+        if _aviso_corte:
+            partes.append(_aviso_corte)
     else:
         partes.append("\nNenhum documento adicional fornecido.")
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import types
+import ia_utils
 
 from ia_utils import (
     chamar_api as _chamar_api,
@@ -137,10 +138,12 @@ def analisar_dosimetria(
         )
 
     if texto_docs:
+        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="documento de apuração")
         partes.append(
-            f"\nDocumento de apuração dos fatos (relatório / termo de ocorrência):\n"
-            f"{texto_docs[:30000]}"
+            f"\nDocumento de apuração dos fatos (relatório / termo de ocorrência):\n{_doc}"
         )
+        if _aviso_corte:
+            partes.append(_aviso_corte)
     else:
         partes.append(
             "\nNenhum documento adicional fornecido. Analise com base nas informações "

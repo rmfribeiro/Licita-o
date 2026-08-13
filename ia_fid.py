@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import types
 from ia_utils import chamar_api as _chamar_api
+import ia_utils
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -98,7 +99,10 @@ def analisar(
     ]
 
     if texto_docs:
-        partes.append(f"\nDocumentos de habilitação fornecidos para análise:\n{texto_docs[:30000]}")
+        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
+        partes.append(f"\nDocumentos de habilitação fornecidos para análise:\n{_doc}")
+        if _aviso_corte:
+            partes.append(_aviso_corte)
     else:
         partes.append(
             "\nNenhum documento físico anexado. Analise com base na situação descrita "

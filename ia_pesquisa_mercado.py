@@ -2,6 +2,7 @@ from __future__ import annotations
 import statistics
 import types
 from ia_utils import chamar_api as _chamar_api, fmt_brl as _fmt_brl
+import ia_utils
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -84,9 +85,13 @@ def extrair_itens_tr(
     api_key: str,
     modelo: str = _MODELO_PADRAO,
 ) -> list[dict]:
+    # Corte com aviso: um TR cortado em silêncio fazia a extração perder itens
+    # do fim da lista — e ninguém percebia, porque a pesquisa de preços seguia
+    # normalmente com os itens que sobraram.
+    _tr, _aviso_corte = ia_utils.preparar_documento(texto_tr, rotulo="Termo de Referência")
     prompt = (
         f"Extraia os itens a contratar do seguinte Termo de Referência:\n\n"
-        f"{texto_tr[:30000]}\n\n"
+        f"{_tr}\n{_aviso_corte}\n"
         f"Retorne no formato JSON:\n{_ESTRUTURA_ITENS}"
     )
     resultado = _chamar_api(prompt, api_key, modelo, _SISTEMA_EXTRACAO)
@@ -156,9 +161,14 @@ def analisar(
         f"— qtd: {i.get('quantidade_estimada', 'não informada')}"
         for i in itens_tr
     )
+    # Aqui o corte silencioso era ainda mais grave: perder o fim do arquivo de
+    # orçamentos significa perder FORNECEDORES inteiros, e a mediana sai
+    # calculada sobre menos cotações do que o órgão apresentou — com efeito
+    # direto no preço de referência da contratação.
+    _orc, _aviso_corte = ia_utils.preparar_documento(texto_orcamentos, rotulo="conjunto de orçamentos")
     prompt_cotacoes = (
         f"Lista de itens da pesquisa:\n{_itens_texto}\n\n"
-        f"Orçamentos recebidos:\n{texto_orcamentos[:30000]}\n\n"
+        f"Orçamentos recebidos:\n{_orc}\n{_aviso_corte}\n"
         f"Retorne no formato JSON:\n{_ESTRUTURA_COTACOES}"
     )
     dados_cotacoes = _chamar_api(prompt_cotacoes, api_key, modelo, _SISTEMA_COTACOES)

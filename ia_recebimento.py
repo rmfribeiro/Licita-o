@@ -1,5 +1,6 @@
 from __future__ import annotations
 import types
+import ia_utils
 from ia_utils import (
     chamar_api as _chamar_api,
     fmt_brl_opcional as _fmt_brl_opcional,
@@ -164,7 +165,10 @@ def analisar(
         partes.append(f"{i}. {c}")
 
     if texto_docs:
-        partes.append(f"\nDocumentos fornecidos:\n{texto_docs[:30000]}")
+        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
+        partes.append(f"\nDocumentos fornecidos:\n{_doc}")
+        if _aviso_corte:
+            partes.append(_aviso_corte)
     else:
         partes.append(
             "\nNenhum documento adicional fornecido. Analise com base nas informações "

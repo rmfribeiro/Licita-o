@@ -2,6 +2,7 @@ from __future__ import annotations
 import types
 import logging
 from ia_utils import chamar_api as _chamar_api
+import ia_utils
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 _MATURIDADE_ORDEM = ["INEXISTENTE", "INICIAL", "EM DESENVOLVIMENTO", "CONSOLIDADO"]
@@ -129,7 +130,10 @@ def diagnosticar(
         )
 
     if texto_docs:
-        partes.append(f"\nDocumentos da prefeitura fornecidos:\n{texto_docs[:30000]}")
+        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
+        partes.append(f"\nDocumentos da prefeitura fornecidos:\n{_doc}")
+        if _aviso_corte:
+            partes.append(_aviso_corte)
 
     if parecer_ddi:
         pi = parecer_ddi.get("dimensoes", {}).get("programa_integridade", {})

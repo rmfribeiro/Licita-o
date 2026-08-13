@@ -55,6 +55,44 @@ def fmt_brl(valor: float) -> str:
 BLOQUEIO_LIMITE_PLANO = None
 
 
+# -----------------------------------------------------------------------------
+# PREPARO DO DOCUMENTO ENVIADO À IA
+# -----------------------------------------------------------------------------
+# Todos os módulos cortavam o documento com um `texto[:30000]` cru, herdado do
+# protótipo — e em silêncio. O custo disso foi medido em 12/08/2026 na Auditoria
+# de Edital, onde o limite era 50.000 para um edital de 157.407 caracteres:
+# DOIS TERÇOS do documento nunca eram auditados, e a IA, ao ver o texto cortado,
+# relatava "documento incompleto" — estava certa, e era defeito nosso.
+#
+# 300.000 caracteres são ~86 mil tokens: cabem com folga na janela de 200 mil do
+# modelo, junto com prompt e checklist. Praticamente todo contrato, TR ou edital
+# brasileiro entra inteiro.
+LIMITE_DOC_PADRAO = 300_000
+
+
+def preparar_documento(texto: str, limite: int = LIMITE_DOC_PADRAO,
+                       rotulo: str = "documento") -> tuple[str, str]:
+    """Prepara um documento para ir ao modelo. NUNCA corta em silêncio.
+
+    Devolve (texto, aviso). Quando há corte, o aviso deve ser inserido no
+    prompt: sem ele o modelo encontra a interrupção e a reporta como falha do
+    documento do órgão, gerando achado falso — e, pior, conclui que uma cláusula
+    "não existe" quando ela apenas ficou fora do trecho enviado.
+    """
+    t = texto or ""
+    if len(t) <= limite:
+        return t, ""
+    aviso = (
+        f"\nAVISO: o {rotulo} original tem {len(t)} caracteres e foi CORTADO POR "
+        f"ESTA FERRAMENTA em {limite}. O texto abaixo está incompleto por decisão "
+        "nossa, não por defeito do documento. NÃO registre achado de 'documento "
+        "truncado/incompleto' e NÃO conclua que uma exigência está ausente apenas "
+        "por não encontrá-la: nesse caso use status 'revisar', explicando que a "
+        "verificação depende do documento integral.\n"
+    ).replace(",", ".")
+    return t[:limite], aviso
+
+
 def chamar_anthropic(
     prompt: str,
     api_key: str,

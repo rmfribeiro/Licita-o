@@ -3,6 +3,7 @@ import types
 import urllib.error
 
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
+import ia_utils
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 
@@ -324,7 +325,10 @@ def avaliar(
             partes.append(f"- {QUESTOES_PI[p]} → {resp_txt} ({valor}/100)")
 
     if texto_docs:
-        partes.append(f"\nDocumentos fornecidos pela empresa:\n{texto_docs[:30000]}")
+        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
+        partes.append(f"\nDocumentos fornecidos pela empresa:\n{_doc}")
+        if _aviso_corte:
+            partes.append(_aviso_corte)
 
     partes.append(f"\nRetorne a análise qualitativa no formato:\n{_ESTRUTURA_PARECER}")
 
