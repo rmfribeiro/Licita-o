@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.12-8"
-VERSAO_NOTAS = "EXTRA renumerado; R03 substituido pelo D01"
+VERSAO_APP = "2026.08.12-9"
+VERSAO_NOTAS = "R03 fora do checklist da IA; renumeracao dos EXTRA revertida"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")

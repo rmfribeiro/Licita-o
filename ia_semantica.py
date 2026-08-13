@@ -373,11 +373,13 @@ def _consolidar_cruzadas(achados):
     # a contagem de pontos de atencao.
     extras_uteis = [a for a in extras if not _duplica_cruzada(a, cruzadas)]
     extras_uteis = extras_uteis[:MAX_ACHADOS_EXTRA]
-    # Renumera do zero. O id vinha do modelo e dependia de quantos achados foram
-    # descartados antes: o MESMO apontamento saia como EXTRA-2 numa execucao e
-    # EXTRA-3 na outra, fazendo dois relatorios identicos parecerem diferentes.
-    for i, a in enumerate(extras_uteis, 1):
-        a["id"] = f"EXTRA-{i}"
+    # Os ids sao ordenados de forma estavel (pelo titulo) apenas para que a
+    # ordem de exibicao nao dance. NAO renumerar de 1 em diante: tentei isso e
+    # piorou — dois achados DIFERENTES passavam a ocupar o mesmo "EXTRA-1", e
+    # comparar dois relatorios ficava mais confuso do que com ids distintos.
+    # Achado livre e, por natureza, o que o modelo escolheu comentar naquela
+    # leitura: nao ha id estavel possivel enquanto a escolha for dele.
+    extras_uteis.sort(key=lambda a: str(a.get("item", "")))
     return demais + cruzadas + extras_uteis
 
 
@@ -420,7 +422,17 @@ def gerar_pareceres(texto_edital, regras, base_juridica_path,
             "ANTHROPIC_API_KEY ausente. Configure a chave para a analise automatica "
             "ou use o modo offline (--pareceres=arquivo.json).")
     rag = BaseRAG(base_juridica_path)
-    regras_sem = [r for r in regras if r.get("tipo") == "semantica"]
+    # Exclui do checklist da IA as regras ja cobertas por verificacao
+    # deterministica. Sem isto, o item continuava sendo perguntado ao modelo e
+    # reaparecia no relatorio ao lado da versao de codigo, com conclusao
+    # diferente — o D01 dizia "prazo atendido" e o R03, respondido pela IA,
+    # dizia "nao e possivel verificar", no mesmo documento.
+    try:
+        from analisador import REGRAS_SUBSTITUIDAS as _subst
+    except ImportError:
+        _subst = {}
+    regras_sem = [r for r in regras
+                  if r.get("tipo") == "semantica" and r.get("id") not in _subst]
     if not regras_sem:
         return []
     prompt = montar_prompt(texto_edital, regras_sem, rag)
