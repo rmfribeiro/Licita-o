@@ -90,16 +90,10 @@ VERIFICACOES_CRUZADAS = (
             "e a ordem cronologica do art. 141. Aponte qualquer divergencia."
         ),
     },
-    {
-        "id": "X03",
-        "item": "Coerencia das datas e do exercicio orcamentario",
-        "o_que_checar": (
-            "Verifique se as datas do edital sao coerentes entre si (publicacao, "
-            "abertura, prazo minimo do art. 55, validade da proposta, vigencia "
-            "contratual) e se o exercicio orcamentario indicado corresponde ao ano do "
-            "certame. Sinalize data no passado, data impossivel ou exercicio divergente."
-        ),
-    },
+    # NAO recriar aqui uma verificacao de datas: ela virou codigo em
+    # verificacao_datas.py (achados D01..D04). Perguntar ao modelo se as datas
+    # batem produzia respostas contraditorias entre execucoes — "ha incoerencia"
+    # numa rodada, "estao conformes" na seguinte, sobre o mesmo edital.
     {
         "id": "X04",
         "item": "Anexos: existencia, numeracao e correspondencia",
@@ -393,7 +387,6 @@ def _consolidar_cruzadas(achados):
 _ASSUNTO_CRUZADA = {
     "X01": (("prazo",), ("entrega", "execucao", "execução")),
     "X02": (("pagamento",), ("forma", "prazo", "vista", "dias", "divergen", "contradi")),
-    "X03": (("data", "exercicio", "exercício"), ("coeren", "incoeren", "divergen", "futur", "orcament", "orçament")),
     "X04": (("anexo",), ("numera", "existe", "ausen", "incorret", "correspond", "incoeren")),
     "X05": (("lei", "decreto", "norma", "instrucao", "instrução"), ("cita", "identifica", "localiz", "data", "vigenc", "vigênc")),
 }

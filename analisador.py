@@ -183,6 +183,16 @@ def analisar(texto, regras):
     apontamentos = []
     red = {rid: msg_trecho for rid, *msg_trecho in detectores_red_flag(texto)}
 
+    # Conferencia deterministica das datas (D01..D04). Fica FORA do laco das
+    # regras porque nao depende de termos localizados no texto, e sim de
+    # aritmetica de calendario. Ver verificacao_datas.py para o motivo de isso
+    # ter saido das maos da IA.
+    try:
+        import verificacao_datas
+        apontamentos.extend(verificacao_datas.verificar(texto))
+    except Exception as e:                       # nunca derrubar a analise inteira
+        print("Aviso: verificacao de datas indisponivel:", e)
+
     for r in regras:
         encontrados = [t for t in r["termos"] if contem(texto, t)]
         trecho = None
