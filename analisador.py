@@ -193,6 +193,14 @@ def analisar(texto, regras):
     except Exception as e:                       # nunca derrubar a analise inteira
         print("Aviso: verificacao de datas indisponivel:", e)
 
+    # Conferencia deterministica dos anexos (A01..A03) — contar numeracao nao
+    # e trabalho de IA. Ver verificacao_anexos.py.
+    try:
+        import verificacao_anexos
+        apontamentos.extend(verificacao_anexos.verificar(texto))
+    except Exception as e:
+        print("Aviso: verificacao de anexos indisponivel:", e)
+
     for r in regras:
         encontrados = [t for t in r["termos"] if contem(texto, t)]
         trecho = None
@@ -297,22 +305,38 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     except ImportError:
         _st_ok  = {"inconformidade", "alerta", "revisar", "ok"}
         _sev_ok = {"alta", "media", "baixa"}
+    # Indice das regras por id: quando a IA responde a um item do CHECKLIST, o
+    # TITULO, a BASE LEGAL e a SEVERIDADE tem de continuar sendo os da regra.
+    # Sem isso, a mesma linha aparecia como "Exigências de qualificação técnica"
+    # (texto da IA, com acento) numa execucao e "Exigencias de qualificacao
+    # tecnica" (texto da regra) na outra — o relatorio mudava de nome conforme o
+    # modelo tivesse ou nao comentado aquele item. Da IA aproveitamos o que ela
+    # tem de melhor: o julgamento (status) e a explicacao (detalhe).
+    _regra_por_id = {a["id"]: a for a in apont}
+
     novos = []
     for pz in pareceres:
         sev    = str(pz.get("severidade", "media")).strip().lower()
         status = str(pz.get("status",     "revisar")).strip().lower()
         fundamento = _fundamento_do_achado(rag, pz)
+        _id = str(pz.get("id", f"P{len(novos)+1}")).strip()
+        _base = _regra_por_id.get(_id)
         novos.append({
-            "id":        str(pz.get("id", f"P{len(novos)+1}")).strip(),
-            "categoria": str(pz.get("categoria", "")).strip() or "Analise semantica",
-            "item":      str(pz.get("item", "(sem titulo)")).strip(),
-            "base_legal": "Lei 14.133/2021",
-            "severidade": sev    if sev    in _sev_ok else "media",
+            "id":        _id,
+            "categoria": (_base["categoria"] if _base else
+                          str(pz.get("categoria", "")).strip() or "Analise semantica"),
+            "item":      (_base["item"] if _base else
+                          str(pz.get("item", "(sem titulo)")).strip()),
+            "base_legal": _base["base_legal"] if _base else "Lei 14.133/2021",
+            "severidade": (_base["severidade"] if _base else
+                           (sev if sev in _sev_ok else "media")),
             "tipo":      "semantica",
             "status":    status  if status in _st_ok  else "revisar",
             "detalhe":   str(pz.get("detalhe", "")).strip(),
             "trecho":    str(pz.get("trecho") or ""),
-            "fonte":     "IA (semantica)",
+            # Marca que a linha nasceu de regra e foi enriquecida pela IA. Assim o
+            # rotulo de fonte tambem para de oscilar entre as duas execucoes.
+            "fonte":     "Regra + IA" if _base else "IA (semantica)",
             "fundamento": fundamento,
         })
     # IA sobrescreve itens automáticos com mesmo ID, mas apenas quando encontrou algo
@@ -337,7 +361,11 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     return novos_acionaveis + apont_restante
 
 def _e_da_ia(a) -> bool:
-    """Achado produzido pelo LLM, e nao pelas regras.
+    """Achado produzido SOMENTE pelo LLM, sem regra por tras.
+
+    "Regra + IA" nao entra aqui: sao itens do checklist que o modelo apenas
+    comentou. A linha e da regra (titulo, base legal e severidade vem dela) e
+    deve continuar contando na camada deterministica.
 
     CUIDADO com o criterio: usar `tipo == "semantica"` aqui e ERRADO, e foi um
     bug real (12/08/2026). As regras do checklist marcadas como tipo

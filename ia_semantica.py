@@ -94,16 +94,10 @@ VERIFICACOES_CRUZADAS = (
     # verificacao_datas.py (achados D01..D04). Perguntar ao modelo se as datas
     # batem produzia respostas contraditorias entre execucoes — "ha incoerencia"
     # numa rodada, "estao conformes" na seguinte, sobre o mesmo edital.
-    {
-        "id": "X04",
-        "item": "Anexos: existencia, numeracao e correspondencia",
-        "o_que_checar": (
-            "Confira se todo anexo citado no edital existe no documento, se a numeracao "
-            "e continua e se o titulo citado corresponde ao conteudo do anexo. Aponte "
-            "anexo mencionado e nao localizado, numeracao repetida ou fora de ordem, e "
-            "remissao a anexo com nome divergente."
-        ),
-    },
+    # NAO recriar aqui a conferencia de anexos: virou codigo em
+    # verificacao_anexos.py (achados A01..A03). Contar numeracao e verificar
+    # sequencia e aritmetica; perguntar isso ao modelo produzia "inconformidade",
+    # "alerta" e "revisar" para o mesmo edital em execucoes diferentes.
     {
         "id": "X05",
         "item": "Identificacao das normas citadas",
@@ -387,7 +381,6 @@ def _consolidar_cruzadas(achados):
 _ASSUNTO_CRUZADA = {
     "X01": (("prazo",), ("entrega", "execucao", "execução")),
     "X02": (("pagamento",), ("forma", "prazo", "vista", "dias", "divergen", "contradi")),
-    "X04": (("anexo",), ("numera", "existe", "ausen", "incorret", "correspond", "incoeren")),
     "X05": (("lei", "decreto", "norma", "instrucao", "instrução"), ("cita", "identifica", "localiz", "data", "vigenc", "vigênc")),
 }
 
