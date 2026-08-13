@@ -386,14 +386,21 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
         "que NAO afetam este indice e dependem de leitura do jurista."
         if _ia["total"] else ""
     )
-    n_inc = sum(1 for a in apont if a["status"] == "inconformidade")
-    n_ale = sum(1 for a in apont if a["status"] == "alerta")
-    n_rev = sum(1 for a in apont if a["status"] == "revisar")
-    n_ok = sum(1 for a in apont if a["status"] == "ok")
+    # Os cards contam SO a camada de regras, pela mesma razao do indice: eram a
+    # unica parte da tela que ainda somava os achados da IA, e o resultado era
+    # contraditorio — "1 Alerta" ao lado de "risco 0", porque aquele alerta vinha
+    # da IA e nao pontuava. Quem le um parecer nao deve precisar deduzir isso.
+    # O que a IA levantou aparece em card proprio, ao lado.
+    _regras = [a for a in apont if not _e_da_ia(a)]
+    n_inc = sum(1 for a in _regras if a["status"] == "inconformidade")
+    n_ale = sum(1 for a in _regras if a["status"] == "alerta")
+    n_rev = sum(1 for a in _regras if a["status"] == "revisar")
+    n_ok = sum(1 for a in _regras if a["status"] == "ok")
+    n_ia = _ia["total"]
     cor_nivel = _COR_NIVEL.get(nivel, "#888")
-    # nivel de atencao: dirigido pela PIOR severidade entre inconformidades/alertas,
-    # distinto do indice numerico (que mede risco agregado de nulidade do merito)
-    inc_ale = [a for a in apont if a["status"] in ("inconformidade", "alerta")]
+    # nivel de atencao: dirigido pela PIOR severidade entre inconformidades/alertas
+    # DAS REGRAS, coerente com o indice.
+    inc_ale = [a for a in _regras if a["status"] in ("inconformidade", "alerta")]
     n_alta_g = sum(1 for a in inc_ale if a["severidade"] == "alta")
     n_media_g = sum(1 for a in inc_ale if a["severidade"] == "media")
     nivel_at = "ALTO" if n_alta_g else ("MEDIO" if n_media_g else "BAIXO")
@@ -459,6 +466,11 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
   .marca {{ text-align:center; margin-bottom:14px; }}
   .marca img {{ width:150px; height:auto; }}
   .marca-sub {{ font-size:11.5px; color:#5a6b7b; margin-top:2px; letter-spacing:.2px; }}
+  .rotulo-bloco {{ font-size:11.5px; font-weight:700; color:#5a6b7b; text-transform:uppercase;
+                   letter-spacing:.4px; margin:18px 0 6px; }}
+  .nota-camadas {{ font-size:11.5px; color:#7a8a99; line-height:1.6; background:#fff;
+                   border:1px solid #e2e8f0; border-left:3px solid #6C3483;
+                   border-radius:6px; padding:10px 12px; margin:-10px 0 24px; }}
 </style></head><body><div class="wrap">
   {_marca_html}
   <header>
@@ -481,11 +493,24 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     </div>
   </div>
 
+  <div class="rotulo-bloco">Camada automatica de regras &mdash; deterministica, base do indice</div>
   <div class="cards">
     <div class="card"><div class="n" style="color:#C0392B">{n_inc}</div><div class="l">Inconformidades</div></div>
     <div class="card"><div class="n" style="color:#E67E22">{n_ale}</div><div class="l">Alertas</div></div>
-    <div class="card"><div class="n" style="color:#2E75B6">{n_rev}</div><div class="l">A revisar (IA/jurista)</div></div>
+    <div class="card"><div class="n" style="color:#2E75B6">{n_rev}</div><div class="l">A revisar</div></div>
     <div class="card"><div class="n" style="color:#27AE60">{n_ok}</div><div class="l">Itens presentes</div></div>
+  </div>
+
+  <div class="rotulo-bloco">Camada de IA &mdash; apoio a leitura, fora do indice</div>
+  <div class="cards">
+    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#6C3483">{n_ia}</div>
+      <div class="l">Pontos de atencao levantados pela IA</div></div>
+  </div>
+  <div class="nota-camadas">
+    Os numeros das duas camadas sao contados <b>separadamente</b> de proposito. A camada de
+    regras e reproduzivel: o mesmo edital devolve sempre os mesmos numeros. A camada de IA
+    varia de uma leitura para outra, como variaria a marcacao de dois leitores humanos &mdash;
+    por isso ela sugere onde olhar, mas nao pontua e nao afirma inconformidade sozinha.
   </div>
 
   <table>{linhas}
