@@ -1,4 +1,5 @@
 from __future__ import annotations
+import ia_utils
 from ia_utils import chamar_api as _chamar_api, normalizar_adequacao as _normalizar_adequacao
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
@@ -8,6 +9,7 @@ _SISTEMA = (
     "Analise o Estudo Técnico Preliminar (ETP) fornecido à luz da IN SEGES/MGI 58/2022 "
     "e do art. 18 da Lei 14.133/2021. Avalie cada uma das 8 dimensões obrigatórias do ETP. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    + ia_utils.SUFIXO_SEGURANCA
 )
 
 _ESTRUTURA_PARECER = """{
@@ -31,11 +33,19 @@ _ESTRUTURA_PARECER = """{
 def analisar_etp(texto: str, api_key: str, modelo: str = _MODELO_PADRAO) -> dict:
     if not texto or not texto.strip():
         raise ValueError("Texto do ETP está vazio — faça o upload de um arquivo com conteúdo.")
+    # O ETP vem isolado em bloco delimitado: ate 13/08/2026 o texto do usuario
+    # entrava cru no prompt, sem protecao contra instrucoes escondidas no
+    # documento — e sem limite de tamanho proprio.
+    _bloco, _aviso_corte = ia_utils.bloco_documento(texto, rotulo="ETP", marca="ETP")
     prompt = (
-        f"Analise o seguinte Estudo Técnico Preliminar (ETP) e documentos complementares:\n\n"
-        f"{texto}\n\n"
+        f"Analise o seguinte Estudo Técnico Preliminar (ETP) e documentos complementares.\n"
+        f"{_aviso_corte}\n"
+        f"{_bloco}\n\n"
         f"Retorne o parecer de auditoria no formato:\n{_ESTRUTURA_PARECER}"
     )
-    parecer = _chamar_api(prompt, api_key, modelo, _SISTEMA, max_tokens=3000)
+    # max_tokens 3.000 era apertado: sao 8 dimensoes com descricao, mais pontos
+    # criticos, recomendacoes e base legal. JSON truncado vira parecer com
+    # dimensoes faltando — e o reparo de JSON as descarta em silencio.
+    parecer = _chamar_api(prompt, api_key, modelo, _SISTEMA, max_tokens=8000)
     _normalizar_adequacao(parecer, "ia_etp")
     return parecer
