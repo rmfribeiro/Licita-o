@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-1"
-VERSAO_NOTAS = "fim do corte silencioso de documentos nos 8 modulos"
+VERSAO_APP = "2026.08.13-2"
+VERSAO_NOTAS = "extracao do TR: exige todos os itens, avisa lacuna e quantidade ausente"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -2317,14 +2317,42 @@ with aba10:
                 def _safe_cell(s: object) -> str:
                     return _safe_md(s).replace("|", "∣").replace("\n", " ")
 
+                def _qtd(v):
+                    # `.get(chave, '—')` NAO cobre o caso de a chave existir com
+                    # valor None — e era o que acontecia: a tabela mostrava a
+                    # palavra "None" em toda a coluna de quantidade.
+                    if v is None or str(v).strip() in ("", "None", "null"):
+                        return "não informada"
+                    return _safe_cell(v)
+
                 _tbl_header = "| # | Descrição | Unidade | Qtd estimada |\n|---|-----------|---------|-------------|\n"
                 _tbl_rows   = "\n".join(
                     f"| {i.get('id', idx + 1)} | {_safe_cell(i.get('descricao', ''))} "
                     f"| {_safe_cell(i.get('unidade', 'un'))} "
-                    f"| {i.get('quantidade_estimada', '—')} |"
+                    f"| {_qtd(i.get('quantidade_estimada'))} |"
                     for idx, i in enumerate(_itens_extr)
                 )
                 st.markdown(_tbl_header + _tbl_rows)
+
+                # Confere se a numeracao tem buracos — item que nao foi extraido
+                # e item que sera contratado sem pesquisa de preco.
+                try:
+                    import ia_pesquisa_mercado as _ipm
+                    _conf = _ipm.conferir_extracao(_itens_extr)
+                    if not _conf["completa"]:
+                        st.error("⚠️ " + _conf["aviso"])
+                except Exception:
+                    pass
+
+                _sem_qtd = [str(i.get("id", "?")) for i in _itens_extr
+                            if i.get("quantidade_estimada") in (None, "", "None")]
+                if _sem_qtd:
+                    st.warning(
+                        f"Sem quantidade estimada: item(ns) {', '.join(_sem_qtd[:20])}"
+                        f"{'…' if len(_sem_qtd) > 20 else ''}. A quantidade é necessária "
+                        "para o cálculo do valor total estimado (art. 23) — confirme no "
+                        "Termo de Referência."
+                    )
             else:
                 st.warning("Nenhum item identificado. Verifique se o TR contém lista de itens.")
 

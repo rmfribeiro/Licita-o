@@ -65,7 +65,14 @@ _SISTEMA_EXTRACAO = (
     "Você é um assistente especialista em licitações públicas brasileiras. "
     "Extraia os itens a serem contratados do Termo de Referência fornecido. "
     "Para cada item identifique: descrição, unidade de medida e quantidade estimada. "
-    "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON.\n"
+    "REGRA CRÍTICA: extraia TODOS os itens da relação, SEM EXCEÇÃO e SEM RESUMIR. "
+    "Se o Termo de Referência traz 40 itens, devolva os 40 — mesmo que sejam "
+    "parecidos entre si (tamanhos, cores ou variações do mesmo produto contam como "
+    "itens distintos). NUNCA use reticências, 'entre outros', 'etc.' ou qualquer "
+    "forma de abreviar a lista. Preserve a NUMERAÇÃO ORIGINAL do documento no campo "
+    "'id': se o item é o 15 do Termo de Referência, o id é 15. Item omitido significa "
+    "item comprado sem pesquisa de preço."
 )
 
 _ESTRUTURA_ITENS = """{
@@ -94,12 +101,53 @@ def extrair_itens_tr(
         f"{_tr}\n{_aviso_corte}\n"
         f"Retorne no formato JSON:\n{_ESTRUTURA_ITENS}"
     )
-    resultado = _chamar_api(prompt, api_key, modelo, _SISTEMA_EXTRACAO)
+    # max_tokens generoso: a resposta é uma LISTA, e o padrão de 4.000 tokens
+    # trunca a partir de ~40 itens. Quando isso acontece, o reparo de JSON
+    # devolve a lista cortada sem reclamar — itens somem em silêncio.
+    resultado = _chamar_api(prompt, api_key, modelo, _SISTEMA_EXTRACAO, max_tokens=16000)
     itens = resultado.get("itens") or []
     for i, item in enumerate(itens, start=1):
         if "id" not in item:
             item["id"] = i
     return itens
+
+
+def conferir_extracao(itens: list[dict]) -> dict:
+    """Verifica se a extração parece completa, olhando a numeração.
+
+    Motivo (medido em 13/08/2026 com um TR real da UFF): a IA devolveu os itens
+    1 a 6 e depois o 15 — os oito do meio simplesmente não vieram, e nada no
+    sistema percebeu. A pesquisa seguiria adiante cotando 7 de 15 itens, e o
+    parecer sairia com aparência de completo. Numa contratação real, é comprar
+    sem pesquisa de preço.
+
+    Devolve {'completa': bool, 'faltando': [...], 'total': n, 'aviso': str}.
+    """
+    ids = []
+    for it in itens:
+        try:
+            ids.append(int(it.get("id")))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return {"completa": False, "faltando": [], "total": 0,
+                "aviso": "Nenhum item foi identificado no Termo de Referência. "
+                         "Confira o arquivo enviado antes de prosseguir."}
+    faltando = [n for n in range(1, max(ids) + 1) if n not in set(ids)]
+    if not faltando:
+        return {"completa": True, "faltando": [], "total": len(ids), "aviso": ""}
+    lista = ", ".join(str(n) for n in faltando[:20]) + ("…" if len(faltando) > 20 else "")
+    return {
+        "completa": False,
+        "faltando": faltando,
+        "total": len(ids),
+        "aviso": (
+            f"EXTRAÇÃO PROVAVELMENTE INCOMPLETA: foram identificados {len(ids)} itens, "
+            f"mas a numeração vai até {max(ids)} — não vieram os itens {lista}. "
+            "Confira o Termo de Referência e acrescente manualmente o que faltar: "
+            "item sem cotação é item contratado sem pesquisa de preço."
+        ),
+    }
 
 
 _SISTEMA_COTACOES = (
