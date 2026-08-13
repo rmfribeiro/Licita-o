@@ -19,9 +19,23 @@ import os, json, re, hashlib, urllib.error
 from ia_utils import extrair_json as _extrair_json, chamar_anthropic as _chamar_anthropic
 
 MODELO_PADRAO = os.environ.get("IA_LICITA_MODELO", "claude-haiku-4-5-20251001")
-MAX_CHARS_EDITAL    = 50_000   # teto total enviado ao modelo
-CHARS_INICIO        = 25_000   # preamble sempre incluido (datas, modalidade, criterios)
-CHARS_COMPLEMENTO   = 25_000   # reserva para trechos relevantes do restante
+# -----------------------------------------------------------------------------
+# QUANTO DO EDITAL VAI PARA A ANALISE
+# -----------------------------------------------------------------------------
+# Estes numeros eram 50.000 / 25.000 / 25.000 — limite herdado do prototipo, de
+# quando as janelas de contexto eram pequenas. O custo disso foi medido em
+# 12/08/2026 com um edital real (Pregao 015/2026, 78 paginas): 157.407
+# caracteres, dos quais so 50.000 (32%) chegavam ao modelo. Dois tercos do
+# edital NAO ERAM AUDITADOS — e o texto picotado que sobrava fazia a IA relatar
+# "itens incompletos" (ela estava certa) e variar entre execucoes.
+#
+# O edital inteiro ocupa ~45.000 tokens: 22% da janela de 200.000 do modelo.
+# Nao havia razao para o corte. Com 400.000 caracteres praticamente todo edital
+# brasileiro entra integralmente; acima disso a selecao por relevancia continua
+# valendo como rede de seguranca.
+MAX_CHARS_EDITAL    = 400_000  # teto total enviado ao modelo (~114 mil tokens)
+CHARS_INICIO        = 200_000  # preamble sempre incluido (datas, modalidade, criterios)
+CHARS_COMPLEMENTO   = 200_000  # reserva para trechos relevantes do restante
 
 STATUS_VALIDOS = {"inconformidade", "alerta", "revisar", "ok"}
 SEV_VALIDAS = {"alta", "media", "baixa"}
