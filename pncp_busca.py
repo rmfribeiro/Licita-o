@@ -31,7 +31,7 @@ import time
 import re
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date as _date
 
 # Reaproveita o calculo que ja existe no sistema (nao duplica logica)
 import ia_pesquisa_mercado
@@ -126,6 +126,33 @@ FALHAS_HTTP = 0
 # usuario esperando minutos a fio.
 _INICIO = None
 TEMPO_ESGOTADO = False
+
+
+# -----------------------------------------------------------------------------
+# DEFESO ELEITORAL
+# -----------------------------------------------------------------------------
+# O proprio PNCP avisa no portal que, durante o defeso eleitoral, "alguns links
+# poderao estar temporariamente restritos". Em 2026 o periodo vai de 04/07 a
+# 25/10 (visto no portal em 13/08/2026). Sem essa explicacao, uma busca vazia
+# nesses meses parece defeito do nosso app — ou, pior, leva o orgao a concluir
+# que nao existem contratacoes do objeto quando o que houve foi restricao de
+# acesso na origem. CONFERIR A CADA ELEICAO: as datas mudam.
+DEFESO_ELEITORAL = (_date(2026, 7, 4), _date(2026, 10, 25))
+
+
+def _aviso_defeso_eleitoral(hoje=None) -> str:
+    hoje = hoje or _date.today()
+    ini, fim = DEFESO_ELEITORAL
+    if not (ini <= hoje <= fim):
+        return ""
+    return (
+        f" ATENÇÃO: entre {ini.strftime('%d/%m/%Y')} e {fim.strftime('%d/%m/%Y')} "
+        "vigora o defeso eleitoral, período em que o próprio PNCP informa que parte "
+        "dos seus serviços pode ficar temporariamente restrita. Ausência de "
+        "resultados neste período NÃO comprova ausência de contratações: complemente "
+        "a pesquisa com orçamentos de fornecedores (IN SEGES/MGI 65/2021, art. 5º) e "
+        "registre essa circunstância no processo."
+    )
 
 
 def _tempo_esgotado() -> bool:
@@ -423,12 +450,14 @@ def buscar_precos_pncp(
                 f"durante a busca — o portal pode estar instável ou em manutenção "
                 f"neste horário. NÃO significa que não existam contratações de "
                 f"'{termo}'. Tente novamente em alguns minutos."
+                + _aviso_defeso_eleitoral()
             )
         else:
             _parecer_vazio = (
                 f"Nenhuma contratacao encontrada no PNCP para o termo '{termo}' "
                 f"nos ultimos {_dias} dias. Sugestao: usar termo mais generico, "
                 f"ampliar o periodo ou incluir mais UFs."
+                + _aviso_defeso_eleitoral()
             )
         return {
             "status_geral":         ia_pesquisa_mercado.STATUS_PESQUISA["INVÁLIDA"],
