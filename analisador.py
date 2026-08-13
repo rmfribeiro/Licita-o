@@ -314,8 +314,20 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     return novos_acionaveis + apont_restante
 
 def _e_da_ia(a) -> bool:
-    """Achado produzido pela camada semantica (LLM), e nao pelas regras."""
-    return a.get("fonte") == "IA (semantica)" or a.get("tipo") == "semantica"
+    """Achado produzido pelo LLM, e nao pelas regras.
+
+    CUIDADO com o criterio: usar `tipo == "semantica"` aqui e ERRADO, e foi um
+    bug real (12/08/2026). As regras do checklist marcadas como tipo
+    "semantica" — as que exigem leitura interpretativa — sao AUTOMATICAS: nascem
+    em analisar(), com fonte "Automatico". Incluir o tipo na condicao classificava
+    15 regras legitimas como se fossem da IA: elas sumiam da base do indice
+    (distorcendo o denominador) e inflavam o contador de pontos da IA (22 exibidos
+    para 7 achados reais).
+
+    O unico marcador confiavel e a FONTE, atribuida em aplicar_pareceres_lista()
+    exclusivamente ao que voltou do modelo.
+    """
+    return a.get("fonte") == "IA (semantica)"
 
 
 def indice_de_risco(apont):
