@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-2"
-VERSAO_NOTAS = "extracao do TR: exige todos os itens, avisa lacuna e quantidade ausente"
+VERSAO_APP = "2026.08.13-4"
+VERSAO_NOTAS = "detecta planilha de itens em anexo ausente e bloqueia a analise"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -2302,6 +2302,9 @@ with aba10:
                         )
                     st.session_state["pm_objeto"]   = _objeto_pm
                     st.session_state["pm_itens_tr"] = _itens_pm
+                    # Guarda o texto do TR: a conferencia precisa dele para
+                    # detectar que a planilha de itens ficou num anexo separado.
+                    st.session_state["pm_texto_tr"] = _texto_tr_pm
                     st.session_state["pm_etapa"]    = 1
                 except Exception as _e_pm:
                     _msg_pm = str(_e_pm)
@@ -2317,18 +2320,25 @@ with aba10:
                 def _safe_cell(s: object) -> str:
                     return _safe_md(s).replace("|", "∣").replace("\n", " ")
 
+                import ia_pesquisa_mercado as _ipm
+
                 def _qtd(v):
-                    # `.get(chave, '—')` NAO cobre o caso de a chave existir com
-                    # valor None — e era o que acontecia: a tabela mostrava a
-                    # palavra "None" em toda a coluna de quantidade.
-                    if v is None or str(v).strip() in ("", "None", "null"):
-                        return "não informada"
-                    return _safe_cell(v)
+                    # Trata None, vazio E ZERO como ausencia. O zero era o caso
+                    # perigoso: a IA o usava quando nao achava a quantidade, e
+                    # ele passava por dado real, zerando o valor total estimado.
+                    n = _ipm.quantidade_valida(v)
+                    return "não informada" if n is None else _safe_cell(
+                        f"{n:,.0f}".replace(",", ".") if float(n).is_integer() else f"{n}")
+
+                def _desc(v):
+                    # "Item 6" nao e descricao — e a IA preenchendo a lacuna.
+                    d = _ipm.descricao_valida(v)
+                    return _safe_cell(d) if d else "**descrição não identificada**"
 
                 _tbl_header = "| # | Descrição | Unidade | Qtd estimada |\n|---|-----------|---------|-------------|\n"
                 _tbl_rows   = "\n".join(
-                    f"| {i.get('id', idx + 1)} | {_safe_cell(i.get('descricao', ''))} "
-                    f"| {_safe_cell(i.get('unidade', 'un'))} "
+                    f"| {i.get('id', idx + 1)} | {_desc(i.get('descricao'))} "
+                    f"| {_safe_cell(i.get('unidade') or 'un')} "
                     f"| {_qtd(i.get('quantidade_estimada'))} |"
                     for idx, i in enumerate(_itens_extr)
                 )
@@ -2336,16 +2346,18 @@ with aba10:
 
                 # Confere se a numeracao tem buracos — item que nao foi extraido
                 # e item que sera contratado sem pesquisa de preco.
+                _conf = {}
                 try:
-                    import ia_pesquisa_mercado as _ipm
-                    _conf = _ipm.conferir_extracao(_itens_extr)
+                    _conf = _ipm.conferir_extracao(
+                        _itens_extr, st.session_state.get("pm_texto_tr", "")
+                    )
                     if not _conf["completa"]:
                         st.error("⚠️ " + _conf["aviso"])
                 except Exception:
                     pass
 
                 _sem_qtd = [str(i.get("id", "?")) for i in _itens_extr
-                            if i.get("quantidade_estimada") in (None, "", "None")]
+                            if _ipm.quantidade_valida(i.get("quantidade_estimada")) is None]
                 if _sem_qtd:
                     st.warning(
                         f"Sem quantidade estimada: item(ns) {', '.join(_sem_qtd[:20])}"
@@ -2363,11 +2375,23 @@ with aba10:
                 key="pm_orcamentos",
             )
 
+            # Quando a planilha de itens nao veio no arquivo, seguir adiante
+            # produziria uma pesquisa de precos sobre itens deduzidos de mencoes
+            # avulsas — com aparencia de valida. O aviso sozinho nao basta: e
+            # preciso impedir o passo seguinte.
+            _bloqueado_anexo = bool(_conf.get("anexo_ausente"))
+            if _bloqueado_anexo:
+                st.info(
+                    "A análise fica bloqueada até que o anexo com a planilha de itens "
+                    "seja enviado no campo do Termo de Referência acima. Se a planilha "
+                    "for um arquivo separado, junte-a ao TR num único PDF ou envie o "
+                    "anexo no lugar dele."
+                )
             if st.button(
                 "Analisar Pesquisa de Mercado →",
                 type="primary",
                 key="btn_pm_analisar",
-                disabled=not _orcamentos_pm,
+                disabled=not _orcamentos_pm or _bloqueado_anexo,
             ):
                 if not _api_key_pm:
                     st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")

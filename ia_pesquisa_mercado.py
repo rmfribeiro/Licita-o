@@ -2,6 +2,7 @@ from __future__ import annotations
 import statistics
 import types
 from ia_utils import chamar_api as _chamar_api, fmt_brl as _fmt_brl
+import re
 import ia_utils
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
@@ -66,13 +67,29 @@ _SISTEMA_EXTRACAO = (
     "Extraia os itens a serem contratados do Termo de Referência fornecido. "
     "Para cada item identifique: descrição, unidade de medida e quantidade estimada. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON.\n"
-    "REGRA CRÍTICA: extraia TODOS os itens da relação, SEM EXCEÇÃO e SEM RESUMIR. "
-    "Se o Termo de Referência traz 40 itens, devolva os 40 — mesmo que sejam "
-    "parecidos entre si (tamanhos, cores ou variações do mesmo produto contam como "
-    "itens distintos). NUNCA use reticências, 'entre outros', 'etc.' ou qualquer "
+    "REGRA CRÍTICA 1 — LISTA COMPLETA: extraia TODOS os itens da relação, SEM EXCEÇÃO "
+    "e SEM RESUMIR. Se o Termo de Referência traz 40 itens, devolva os 40 — mesmo que "
+    "sejam parecidos entre si (tamanhos, cores ou variações do mesmo produto contam "
+    "como itens distintos). NUNCA use reticências, 'entre outros', 'etc.' ou qualquer "
     "forma de abreviar a lista. Preserve a NUMERAÇÃO ORIGINAL do documento no campo "
     "'id': se o item é o 15 do Termo de Referência, o id é 15. Item omitido significa "
-    "item comprado sem pesquisa de preço."
+    "item comprado sem pesquisa de preço.\n"
+    "REGRA CRÍTICA 2 — NÃO INVENTE DADO: quando um campo não estiver legível ou não "
+    "constar do documento, devolva null. NUNCA use 0 (zero) para quantidade que você "
+    "não encontrou: zero é um número válido e será tratado como quantidade real, "
+    "zerando o valor total estimado da contratação. NUNCA descreva um item como "
+    "'Item 6', 'Produto 3' ou equivalente: se não conseguir ler a descrição, devolva "
+    "null em 'descricao'. Campo vazio é informação; campo inventado é erro que passa "
+    "despercebido.\n"
+    "REGRA CRÍTICA 3 — SÓ EXTRAIA DA RELAÇÃO OFICIAL: os itens devem vir da planilha "
+    "ou tabela que RELACIONA O OBJETO a contratar (com descrição e quantidade). NÃO "
+    "monte a lista a partir de menções soltas em outras seções — critérios de "
+    "aceitação, obrigações da contratada, fiscalização ou sanções citam itens de "
+    "passagem e NÃO são a relação do objeto. Se a planilha não estiver no texto "
+    "recebido (é comum o Termo de Referência remeter a um 'Anexo I-A' que não veio "
+    "junto), devolva a lista VAZIA: {\"itens\": [], \"motivo\": \"planilha de itens "
+    "não consta do documento\"}. Lista vazia com motivo é resposta correta; lista "
+    "deduzida de menções avulsas vira pesquisa de preços sobre itens que não existem."
 )
 
 _ESTRUTURA_ITENS = """{
@@ -82,6 +99,12 @@ _ESTRUTURA_ITENS = """{
       "descricao": "Descrição do item",
       "unidade": "hora|un|m²|kg",
       "quantidade_estimada": 100.0
+    },
+    {
+      "id": 2,
+      "descricao": "Outro item — quando um dado não constar, use null (nunca 0, nunca 'Item 2')",
+      "unidade": null,
+      "quantidade_estimada": null
     }
   ]
 }"""
@@ -112,7 +135,71 @@ def extrair_itens_tr(
     return itens
 
 
-def conferir_extracao(itens: list[dict]) -> dict:
+_RE_DESCRICAO_GENERICA = re.compile(
+    r"^\s*(item|produto|servi[cç]o|objeto|lote)\s*n?[ºo°.:]*\s*\d+\s*$", re.IGNORECASE
+)
+
+# Remissão a planilha de itens que mora em ANEXO SEPARADO. É prática comum: o
+# corpo do TR descreve o objeto e manda ver a relação no "Anexo I-A".
+_RE_ITENS_EM_ANEXO = re.compile(
+    r"(planilha|rela[cç][aã]o|quadro|tabela|descri[cç][aã]o)[^.\n]{0,80}"
+    r"(itens|item|quantitativ)[^.\n]{0,120}(anexo|ap[eê]ndice)"
+    r"|"
+    r"(itens|quantitativ)[^.\n]{0,80}(consta|encontra|est[aá]|previst)[^.\n]{0,60}(anexo|ap[eê]ndice)",
+    re.IGNORECASE,
+)
+
+
+def planilha_em_anexo(texto_tr: str) -> str:
+    """Devolve o trecho que remete a planilha de itens em anexo, ou "".
+
+    Descoberto em 13/08/2026 com um TR real da UFF: o documento tinha 12
+    páginas e NENHUMA lista de itens — dizia "A Planilha estimativa com
+    Descrição dos itens encontra-se no Anexo I-A". O anexo não foi enviado, e a
+    IA, sem lista para ler, montou uma a partir da seção de CRITÉRIOS DE
+    ACEITAÇÃO ("7.6.1. Itens 1 e 2 (Luvas não cirúrgicas)"). O resultado tinha
+    cara de lista de compras: sete itens, numeração 1-6 e 15, sem quantidade.
+
+    Uma pesquisa de preços feita sobre essa lista inventada seria pior do que
+    não ter pesquisa: teria a aparência de válida.
+    """
+    m = _RE_ITENS_EM_ANEXO.search(texto_tr or "")
+    if not m:
+        return ""
+    ini = max(0, m.start() - 40)
+    return re.sub(r"\s+", " ", (texto_tr or "")[ini:m.end() + 60]).strip()
+
+
+def quantidade_valida(v):
+    """Devolve o número quando a quantidade é utilizável, senão None.
+
+    Zero NÃO é quantidade válida num Termo de Referência: ninguém contrata
+    zero unidade. Quando a IA não encontra a quantidade, ela tende a preencher
+    com 0 — número plausível que passa por dado real e zera o valor total
+    estimado da contratação (art. 23). Aqui o zero é tratado como ausência.
+    """
+    if v is None:
+        return None
+    try:
+        n = float(str(v).replace(".", "").replace(",", ".")) if isinstance(v, str) else float(v)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
+def descricao_valida(d):
+    """Devolve a descrição quando ela descreve algo, senão None.
+
+    'Item 6' não é descrição: é a IA preenchendo a lacuna com um rótulo para
+    não deixar o campo vazio. Sem cotar o que o item é, não há pesquisa de preço.
+    """
+    t = str(d or "").strip()
+    if not t or t.lower() in ("none", "null", "-"):
+        return None
+    return None if _RE_DESCRICAO_GENERICA.match(t) else t
+
+
+def conferir_extracao(itens: list[dict], texto_tr: str = "") -> dict:
     """Verifica se a extração parece completa, olhando a numeração.
 
     Motivo (medido em 13/08/2026 com um TR real da UFF): a IA devolveu os itens
@@ -129,13 +216,49 @@ def conferir_extracao(itens: list[dict]) -> dict:
             ids.append(int(it.get("id")))
         except (TypeError, ValueError):
             continue
+
+    # ANTES de qualquer outra conferência: o documento diz que a lista está em
+    # anexo? Se sim, e o que veio não tem cara de lista real (sem quantidades),
+    # o problema não é "faltam itens" — é que o arquivo certo não foi enviado.
+    # Continuar daqui produziria uma pesquisa de preços sobre itens inventados.
+    _remissao = planilha_em_anexo(texto_tr)
+    _sem_qtd = sum(1 for it in itens
+                   if quantidade_valida(it.get("quantidade_estimada")) is None)
+    if _remissao and (not itens or _sem_qtd == len(itens)):
+        return {
+            "completa": False, "faltando": [], "total": len(ids),
+            "anexo_ausente": True,
+            "aviso": (
+                "A PLANILHA DE ITENS NÃO ESTÁ NESTE ARQUIVO. O Termo de Referência "
+                f"remete a um anexo separado — “{_remissao[:150]}”. "
+                "Sem essa planilha não há como fazer pesquisa de preços: os itens "
+                "listados acima foram deduzidos de menções soltas no texto (por "
+                "exemplo, da seção de critérios de aceitação) e NÃO constituem a "
+                "relação oficial do objeto. Envie o anexo com a planilha de itens "
+                "e refaça a extração."
+            ),
+        }
+
     if not ids:
         return {"completa": False, "faltando": [], "total": 0,
                 "aviso": "Nenhum item foi identificado no Termo de Referência. "
                          "Confira o arquivo enviado antes de prosseguir."}
+    # Item sem descricao utilizavel conta como nao extraido: nao da para cotar
+    # o que nao se sabe o que e.
+    genericos = [str(it.get("id", "?")) for it in itens
+                 if descricao_valida(it.get("descricao")) is None]
     faltando = [n for n in range(1, max(ids) + 1) if n not in set(ids)]
-    if not faltando:
+    if not faltando and not genericos:
         return {"completa": True, "faltando": [], "total": len(ids), "aviso": ""}
+    if not faltando and genericos:
+        return {
+            "completa": False, "faltando": [], "total": len(ids),
+            "aviso": (
+                f"DESCRIÇÃO NÃO IDENTIFICADA no(s) item(ns) {', '.join(genericos[:20])}"
+                f"{'…' if len(genericos) > 20 else ''}. Sem saber o que é o item não há "
+                "como cotar preço — complete a descrição pelo Termo de Referência."
+            ),
+        }
     lista = ", ".join(str(n) for n in faltando[:20]) + ("…" if len(faltando) > 20 else "")
     return {
         "completa": False,
