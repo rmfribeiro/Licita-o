@@ -225,17 +225,26 @@ def conferir_extracao(itens: list[dict], texto_tr: str = "") -> dict:
     _sem_qtd = sum(1 for it in itens
                    if quantidade_valida(it.get("quantidade_estimada")) is None)
     if _remissao and (not itens or _sem_qtd == len(itens)):
+        # A ressalva sobre "itens listados acima" só faz sentido quando ALGO foi
+        # listado. Com a lista vazia — que é a resposta correta da IA quando a
+        # planilha não veio — falar de itens deduzidos confunde quem lê.
+        _ressalva = (
+            " Os itens listados acima foram deduzidos de menções soltas no texto "
+            "(por exemplo, da seção de critérios de aceitação) e NÃO constituem a "
+            "relação oficial do objeto."
+            if itens else
+            " Por isso nenhum item foi listado: deduzir a relação a partir de "
+            "menções soltas no texto produziria uma pesquisa de preços sobre itens "
+            "que não são os do objeto."
+        )
         return {
             "completa": False, "faltando": [], "total": len(ids),
             "anexo_ausente": True,
             "aviso": (
                 "A PLANILHA DE ITENS NÃO ESTÁ NESTE ARQUIVO. O Termo de Referência "
                 f"remete a um anexo separado — “{_remissao[:150]}”. "
-                "Sem essa planilha não há como fazer pesquisa de preços: os itens "
-                "listados acima foram deduzidos de menções soltas no texto (por "
-                "exemplo, da seção de critérios de aceitação) e NÃO constituem a "
-                "relação oficial do objeto. Envie o anexo com a planilha de itens "
-                "e refaça a extração."
+                "Sem essa planilha não há como fazer pesquisa de preços."
+                f"{_ressalva} Envie o anexo com a planilha de itens e refaça a extração."
             ),
         }
 
