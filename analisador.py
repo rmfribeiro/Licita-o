@@ -325,46 +325,60 @@ def aplicar_pareceres_lista(apont, pareceres, base_rag_path):
     # tem de melhor: o julgamento (status) e a explicacao (detalhe).
     _regra_por_id = {a["id"]: a for a in apont}
 
-    novos = []
-    for pz in pareceres:
-        sev    = str(pz.get("severidade", "media")).strip().lower()
-        status = str(pz.get("status",     "revisar")).strip().lower()
-        fundamento = _fundamento_do_achado(rag, pz)
-        _id = str(pz.get("id", f"P{len(novos)+1}")).strip()
-        _base = _regra_por_id.get(_id)
-        novos.append({
-            "id":        _id,
-            "categoria": (_base["categoria"] if _base else
-                          str(pz.get("categoria", "")).strip() or "Analise semantica"),
-            "item":      (_base["item"] if _base else
-                          str(pz.get("item", "(sem titulo)")).strip()),
-            "base_legal": _base["base_legal"] if _base else "Lei 14.133/2021",
-            "severidade": (_base["severidade"] if _base else
-                           (sev if sev in _sev_ok else "media")),
-            "tipo":      "semantica",
-            "status":    status  if status in _st_ok  else "revisar",
-            "detalhe":   str(pz.get("detalhe", "")).strip(),
-            "trecho":    str(pz.get("trecho") or ""),
-            # Marca que a linha nasceu de regra e foi enriquecida pela IA. Assim o
-            # rotulo de fonte tambem para de oscilar entre as duas execucoes.
-            "fonte":     "Regra + IA" if _base else "IA (semantica)",
-            "fundamento": fundamento,
-        })
-    # IA sobrescreve itens automáticos com mesmo ID, mas apenas quando encontrou algo
-    # acionável (alerta/inconformidade/revisar). 'ok' da IA não suprime o 'revisar'
-    # automático — preserva comportamento conservador.
-    #
-    # EXCECAO: as verificacoes cruzadas (X01..X05) sao perguntas obrigatorias e
-    # precisam constar do relatorio SEMPRE, inclusive quando a resposta e "ok" —
-    # registrar "conferido e conforme" e parte da entrega. Sem esta excecao, uma
-    # verificacao respondida como conforme simplesmente desaparecia da lista, e o
-    # leitor nao tinha como saber se ela foi feita (aconteceu com o X05 em
-    # 12/08/2026, gerando dois relatorios com quantidades diferentes de itens).
     try:
         from ia_semantica import VERIFICACOES_CRUZADAS as _VC
         _ids_cruzadas = {c["id"] for c in _VC}
     except ImportError:
         _ids_cruzadas = set()
+
+    novos, observacoes = [], {}
+    for pz in pareceres:
+        sev    = str(pz.get("severidade", "media")).strip().lower()
+        status = str(pz.get("status",     "revisar")).strip().lower()
+        _id = str(pz.get("id", f"P{len(novos)+1}")).strip()
+
+        # ---------------------------------------------------------------
+        # A IA NAO ALTERA UMA REGRA DO CHECKLIST.
+        # ---------------------------------------------------------------
+        # Ate 12/08/2026 o achado da IA SUBSTITUIA a linha da regra, levando
+        # junto o status. Consequencia medida nos testes 27 e 28: o R29 saiu
+        # "inconformidade" numa execucao e "alerta" na outra, e a contagem de
+        # "Inconformidades (regras)" mudou de 2 para 1 — a camada que deveria
+        # ser deterministica passou a depender do humor do modelo. Alem disso
+        # a fonte da linha oscilava (Automatico / Regra + IA) conforme a IA
+        # tivesse ou nao comentado aquele item.
+        #
+        # Agora a regra permanece intacta — status, severidade, titulo e fonte
+        # sao os dela — e o comentario da IA e guardado a parte, exibido como
+        # observacao. A IA opina; ela nao decide o que a regra concluiu.
+        if _id in _regra_por_id and _id not in _ids_cruzadas:
+            _texto = str(pz.get("detalhe", "")).strip()
+            if _texto:
+                observacoes[_id] = _texto
+            continue
+
+        fundamento = _fundamento_do_achado(rag, pz)
+        novos.append({
+            "id":        _id,
+            "categoria": str(pz.get("categoria", "")).strip() or "Analise semantica",
+            "item":      str(pz.get("item", "(sem titulo)")).strip(),
+            "base_legal": "Lei 14.133/2021",
+            "severidade": sev    if sev    in _sev_ok else "media",
+            "tipo":      "semantica",
+            "status":    status  if status in _st_ok  else "revisar",
+            "detalhe":   str(pz.get("detalhe", "")).strip(),
+            "trecho":    str(pz.get("trecho") or ""),
+            "fonte":     "IA (semantica)",
+            "fundamento": fundamento,
+        })
+
+    # Anexa as observacoes as regras correspondentes, sem tocar no julgamento.
+    for a in apont:
+        if a["id"] in observacoes:
+            a["observacao_ia"] = observacoes[a["id"]]
+
+    # As verificacoes cruzadas (X01..) constam SEMPRE, inclusive quando a
+    # resposta e "ok": registrar "conferido e conforme" faz parte da entrega.
     novos_acionaveis  = [n for n in novos
                          if n["status"] != "ok" or n["id"] in _ids_cruzadas]
     ids_ia_acionaveis = {n["id"] for n in novos_acionaveis}
@@ -492,6 +506,14 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
         cor, rotulo = COR_STATUS.get(a["status"], ("#888", a["status"]))
         trecho = f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>' if a["trecho"] else ""
         fundamento = f'<div class="fund"><b>Fundamento (recuperado via RAG):</b> {e(a["fundamento"][:320])}{"..." if len(a["fundamento"])>320 else ""}</div>' if a.get("fundamento") else ""
+        # Comentario da IA sobre um item das regras. Vai em bloco proprio e
+        # rotulado como variavel: o julgamento da linha e da regra; isto aqui e
+        # leitura auxiliar, e um modelo de linguagem nao repete a mesma redacao
+        # duas vezes. Deixar isso explicito evita que o leitor conclua que o
+        # sistema "mudou de opiniao" quando so mudou a forma de escrever.
+        obs_ia = (f'<div class="obsia"><b>Observação da IA</b> '
+                  f'<span style="color:#8a7aa0">(apoio à leitura; a redação varia entre análises)</span><br>'
+                  f'{e(a["observacao_ia"][:600])}</div>') if a.get("observacao_ia") else ""
         fonte_cor = "#6C3483" if a["fonte"].startswith("IA") else "#5a6b7b"
         fonte_tag = f'<span class="fonte" style="color:{fonte_cor}">{e(a["fonte"])}</span>'
         linhas += f"""
@@ -503,6 +525,7 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
             <div class="detalhe">{e(a['detalhe'])}</div>
             {trecho}
             {fundamento}
+            {obs_ia}
             <div class="base">{e(a['base_legal'])}</div>
           </td>
           <td><span class="badge" style="background:{cor}">{e(rotulo)}</span></td>
@@ -537,6 +560,7 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
   .trecho {{ font-style:italic; color:#445; background:#f3f6fb; border-left:3px solid #2E75B6; padding:8px 10px; margin:8px 0; font-size:12.5px; border-radius:4px; }}
   .base {{ font-size:11.5px; color:#94a3b8; margin-top:6px; }}
   .fund {{ font-size:12px; color:#3d2b50; background:#f6f1fb; border-left:3px solid #6C3483; padding:7px 10px; margin:8px 0; border-radius:4px; }}
+  .obsia {{ font-size:12px; color:#4a4a52; background:#fafafc; border:1px dashed #cfc6dd; padding:7px 10px; margin:8px 0; border-radius:4px; line-height:1.5; }}
   .fonte {{ font-size:11px; font-weight:600; }}
   .badge {{ color:#fff; font-size:11.5px; padding:5px 9px; border-radius:20px; white-space:nowrap; display:inline-block; }}
   .nota {{ font-size:12px; color:#7a8a99; margin-top:22px; line-height:1.6; }}
