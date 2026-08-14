@@ -59,6 +59,37 @@ def _aplicar_piso(dados: dict, fid: dict | None = None) -> str:
     return piso
 
 
+def _risco_por_dimensoes(parecer: dict) -> str | None:
+    """Deriva o risco geral DOS STATUS das dimensões, por regra fixa.
+
+    O `_aplicar_piso` protege contra SUBESTIMAÇÃO (a IA não pode dizer risco
+    menor do que os dados comprovam), mas nada impedia a IA de escolher
+    livremente um risco ACIMA do piso — e escolher diferente a cada execução.
+    Foi o defeito medido no ETP em 13/08/2026: mesmo documento, conclusões
+    opostas. Aqui o risco passa a ser consequência das dimensões avaliadas.
+
+      alguma dimensão crítica  -> ALTO
+      alguma dimensão alerta   -> MÉDIO
+      todas ok                 -> SEM RISCO IDENTIFICADO
+
+    O piso continua valendo por cima: o risco final é o MAIOR dos dois.
+    """
+    dims = parecer.get("dimensoes")
+    if not isinstance(dims, dict) or not dims:
+        return None
+    status = []
+    for v in dims.values():
+        if isinstance(v, dict) and v.get("status"):
+            status.append(str(v["status"]).strip().lower())
+    if not status:
+        return None
+    if any(s in ("critico", "crítico") for s in status):
+        return "ALTO"
+    if any(s == "alerta" for s in status):
+        return "MÉDIO"
+    return "SEM RISCO IDENTIFICADO"
+
+
 _ESTRUTURA_PARECER = """{
   "risco_geral": "ALTO|MÉDIO|BAIXO|SEM RISCO IDENTIFICADO",
   "dimensoes": {
@@ -112,7 +143,7 @@ def analisar(dados: dict, fid: dict) -> dict:
     )
 
     try:
-        bruto = _chamar_anthropic(prompt, api_key, _get_modelo(), _SISTEMA, max_tokens=3000)
+        bruto = _chamar_anthropic(prompt, api_key, _get_modelo(), _SISTEMA, max_tokens=6000)
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
@@ -132,6 +163,7 @@ def analisar(dados: dict, fid: dict) -> dict:
         raise RuntimeError(f"Resposta inesperada da API: objeto JSON esperado, recebeu {type(parecer).__name__}")
     parecer.pop("_aviso_risco", None)
     parecer.pop("_aviso_piso_risco", None)
+    parecer.pop("_risco_ia", None)
     _raw_risco = parecer.get("risco_geral")
     _risco = "SEM RISCO IDENTIFICADO" if _raw_risco is None else str(_raw_risco).strip().upper()
     _risco = {
@@ -146,16 +178,11 @@ def analisar(dados: dict, fid: dict) -> dict:
     parecer["risco_geral"] = _risco
 
     _risco_antes_piso = _risco
-    if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(_risco_antes_piso):
-        parecer["risco_geral"] = piso
-        if _aviso_risco_val is None:
-            parecer["_aviso_piso_risco"] = _risco_antes_piso
 
-    if _aviso_risco_val is not None:
-        parecer["_aviso_risco"] = _aviso_risco_val
-
-    # Trava final (nao depende da IA obedecer ao prompt): sem consulta as bases,
-    # a dimensao de sancoes nunca sai como "ok".
+    # Trava do CEIS/CNEP ANTES do calculo do risco: sem consulta as bases, a
+    # dimensao de sancoes vira "alerta" — e essa mudanca precisa entrar na conta
+    # do risco derivado, senao o parecer diria "sem risco identificado" tendo
+    # uma verificacao pendente logo abaixo.
     if not _consultou_sancoes:
         _dims = parecer.get("dimensoes")
         if isinstance(_dims, dict):
@@ -172,5 +199,21 @@ def analisar(dados: dict, fid: dict) -> dict:
             _s.setdefault("achados", [])
             _dims["sancoes"] = _s
         parecer["sancoes_verificadas"] = False
+
+    # Risco final = o MAIOR entre o piso (dados) e o derivado (dimensoes).
+    # Nenhum dos dois vem do juizo livre do modelo.
+    _derivado = _risco_por_dimensoes(parecer)
+    if _derivado and _RISCO_ORDEM.index(_derivado) != _RISCO_ORDEM.index(_risco):
+        parecer["_risco_ia"] = _risco
+        _risco = _derivado
+        parecer["risco_geral"] = _risco
+
+    if _RISCO_ORDEM.index(piso) > _RISCO_ORDEM.index(_risco):
+        parecer["risco_geral"] = piso
+        if _aviso_risco_val is None:
+            parecer["_aviso_piso_risco"] = _risco_antes_piso
+
+    if _aviso_risco_val is not None:
+        parecer["_aviso_risco"] = _aviso_risco_val
 
     return parecer

@@ -173,7 +173,10 @@ class TestAnalisar:
         parecer = {**_parecer_ia_mock(), "risco_geral": "SEM RISCO"}
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
-        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        # O risco final nao vem mais do campo da IA: e derivado das dimensoes
+        # (o mock tem 'programa_integridade' em alerta -> MÉDIO). O teste
+        # continua verificando a normalizacao do valor invalido, via _aviso_risco.
+        assert resultado["risco_geral"] == "MÉDIO"
         assert "_aviso_risco" not in resultado
 
     @patch('ia_utils.urllib.request.urlopen')
@@ -182,7 +185,10 @@ class TestAnalisar:
         parecer = {**_parecer_ia_mock(), "risco_geral": "CRÍTICO"}
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
-        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        # O risco final nao vem mais do campo da IA: e derivado das dimensoes
+        # (o mock tem 'programa_integridade' em alerta -> MÉDIO). O teste
+        # continua verificando a normalizacao do valor invalido, via _aviso_risco.
+        assert resultado["risco_geral"] == "MÉDIO"
         assert resultado.get("_aviso_risco") == "CRÍTICO"
 
     @patch('ia_utils.urllib.request.urlopen')
@@ -191,7 +197,10 @@ class TestAnalisar:
         parecer = {**_parecer_ia_mock(), "risco_geral": 123}
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
-        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        # O risco final nao vem mais do campo da IA: e derivado das dimensoes
+        # (o mock tem 'programa_integridade' em alerta -> MÉDIO). O teste
+        # continua verificando a normalizacao do valor invalido, via _aviso_risco.
+        assert resultado["risco_geral"] == "MÉDIO"
         assert resultado.get("_aviso_risco") == "123"
 
     @patch('ia_utils.urllib.request.urlopen')
@@ -224,7 +233,10 @@ class TestAnalisar:
         parecer = {**_parecer_ia_mock(), "risco_geral": None}
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
-        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        # O risco final nao vem mais do campo da IA: e derivado das dimensoes
+        # (o mock tem 'programa_integridade' em alerta -> MÉDIO). O teste
+        # continua verificando a normalizacao do valor invalido, via _aviso_risco.
+        assert resultado["risco_geral"] == "MÉDIO"
         assert "_aviso_risco" not in resultado
 
     @patch('ia_utils.urllib.request.urlopen')
@@ -233,7 +245,10 @@ class TestAnalisar:
         parecer = {**_parecer_ia_mock(), "risco_geral": ""}
         mock_urlopen.return_value = _mock_urlopen(parecer)
         resultado = ia_ddi.analisar(_dados_base(), {})
-        assert resultado["risco_geral"] == "SEM RISCO IDENTIFICADO"
+        # O risco final nao vem mais do campo da IA: e derivado das dimensoes
+        # (o mock tem 'programa_integridade' em alerta -> MÉDIO). O teste
+        # continua verificando a normalizacao do valor invalido, via _aviso_risco.
+        assert resultado["risco_geral"] == "MÉDIO"
         assert resultado.get("_aviso_risco") == ""
 
     @patch('ia_utils.urllib.request.urlopen')
@@ -259,3 +274,30 @@ class TestAnalisar:
             ia_ddi.analisar(_dados_base(), fid)
         assert "401" in str(exc_info.value)
         assert "invalid_api_key" in str(exc_info.value)
+
+
+class TestRiscoDerivado:
+    """O risco geral e CONSEQUENCIA das dimensoes, nao juizo livre do modelo."""
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_risco_e_coerente_com_as_dimensoes(self, mock_key, mock_urlopen):
+        # a IA diz "SEM RISCO" tendo uma dimensao critica: incoerencia que
+        # antes passava direto para o relatorio.
+        parecer = {**_parecer_ia_mock(), "risco_geral": "SEM RISCO IDENTIFICADO"}
+        parecer["dimensoes"]["situacao_cadastral"] = {"status": "critico", "descricao": "Baixada."}
+        mock_urlopen.return_value = _mock_urlopen(parecer)
+        resultado = ia_ddi.analisar(_dados_base(), {})
+        assert resultado["risco_geral"] == "ALTO"
+        assert resultado.get("_risco_ia") == "SEM RISCO IDENTIFICADO"
+
+    @patch('ia_utils.urllib.request.urlopen')
+    @patch('ia_ddi._get_api_key', return_value="sk-test")
+    def test_mesmo_parecer_risco_diferente_da_ia_gera_o_mesmo_resultado(self, mock_key, mock_urlopen):
+        """Duas execucoes com risco diferente no campo da IA devolvem o MESMO
+        risco final, porque ele e calculado das dimensoes."""
+        finais = []
+        for r_ia in ("ALTO", "BAIXO", "SEM RISCO IDENTIFICADO"):
+            mock_urlopen.return_value = _mock_urlopen({**_parecer_ia_mock(), "risco_geral": r_ia})
+            finais.append(ia_ddi.analisar(_dados_base(), {})["risco_geral"])
+        assert len(set(finais)) == 1, finais

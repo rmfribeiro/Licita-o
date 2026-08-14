@@ -96,7 +96,16 @@ class TestDDIPipeline:
         _assert_valid_pdf(pdf)
 
     def test_risco_alto_chega_ao_relatorio(self):
-        parecer_api = {**self._PARECER_API, "risco_geral": "ALTO"}
+        # O risco e derivado das dimensoes: para sair ALTO tem de haver dimensao
+        # critica. Antes bastava a IA escrever "ALTO" no campo.
+        parecer_api = {
+            **self._PARECER_API,
+            "risco_geral": "ALTO",
+            "dimensoes": {
+                **self._PARECER_API.get("dimensoes", {}),
+                "situacao_cadastral": {"status": "critico", "descricao": "Empresa baixada."},
+            },
+        }
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer_api)):
             parecer = ia_ddi.analisar(self._DADOS, self._FID)
         assert parecer["risco_geral"] == "ALTO"
@@ -104,9 +113,22 @@ class TestDDIPipeline:
         _assert_valid_pdf(pdf)
 
     def test_risco_desconhecido_normalizado_para_sem_risco(self):
-        parecer_api = {**self._PARECER_API, "risco_geral": "INEXISTENTE"}
+        # Valor invalido continua sendo registrado em _aviso_risco; o risco
+        # final vem das dimensoes (todas "ok" neste cenario).
+        #
+        # `ceis_disponivel=True` e indispensavel: sem consulta as bases CEIS/CNEP
+        # a trava marca 'sancoes' como pendente e o parecer NUNCA pode concluir
+        # "sem risco identificado" — nao se atesta idoneidade sem verificar.
+        parecer_api = {
+            **self._PARECER_API,
+            "risco_geral": "INEXISTENTE",
+            "dimensoes": {k: {**v, "status": "ok"}
+                          for k, v in self._PARECER_API.get("dimensoes", {}).items()},
+        }
+        _dados = {**self._DADOS, "ceis_disponivel": True, "ceis": [], "cnep": []}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer_api)):
-            parecer = ia_ddi.analisar(self._DADOS, self._FID)
+            parecer = ia_ddi.analisar(_dados, self._FID)
+        assert parecer.get("_aviso_risco") == "INEXISTENTE"
         assert parecer["risco_geral"] == "SEM RISCO IDENTIFICADO"
         pdf = relatorio_ddi.gerar_pdf("12345678000195", None, self._DADOS, self._FID, parecer)
         _assert_valid_pdf(pdf)
