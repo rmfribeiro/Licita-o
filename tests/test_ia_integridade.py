@@ -55,6 +55,44 @@ class TestAplicarPiso:
         r["q_responsavel_designado"] = "Não"
         assert ia_integridade._aplicar_piso(r, "INICIAL") == "INICIAL"
 
+    def test_formulario_em_branco_nao_vira_inexistente(self):
+        """Silencio do gestor nao e resposta negativa.
+
+        Este era o bug: `respostas.get(k) or "Não"` transformava pergunta nao
+        respondida em "Não", a Regra 1 disparava e o diagnostico afirmava
+        INEXISTENTE — o app acusava a prefeitura de nao ter programa de
+        integridade sem ninguem ter respondido nada.
+        """
+        branco = {k: None for k, _ in ia_integridade.QUESTOES_PIP}
+        assert ia_integridade._aplicar_piso(branco, "CONSOLIDADO") == ia_integridade.NAO_AVALIADO
+
+    def test_poucas_respostas_nao_concluem_maturidade(self):
+        chaves = [k for k, _ in ia_integridade.QUESTOES_PIP]
+        parcial = {k: None for k in chaves}
+        for k in chaves[:5]:                      # 5 de 12 < limite de 50%
+            parcial[k] = "Sim"
+        assert ia_integridade._aplicar_piso(parcial, "CONSOLIDADO") == ia_integridade.NAO_AVALIADO
+
+    def test_maioria_respondida_conclui_normalmente(self):
+        chaves = [k for k, _ in ia_integridade.QUESTOES_PIP]
+        parcial = {k: None for k in chaves}
+        for k in chaves[:10]:                     # 10 de 12 >= limite
+            parcial[k] = "Sim"
+        assert ia_integridade._aplicar_piso(parcial, "CONSOLIDADO") == "CONSOLIDADO"
+
+    def test_nao_informado_conta_como_sem_resposta(self):
+        r = {k: "NÃO INFORMADO" for k, _ in ia_integridade.QUESTOES_PIP}
+        assert ia_integridade._aplicar_piso(r, "CONSOLIDADO") == ia_integridade.NAO_AVALIADO
+
+    def test_todas_respondidas_nao_ainda_e_inexistente(self):
+        # A regra legitima continua valendo: quem respondeu "Não" a tudo,
+        # respondeu — e isso sim e INEXISTENTE.
+        assert ia_integridade._aplicar_piso(_nao(), "CONSOLIDADO") == "INEXISTENTE"
+
+    def test_nao_avaliado_tem_icone_e_cor(self):
+        assert ia_integridade.NAO_AVALIADO in ia_integridade.ICONE_MATURIDADE
+        assert ia_integridade.NAO_AVALIADO in ia_integridade.COR_MATURIDADE_HEX
+
 
 def _parecer_mock(maturidade: str = "EM DESENVOLVIMENTO") -> dict:
     return {
@@ -139,12 +177,14 @@ class TestDiagnosticar:
         assert "maturidade_geral" in resultado
 
     @patch("ia_utils.urllib.request.urlopen")
-    def test_maturidade_invalida_da_ia_normalizada_para_inexistente(self, mock_urlopen):
+    def test_maturidade_invalida_da_ia_normalizada_para_nao_avaliado(self, mock_urlopen):
+        # Antes caia em INEXISTENTE: uma resposta malformada do modelo virava
+        # afirmacao de que a prefeitura nao tem programa de integridade.
         parecer_ruim = _parecer_mock()
         parecer_ruim["maturidade_geral"] = "DESCONHECIDO"
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
-        assert resultado["maturidade_geral"] == "INEXISTENTE"
+        assert resultado["maturidade_geral"] == ia_integridade.NAO_AVALIADO
 
     @patch("ia_utils.urllib.request.urlopen")
     def test_maturidade_invalida_seta_aviso_maturidade(self, mock_urlopen):
@@ -152,7 +192,7 @@ class TestDiagnosticar:
         parecer_ruim["maturidade_geral"] = "ÓTIMO"
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
-        assert resultado["maturidade_geral"] == "INEXISTENTE"
+        assert resultado["maturidade_geral"] == ia_integridade.NAO_AVALIADO
         assert resultado.get("_aviso_maturidade") == "ÓTIMO"
 
     @patch("ia_utils.urllib.request.urlopen")
@@ -161,7 +201,7 @@ class TestDiagnosticar:
         parecer_ruim["maturidade_geral"] = None
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
-        assert resultado["maturidade_geral"] == "INEXISTENTE"
+        assert resultado["maturidade_geral"] == ia_integridade.NAO_AVALIADO
         assert "_aviso_maturidade" not in resultado
 
     @patch("ia_utils.urllib.request.urlopen")
@@ -170,7 +210,7 @@ class TestDiagnosticar:
         parecer_ruim["maturidade_geral"] = ""
         mock_urlopen.return_value = _mock_urlopen(parecer_ruim)
         resultado = ia_integridade.diagnosticar(_sim(), None, "sk-test")
-        assert resultado["maturidade_geral"] == "INEXISTENTE"
+        assert resultado["maturidade_geral"] == ia_integridade.NAO_AVALIADO
         assert resultado.get("_aviso_maturidade") == ""
 
     @patch("ia_utils.urllib.request.urlopen")

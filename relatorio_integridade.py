@@ -10,7 +10,11 @@ import branding
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
-from ia_integridade import LABEL_DIMENSAO as _LABEL_DIMENSAO, COR_MATURIDADE_HEX as _COR_NIVEL_HEX
+from ia_integridade import (
+    LABEL_DIMENSAO as _LABEL_DIMENSAO,
+    COR_MATURIDADE_HEX as _COR_NIVEL_HEX,
+    NAO_AVALIADO as _NAO_AVALIADO,
+)
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _COR_MATURIDADE = {k: colors.HexColor(v) for k, v in _COR_NIVEL_HEX.items()}
@@ -72,7 +76,8 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
     # Nível de maturidade geral
-    maturidade = str(parecer.get("maturidade_geral") or "INEXISTENTE").strip().upper()
+    # Ausencia de valor nao vira INEXISTENTE: sem base, o laudo diz NAO AVALIADO.
+    maturidade = str(parecer.get("maturidade_geral") or _NAO_AVALIADO).strip().upper()
     cor = _COR_MATURIDADE.get(maturidade, colors.grey)
     story.append(Paragraph("Nível de Maturidade Geral", _ESTILO_H2))
     t_mat = Table(
@@ -86,11 +91,19 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     ]))
     story.append(t_mat)
     story.append(Spacer(1, 0.4*cm))
+    if maturidade == _NAO_AVALIADO:
+        story.append(Paragraph(
+            "Não foi possível avaliar a maturidade: o questionário ficou majoritariamente sem "
+            "resposta. Isto <b>não</b> significa que o município não tenha Programa de Integridade "
+            "— significa que não há informação suficiente para afirmar nada a respeito.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
     _aviso_mat_pdf = parecer.get("_aviso_maturidade")
     if _aviso_mat_pdf is not None:
         story.append(Paragraph(
             f"⚠ Valor de maturidade_geral não reconhecido: '{html.escape(str(_aviso_mat_pdf))}'"
-            " — registrado como INEXISTENTE. Verifique manualmente.",
+            " — registrado como NÃO AVALIADO. Verifique manualmente.",
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2*cm))
@@ -116,7 +129,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     dims = parecer.get("dimensoes") or {}
     for chave, label in _LABEL_DIMENSAO.items():
         dim = dims.get(chave) or {}
-        nivel = str(dim.get("nivel") or "INEXISTENTE").strip().upper()
+        nivel = str(dim.get("nivel") or _NAO_AVALIADO).strip().upper()
         cor_n = _COR_NIVEL_HEX.get(nivel, "#000000")
         story.append(Paragraph(
             f"<b>{html.escape(label)}</b> — "

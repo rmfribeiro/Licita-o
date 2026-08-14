@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-16"
-VERSAO_NOTAS = "PI: expansor de dimensao tambem trata NAO AVALIADO"
+VERSAO_APP = "2026.08.13-17"
+VERSAO_NOTAS = "Diagnóstico de Integridade: questionário sem resposta não vira mais INEXISTENTE"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -873,11 +873,19 @@ with aba4:
             st.warning(_safe_md(_aviso))
 
         st.divider()
-        _mat_pip = str(_pr_pip.get("maturidade_geral") or "INEXISTENTE").strip().upper()
+        # Ausencia de valor nao vira INEXISTENTE: sem base, o diagnostico e NAO AVALIADO.
+        _mat_pip = str(_pr_pip.get("maturidade_geral") or ia_integridade.NAO_AVALIADO).strip().upper()
         st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_safe_md(_mat_pip)}")
+        if _mat_pip == ia_integridade.NAO_AVALIADO:
+            st.warning(
+                "⚪ **Não foi possível avaliar a maturidade.** O questionário ficou majoritariamente "
+                "sem resposta. Isto **não** significa que o município não tenha Programa de "
+                "Integridade — significa que não há informação suficiente para afirmar nada. "
+                "Responda as questões do formulário e gere o diagnóstico novamente."
+            )
         _aviso_mat_pip = _pr_pip.get("_aviso_maturidade")
         if _aviso_mat_pip is not None:
-            st.warning(f"⚠️ Valor de maturidade_geral não reconhecido pela IA: '{_safe_md(str(_aviso_mat_pip))}' — registrado como **INEXISTENTE**. Verifique manualmente.")
+            st.warning(f"⚠️ Valor de maturidade_geral não reconhecido pela IA: '{_safe_md(str(_aviso_mat_pip))}' — registrado como **NÃO AVALIADO**. Verifique manualmente.")
         _aviso_piso_pip = _pr_pip.get("_aviso_piso_maturidade")
         if _aviso_mat_pip is None and _aviso_piso_pip is not None:
             st.info(
@@ -893,7 +901,7 @@ with aba4:
         _dims_pip = _pr_pip.get("dimensoes") or {}
         for _ch, _lb in ia_integridade.LABEL_DIMENSAO.items():
             _d   = _dims_pip.get(_ch) or {}
-            _niv = str(_d.get("nivel") or "INEXISTENTE").strip().upper()
+            _niv = str(_d.get("nivel") or ia_integridade.NAO_AVALIADO).strip().upper()
             _ic  = ia_integridade.ICONE_MATURIDADE.get(_niv, "⚪")
             with st.expander(f"{_ic} {_lb} — {_niv}"):
                 for _ach in (_d.get("achados") or []):

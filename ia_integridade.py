@@ -7,6 +7,11 @@ import ia_utils
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
 _MATURIDADE_ORDEM = ["INEXISTENTE", "INICIAL", "EM DESENVOLVIMENTO", "CONSOLIDADO"]
 
+# Estado distinto dos quatro niveis: nao e um grau baixo de maturidade, e a
+# AUSENCIA DE BASE para afirmar qualquer grau. Sem ele, formulario em branco
+# virava "INEXISTENTE" — o erro do "Itau 0/100" repetido no diagnostico publico.
+NAO_AVALIADO = "NÃO AVALIADO"
+
 
 _SISTEMA = (
     "Você é um consultor sênior especialista em Programas de Integridade Pública (PIP) "
@@ -57,6 +62,7 @@ LABEL_DIMENSAO = {
 }
 
 ICONE_MATURIDADE = {
+    NAO_AVALIADO:         "⚪",
     "CONSOLIDADO":        "🟢",
     "EM DESENVOLVIMENTO": "🔵",
     "INICIAL":            "🟡",
@@ -64,6 +70,7 @@ ICONE_MATURIDADE = {
 }
 
 COR_MATURIDADE_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
+    NAO_AVALIADO:         "#808080",
     "CONSOLIDADO":        "#27AE60",
     "EM DESENVOLVIMENTO": "#2980B9",
     "INICIAL":            "#F39C12",
@@ -84,16 +91,48 @@ if _ausentes:
     )
 
 
-def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
-    valores = [str(respostas.get(k) or "Não").strip() for k, _ in QUESTOES_PIP]
+# Proporção de perguntas sem resposta a partir da qual o diagnóstico não pode
+# concluir nada. Mesmo critério do módulo de PI de empresas.
+LIMITE_SEM_RESPOSTA = 0.5
 
-    # Regra 1 (mais restritiva) — todos Não → INEXISTENTE
-    if all(v == "Não" for v in valores):
+
+def _respondida(valor) -> bool:
+    """True quando a pergunta foi efetivamente respondida.
+
+    NÃO confundir com "respondeu Não". A distinção é a mesma do incidente de
+    29/07/2026 (o "Itaú 0/100"): silêncio do usuário não é resposta negativa.
+    """
+    if valor is None:
+        return False
+    txt = str(valor).strip()
+    return bool(txt) and txt.upper() not in ("NÃO INFORMADO", "NAO INFORMADO", "-", "N/A")
+
+
+def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
+    """Aplica pisos de maturidade a partir das respostas EFETIVAS.
+
+    A versão anterior fazia `respostas.get(k) or "Não"` — ou seja, tratava
+    pergunta NÃO RESPONDIDA como resposta "Não". Com o formulário em branco,
+    todas viravam "Não", a regra 1 disparava e o diagnóstico afirmava
+    INEXISTENTE: exatamente o erro que corrigimos no módulo de PI, sobrevivendo
+    aqui dentro do piso. O prompt pedia à IA para não presumir, mas o código
+    presumia por ela.
+    """
+    respondidas = {k: str(respostas.get(k)).strip()
+                   for k, _ in QUESTOES_PIP if _respondida(respostas.get(k))}
+    total = len(QUESTOES_PIP)
+    if not respondidas or (total - len(respondidas)) / total >= LIMITE_SEM_RESPOSTA:
+        # Base insuficiente: não se conclui maturidade nenhuma, nem para baixo.
+        return NAO_AVALIADO
+
+    # Regra 1 — todas as RESPONDIDAS são "Não" → INEXISTENTE
+    if all(v == "Não" for v in respondidas.values()):
         return "INEXISTENTE"
 
-    # Regra 2 — campos críticos ausentes/parciais → cap INICIAL
-    ato = str(respostas.get(_CHAVE_ATO_FORMAL) or "Não").strip()
-    resp = str(respostas.get(_CHAVE_RESPONSAVEL) or "Não").strip()
+    # Regra 2 — campos críticos ausentes/parciais → cap INICIAL.
+    # Só se aplica quando os dois foram efetivamente respondidos.
+    ato = respondidas.get(_CHAVE_ATO_FORMAL)
+    resp = respondidas.get(_CHAVE_RESPONSAVEL)
     if ato in {"Não", "Parcialmente"} and resp in {"Não", "Parcialmente"}:
         idx_ia = _MATURIDADE_ORDEM.index(maturidade_ia) if maturidade_ia in _MATURIDADE_ORDEM else 0
         if idx_ia > _MATURIDADE_ORDEM.index("INICIAL"):
@@ -130,10 +169,12 @@ def diagnosticar(
         )
 
     if texto_docs:
-        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
-        partes.append(f"\nDocumentos da prefeitura fornecidos:\n{_doc}")
+        _bloco, _aviso_corte = ia_utils.bloco_documento(
+            texto_docs, rotulo="conjunto de documentos", marca="DOCS_ORGAO"
+        )
         if _aviso_corte:
             partes.append(_aviso_corte)
+        partes.append(f"\nDocumentos da prefeitura fornecidos:\n{_bloco}")
 
     if parecer_ddi:
         pi = parecer_ddi.get("dimensoes", {}).get("programa_integridade", {})
@@ -149,20 +190,25 @@ def diagnosticar(
     partes.append(f"\nRetorne o diagnóstico no formato:\n{_ESTRUTURA_PARECER}")
 
     parecer = _chamar_api(
-        "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
+        "\n".join(partes), api_key, modelo,
+        _SISTEMA + ia_utils.SUFIXO_SEGURANCA,
+        max_tokens=8000,
     )
 
     parecer.pop("_aviso_maturidade", None)
     parecer.pop("_aviso_piso_maturidade", None)
     _raw_mat = parecer.get("maturidade_geral")
-    _mat = "INEXISTENTE" if _raw_mat is None else str(_raw_mat).strip().upper()
-    if _mat not in _MATURIDADE_ORDEM:
+    # Valor ausente ou irreconhecivel NAO vira "INEXISTENTE": isso seria afirmar
+    # que a prefeitura nao tem programa por causa de uma resposta malformada do
+    # modelo. Vira NAO AVALIADO, e o piso decide a partir das respostas reais.
+    _mat = NAO_AVALIADO if _raw_mat is None else str(_raw_mat).strip().upper()
+    if _mat not in _MATURIDADE_ORDEM and _mat != NAO_AVALIADO:
         logging.warning(
-            "ia_integridade: maturidade_geral inesperada da IA: %r — normalizado para INEXISTENTE", _mat
+            "ia_integridade: maturidade_geral inesperada da IA: %r — normalizado para NÃO AVALIADO", _mat
         )
         if _raw_mat is not None:
             parecer["_aviso_maturidade"] = _mat
-        _mat = "INEXISTENTE"
+        _mat = NAO_AVALIADO
     _mat_piso = _aplicar_piso(respostas, _mat)
     if _mat_piso != _mat:
         parecer["_aviso_piso_maturidade"] = _mat
