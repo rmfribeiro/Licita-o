@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-15"
-VERSAO_NOTAS = "corrige quebra da tela e do PDF quando o PI sai NAO AVALIADO"
+VERSAO_APP = "2026.08.13-16"
+VERSAO_NOTAS = "PI: expansor de dimensao tambem trata NAO AVALIADO"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1172,8 +1172,12 @@ with aba5:
         for _dim_key, (_dim_label, _params_d) in ia_pi_empresas.DIMENSOES_PI.items():
             _dim_d = _dims_pi.get(_dim_key) or {}
             _sintese_d = str(_dim_d.get("sintese") or "-")
-            _score_d = _por_dim.get(_dim_key, 0.0)
-            with st.expander(f"**{_dim_label}** — {_score_d:.0f}/100"):
+            # Mesmo cuidado da lista de scores acima: dimensao sem resposta vem
+            # como None, e `.get(chave, 0.0)` nao cobre chave existente com None.
+            _score_d = _por_dim.get(_dim_key)
+            _score_d_txt = (f" — {_score_d:.0f}/100" if isinstance(_score_d, (int, float))
+                            else f" — {ia_pi_empresas.NAO_AVALIADO}")
+            with st.expander(f"**{_dim_label}**{_score_d_txt}"):
                 st.write(_safe_md(_sintese_d))
                 _params_q = _dim_d.get("parametros") or {}
                 for _p in _params_d:
