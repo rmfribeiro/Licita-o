@@ -325,15 +325,24 @@ def avaliar(
             partes.append(f"- {QUESTOES_PI[p]} → {resp_txt} ({valor}/100)")
 
     if texto_docs:
-        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
-        partes.append(f"\nDocumentos fornecidos pela empresa:\n{_doc}")
+        # Documento da empresa avaliada vai ISOLADO: e exatamente o caso em que
+        # a injecao seria mais tentadora — quem envia o documento e a parte
+        # interessada em ser bem avaliada.
+        _bloco, _aviso_corte = ia_utils.bloco_documento(
+            texto_docs, rotulo="conjunto de documentos", marca="DOCS_EMPRESA"
+        )
         if _aviso_corte:
             partes.append(_aviso_corte)
+        partes.append(f"\nDocumentos fornecidos pela empresa:\n{_bloco}")
 
     partes.append(f"\nRetorne a análise qualitativa no formato:\n{_ESTRUTURA_PARECER}")
 
     try:
-        bruto = _chamar_anthropic("\n".join(partes), api_key, modelo, _sistema)
+        bruto = _chamar_anthropic(
+            "\n".join(partes), api_key, modelo,
+            _sistema + ia_utils.SUFIXO_SEGURANCA,
+            max_tokens=8000,
+        )
     except urllib.error.HTTPError as exc:
         _body = ""
         try:
