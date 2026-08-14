@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-18"
-VERSAO_NOTAS = "Integridade: sem respostas, o laudo inteiro sai NÃO AVALIADO"
+VERSAO_APP = "2026.08.14-01"
+VERSAO_NOTAS = "Edital: achados livres da IA em bloco próprio, fora das contagens"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -477,8 +477,12 @@ with aba1:
         finally:
             os.unlink(caminho)
 
-        inc = [a for a in apont if a["status"] == "inconformidade"]
-        ale = [a for a in apont if a["status"] == "alerta"]
+        # As metricas contam SO a camada de regras — mesma separacao do relatorio
+        # HTML (A.separar_camadas). Antes a tela somava os achados da IA aqui e
+        # discordava do proprio relatorio que ela mesma gerava logo abaixo.
+        _regras_ap, _ia_ap = A.separar_camadas(apont)
+        inc = [a for a in _regras_ap if a["status"] == "inconformidade"]
+        ale = [a for a in _regras_ap if a["status"] == "alerta"]
         n_alta = sum(1 for a in inc if a["severidade"] == "alta")
         nivel_at = "ALTO" if n_alta else ("MÉDIO" if any(a["severidade"] == "media" for a in inc + ale) else "BAIXO")
 
@@ -488,10 +492,15 @@ with aba1:
         m[1].metric("Nível de atenção", nivel_at)
         m[2].metric("Inconformidades", len(inc))
         m[3].metric("Alertas", len(ale))
+        st.caption(
+            "Os números acima vêm apenas da camada automática de regras, que é reproduzível — "
+            "o mesmo edital devolve sempre os mesmos números. O que a IA levantou por conta "
+            "própria aparece separado, no fim."
+        )
 
         st.subheader("Apontamentos")
         ordem = {"inconformidade": 0, "alerta": 1, "revisar": 2, "ok": 3}
-        mostrados = [a for a in sorted(apont, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))) if a["status"] != "ok"]
+        mostrados = [a for a in sorted(_regras_ap, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))) if a["status"] != "ok"]
         if not mostrados:
             st.success("Nenhuma inconformidade, alerta ou ponto a revisar identificado nas regras aplicadas.")
         for a in mostrados:
@@ -506,6 +515,23 @@ with aba1:
                 if a.get("fundamento"):
                     st.caption("Fundamento (RAG): " + _safe_md(a["fundamento"][:400]))
                 st.caption(_safe_md(a["base_legal"]))
+
+        if _ia_ap:
+            st.subheader("Observações adicionais da IA")
+            st.caption(
+                f"{len(_ia_ap)} ponto(s) levantados por leitura do texto, **sem regra "
+                "determinística por trás**. Não entram no índice nem nas contagens acima e "
+                "**podem mudar de uma análise para outra** — como mudaria a marcação de dois "
+                "leitores humanos lendo o mesmo edital. Servem para indicar onde olhar."
+            )
+            for a in sorted(_ia_ap, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
+                with st.expander(f"{ROTULO[a['status']]} · {a['id']} — {a['item']}"):
+                    st.write(_safe_md(a["detalhe"]))
+                    if a.get("trecho"):
+                        st.markdown(f"> {_safe_md(a['trecho'])}")
+                    if a.get("fundamento"):
+                        st.caption("Fundamento (RAG): " + _safe_md(a["fundamento"][:400]))
+                    st.caption(_safe_md(a["base_legal"]))
 
         _html_report = A.gerar_html(apont, pct, nivel, up.name, len(paginas))
         st.download_button("⬇️ Baixar relatório (HTML)", data=_html_report.encode("utf-8"),

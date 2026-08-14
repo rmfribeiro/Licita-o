@@ -429,6 +429,25 @@ def indice_de_risco(apont):
     return pct, nivel
 
 
+def separar_camadas(apont) -> tuple[list, list]:
+    """Divide os apontamentos em (camada de regras, camada de IA).
+
+    Decisao do Roberto em 14/08/2026 (opcao A): os achados livres da IA saem
+    das CONTAGENS e da tabela principal e vao para um bloco proprio no fim do
+    relatorio, rotulado como variavel entre analises. Motivo: eram a unica
+    fonte de divergencia que sobrava entre duas leituras do mesmo edital — o
+    modelo escolhe o que comentar, entao um achado a mais mudava a contagem da
+    primeira tela e o cliente via "dois resultados diferentes".
+
+    Esta funcao existe para que TELA e RELATORIO usem exatamente o mesmo
+    criterio de separacao. Antes a tela do app somava a IA nas metricas
+    enquanto o HTML ja separava, e os dois discordavam entre si.
+    """
+    regras = [a for a in apont if not _e_da_ia(a)]
+    ia     = [a for a in apont if _e_da_ia(a)]
+    return regras, ia
+
+
 def contar_atencao_ia(apont) -> dict:
     """Conta, a parte do indice, o que a camada de IA levantou."""
     ia = [a for a in apont if _e_da_ia(a)]
@@ -469,9 +488,13 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     # Os achados da IA nao entram no indice, mas precisam ser anunciados aqui —
     # senao o leitor conclui que "risco 0" significa "nada a verificar".
     _ia = contar_atencao_ia(apont)
+    # O aviso NAO traz o numero de achados da IA: esse numero varia de uma leitura
+    # para outra e, aparecendo na primeira tela, fazia dois relatorios do mesmo
+    # edital parecerem resultados diferentes. A quantidade fica dentro do bloco
+    # do fim, onde esta rotulada como variavel.
     bloco_ia = (
-        f'<br>A camada de IA levantou <b>{_ia["total"]} ponto(s) de atencao</b> '
-        "que NAO afetam este indice e dependem de leitura do jurista."
+        "<br>A camada de IA registrou <b>observacoes adicionais</b> ao final deste "
+        "relatorio &mdash; fora do indice e sujeitas a leitura do jurista."
         if _ia["total"] else ""
     )
     # Os cards contam SO a camada de regras, pela mesma razao do indice: eram a
@@ -502,7 +525,10 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
 
     linhas = ""
     ordem = {"inconformidade": 0, "alerta": 1, "revisar": 2, "ok": 3}
-    for a in sorted(apont, key=lambda x: (ordem.get(x["status"], 4), x["fonte"] != "IA (semantica)", str(x["id"]))):
+    # A tabela principal e SO da camada de regras. Os achados livres da IA saem
+    # daqui e vao para o bloco do fim (decisao de 14/08/2026, opcao A).
+    _regras_tab, _ia_tab = separar_camadas(apont)
+    for a in sorted(_regras_tab, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
         cor, rotulo = COR_STATUS.get(a["status"], ("#888", a["status"]))
         trecho = f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>' if a["trecho"] else ""
         fundamento = f'<div class="fund"><b>Fundamento (recuperado via RAG):</b> {e(a["fundamento"][:320])}{"..." if len(a["fundamento"])>320 else ""}</div>' if a.get("fundamento") else ""
@@ -530,6 +556,45 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
           </td>
           <td><span class="badge" style="background:{cor}">{e(rotulo)}</span></td>
         </tr>"""
+
+    # Bloco do fim: tudo o que a IA levantou por conta propria. Fica fora das
+    # contagens e da tabela principal, com rotulo explicito de que varia.
+    if _ia_tab:
+        _itens_ia = ""
+        for a in sorted(_ia_tab, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
+            _cor_ia, _rot_ia = COR_STATUS.get(a["status"], ("#888", a["status"]))
+            _tr_ia = (f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>'
+                      if a.get("trecho") else "")
+            _fu_ia = (f'<div class="fund"><b>Fundamento (recuperado via RAG):</b> '
+                      f'{e(a["fundamento"][:320])}{"..." if len(a["fundamento"])>320 else ""}</div>'
+                      if a.get("fundamento") else "")
+            _itens_ia += f"""
+        <tr>
+          <td class="id">{e(str(a['id']))}</td>
+          <td>
+            <div class="item">{e(a['item'])}</div>
+            <div class="cat">{e(a['categoria'])}</div>
+            <div class="detalhe">{e(a['detalhe'])}</div>
+            {_tr_ia}
+            {_fu_ia}
+            <div class="base">{e(a['base_legal'])}</div>
+          </td>
+          <td><span class="badge" style="background:{_cor_ia}">{e(_rot_ia)}</span></td>
+        </tr>"""
+        bloco_obs_ia = f"""
+  <div class="rotulo-bloco" style="color:#6C3483">Observacoes adicionais da IA &mdash; variam entre analises</div>
+  <div class="nota-camadas" style="margin:-10px 0 12px">
+    Os {_ia["total"]} ponto(s) abaixo foram levantados pela camada de IA por leitura do texto,
+    <b>sem regra deterministica por tras</b>. Eles <b>nao entram no indice nem nas contagens</b>
+    acima e <b>podem mudar de uma analise para outra</b> &mdash; assim como mudaria a marcacao de
+    dois leitores humanos lendo o mesmo edital. Serve para indicar <i>onde olhar</i>; nao afirma
+    inconformidade por si so. A parte reproduzivel do relatorio e a camada de regras.
+  </div>
+  <table class="tab-ia">{_itens_ia}
+  </table>
+"""
+    else:
+        bloco_obs_ia = ""
 
     return f"""<!DOCTYPE html>
 <html lang="pt-br"><head><meta charset="utf-8">
@@ -569,6 +634,8 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
   .marca-sub {{ font-size:11.5px; color:#5a6b7b; margin-top:2px; letter-spacing:.2px; }}
   .rotulo-bloco {{ font-size:11.5px; font-weight:700; color:#5a6b7b; text-transform:uppercase;
                    letter-spacing:.4px; margin:18px 0 6px; }}
+  .tab-ia {{ border-color:#d9c9e8; }}
+  .tab-ia td.id {{ color:#6C3483; }}
   .nota-camadas {{ font-size:11.5px; color:#7a8a99; line-height:1.6; background:#fff;
                    border:1px solid #e2e8f0; border-left:3px solid #6C3483;
                    border-radius:6px; padding:10px 12px; margin:-10px 0 24px; }}
@@ -602,26 +669,17 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     <div class="card"><div class="n" style="color:#27AE60">{n_ok}</div><div class="l">Itens presentes</div></div>
   </div>
 
-  <div class="rotulo-bloco">Camada de IA &mdash; apoio a leitura, fora do indice</div>
-  <div class="cards">
-    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#C0392B">{ia_inc}</div>
-      <div class="l">Apontadas como inconformidade pela IA</div></div>
-    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#E67E22">{ia_ale}</div>
-      <div class="l">Alertas da IA</div></div>
-    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#6C3483">{ia_rev}</div>
-      <div class="l">A revisar (IA)</div></div>
-    <div class="card" style="border-color:#d9c9e8"><div class="n" style="color:#6C3483">{n_ia}</div>
-      <div class="l">Total de pontos da IA</div></div>
-  </div>
   <div class="nota-camadas">
-    Os numeros das duas camadas sao contados <b>separadamente</b> de proposito. A camada de
-    regras e reproduzivel: o mesmo edital devolve sempre os mesmos numeros. A camada de IA
-    varia de uma leitura para outra, como variaria a marcacao de dois leitores humanos &mdash;
-    por isso ela sugere onde olhar, mas nao pontua e nao afirma inconformidade sozinha.
+    Todos os numeros desta tela vem da <b>camada automatica de regras</b>, que e reproduzivel:
+    o mesmo edital devolve sempre os mesmos numeros, e cada ponto e rastreavel ate um artigo da
+    Lei 14.133/2021. O que a camada de IA levantou por conta propria esta reunido <b>no fim
+    deste relatorio</b>, separado de proposito, porque varia de uma leitura para outra.
   </div>
 
   <table>{linhas}
   </table>
+
+  {bloco_obs_ia}
 
   <div class="nota">
     <b>Como ler:</b> &ldquo;Inconformidade&rdquo; = padrao problematico detectado;
