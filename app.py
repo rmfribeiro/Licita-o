@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-12"
-VERSAO_NOTAS = "DDI: falha na consulta cadastral nao vira acusacao a empresa"
+VERSAO_APP = "2026.08.13-13"
+VERSAO_NOTAS = "Alteracoes Contratuais: isolamento, parecer derivado dos requisitos"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")

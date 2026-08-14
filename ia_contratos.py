@@ -66,6 +66,11 @@ _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
         "Analise pedidos de REAJUSTE contratual à luz do Art. 25 §8º da Lei 14.133/2021. "
         "Verifique se há cláusula expressa de reajuste com índice e data-base, se o intervalo "
         "mínimo de 12 meses foi respeitado e se a memória de cálculo está correta. "
+        "Para cada requisito legal listado, atribua status ATENDIDO, PARCIAL ou AUSENTE, "
+        "com observação objetiva de no máximo 2 frases citando o documento que comprova "
+        "(ou a lacuna). Use AUSENTE quando o requisito não foi comprovado por documento. "
+        "Não emita juízo sobre o parecer conclusivo: ele é calculado a partir dos status "
+        "que você atribuir aos requisitos. "
         "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
     ),
     "repactuacao": (
@@ -73,6 +78,11 @@ _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
         "Analise pedidos de REPACTUAÇÃO contratual à luz do Art. 25 §8º da Lei 14.133/2021 e "
         "IN SEGES 5/2017. Verifique se o contrato é de serviços com mão de obra dedicada, se há "
         "CCT ou ACT, planilha de custos atualizada, prazo de preclusão e comprovação dos novos custos. "
+        "Para cada requisito legal listado, atribua status ATENDIDO, PARCIAL ou AUSENTE, "
+        "com observação objetiva de no máximo 2 frases citando o documento que comprova "
+        "(ou a lacuna). Use AUSENTE quando o requisito não foi comprovado por documento. "
+        "Não emita juízo sobre o parecer conclusivo: ele é calculado a partir dos status "
+        "que você atribuir aos requisitos. "
         "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
     ),
     "reequilibrio": (
@@ -80,6 +90,11 @@ _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
         "Analise pedidos de REEQUILÍBRIO ECONÔMICO-FINANCEIRO à luz do Art. 124 II 'd' da "
         "Lei 14.133/2021 e Art. 37 XXI da CF/88. Verifique se o evento é imprevisível e "
         "extraordinário, se há nexo causal comprovado e documentação suficiente do impacto. "
+        "Para cada requisito legal listado, atribua status ATENDIDO, PARCIAL ou AUSENTE, "
+        "com observação objetiva de no máximo 2 frases citando o documento que comprova "
+        "(ou a lacuna). Use AUSENTE quando o requisito não foi comprovado por documento. "
+        "Não emita juízo sobre o parecer conclusivo: ele é calculado a partir dos status "
+        "que você atribuir aos requisitos. "
         "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
     ),
 })
@@ -125,10 +140,14 @@ def analisar(
         partes.append(f"{i}. {req}")
 
     if texto_docs:
-        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
-        partes.append(f"\nDocumentos fornecidos pelo gestor:\n{_doc}")
+        # Documento do gestor vai ISOLADO em bloco delimitado (anti-injecao) e
+        # com nonce derivado do conteudo (prompt deterministico).
+        _bloco, _aviso_corte = ia_utils.bloco_documento(
+            texto_docs, rotulo="conjunto de documentos", marca="DOCS"
+        )
         if _aviso_corte:
             partes.append(_aviso_corte)
+        partes.append(f"\nDocumentos fornecidos pelo gestor:\n{_bloco}")
     else:
         partes.append(
             "\nNenhum documento adicional fornecido. Analise com base nas informações "
@@ -140,8 +159,46 @@ def analisar(
     )
 
     qualitativo = _chamar_api(
-        "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo]
+        "\n".join(partes), api_key, modelo,
+        _SISTEMA_POR_TIPO[tipo] + ia_utils.SUFIXO_SEGURANCA,
+        max_tokens=8000,
     )
 
     _normalizar_parecer(qualitativo, NORM_PARECER_CONT, PARECER_OPTIONS, "INDEFERÍVEL", "ia_contratos")
+    _derivar_parecer_dos_requisitos(qualitativo)
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}
+
+
+def _derivar_parecer_dos_requisitos(parecer: dict) -> None:
+    """Deriva a conclusão DO STATUS DOS REQUISITOS verificados.
+
+    Mesma correção aplicada ao ETP e ao DDI em 13/08/2026: a conclusão não pode
+    ser juízo livre do modelo, senão o mesmo pedido de reajuste sai "DEFERÍVEL"
+    numa execução e "INDEFERÍVEL" na outra. Aqui a escala é a dos requisitos
+    legais do tipo de alteração:
+
+      algum requisito AUSENTE  -> INDEFERÍVEL
+      algum requisito PARCIAL  -> DEFERÍVEL COM RESSALVAS
+      todos ATENDIDOS          -> DEFERÍVEL
+
+    É a regra que o próprio jurista aplicaria: falta requisito legal, não se
+    defere. O que a IA havia concluído fica guardado em `_parecer_ia`.
+    """
+    parecer.pop("_parecer_ia", None)
+    reqs = parecer.get("requisitos")
+    if not isinstance(reqs, list) or not reqs:
+        return
+    status = [str((r or {}).get("status", "")).strip().upper()
+              for r in reqs if isinstance(r, dict)]
+    status = [s for s in status if s]
+    if not status:
+        return
+    if "AUSENTE" in status:
+        derivado = "INDEFERÍVEL"
+    elif "PARCIAL" in status:
+        derivado = "DEFERÍVEL COM RESSALVAS"
+    else:
+        derivado = "DEFERÍVEL"
+    if parecer.get("parecer") != derivado:
+        parecer["_parecer_ia"] = parecer.get("parecer")
+        parecer["parecer"] = derivado

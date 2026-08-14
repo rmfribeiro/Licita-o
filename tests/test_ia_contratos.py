@@ -203,7 +203,10 @@ class TestAnalisar:
             r = ia_contratos.analisar(
                 "reajuste", _dados_contrato_mock(), "texto", "key_teste"
             )
-        assert r["parecer"] == "INDEFERÍVEL"
+        # O parecer final NAO vem mais do campo da IA: e derivado dos
+        # status dos requisitos (o mock tem um PARCIAL -> COM RESSALVAS).
+        # O valor invalido segue registrado em _aviso_parecer.
+        assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
         assert r.get("_aviso_parecer") == "DEFERÍVEL PARCIALMENTE"
 
     def test_parecer_reconhecido_nao_seta_aviso(self):
@@ -226,7 +229,10 @@ class TestAnalisar:
             r = ia_contratos.analisar(
                 "reajuste", _dados_contrato_mock(), None, "key_teste"
             )
-        assert r["parecer"] == "INDEFERÍVEL"
+        # O parecer final NAO vem mais do campo da IA: e derivado dos
+        # status dos requisitos (o mock tem um PARCIAL -> COM RESSALVAS).
+        # O valor invalido segue registrado em _aviso_parecer.
+        assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
         assert "_aviso_parecer" not in r
 
     def test_parecer_vazio_vira_indeferivel_com_aviso_vazio(self):
@@ -238,7 +244,10 @@ class TestAnalisar:
             r = ia_contratos.analisar(
                 "reajuste", _dados_contrato_mock(), None, "key_teste"
             )
-        assert r["parecer"] == "INDEFERÍVEL"
+        # O parecer final NAO vem mais do campo da IA: e derivado dos
+        # status dos requisitos (o mock tem um PARCIAL -> COM RESSALVAS).
+        # O valor invalido segue registrado em _aviso_parecer.
+        assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
         assert r.get("_aviso_parecer") == ""
 
     def test_pop_remove_aviso_parecer_injetado_pelo_llm_quando_parecer_valido(self):
@@ -252,3 +261,34 @@ class TestAnalisar:
             )
         assert r["parecer"] == "DEFERÍVEL COM RESSALVAS"
         assert "_aviso_parecer" not in r
+
+
+class TestParecerDerivado:
+    """O parecer conclusivo e CONSEQUENCIA dos requisitos, nao juizo do modelo."""
+
+    def test_requisito_ausente_nunca_vira_deferivel(self):
+        api = {**_parecer_api_mock(), "parecer": "DEFERÍVEL"}
+        api["requisitos"][1]["status"] = "AUSENTE"
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api)):
+            r = ia_contratos.analisar("reajuste", _dados_contrato_mock(), None, "k")
+        assert r["parecer"] == "INDEFERÍVEL"
+        assert r.get("_parecer_ia") == "DEFERÍVEL"
+
+    def test_mesmos_requisitos_mesmo_parecer(self):
+        """Tres pareceres diferentes vindos da IA, mesmos requisitos -> mesma conclusao."""
+        finais = []
+        for p in ("DEFERÍVEL", "INDEFERÍVEL", "DEFERÍVEL COM RESSALVAS"):
+            api = {**_parecer_api_mock(), "parecer": p}
+            with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api)):
+                finais.append(
+                    ia_contratos.analisar("reajuste", _dados_contrato_mock(), None, "k")["parecer"]
+                )
+        assert len(set(finais)) == 1, finais
+
+    def test_todos_atendidos_vira_deferivel(self):
+        api = {**_parecer_api_mock(), "parecer": "INDEFERÍVEL"}
+        for req in api["requisitos"]:
+            req["status"] = "ATENDIDO"
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api)):
+            r = ia_contratos.analisar("reajuste", _dados_contrato_mock(), None, "k")
+        assert r["parecer"] == "DEFERÍVEL"
