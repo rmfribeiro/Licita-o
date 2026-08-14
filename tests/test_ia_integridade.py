@@ -214,6 +214,64 @@ class TestDiagnosticar:
         assert resultado.get("_aviso_maturidade") == ""
 
     @patch("ia_utils.urllib.request.urlopen")
+    def test_formulario_em_branco_neutraliza_o_laudo_inteiro(self, mock_urlopen):
+        """O selo E o corpo do relatorio: nenhum dos dois pode acusar.
+
+        Bug real capturado no teste do dia 14/08/2026 com Laranjeiras: o selo
+        saia NAO AVALIADO, mas as 6 dimensoes continuavam INEXISTENTE e o resumo
+        afirmava que "nao ha ato formal de instituicao, responsavel designado...".
+        """
+        parecer_ia = _parecer_mock("INEXISTENTE")
+        parecer_ia["resumo_executivo"] = (
+            "Nao ha ato formal de instituicao, responsavel designado nem diretrizes publicadas."
+        )
+        parecer_ia["prioridades"] = ["Iniciar imediatamente a implementacao do PIP"]
+        mock_urlopen.return_value = _mock_urlopen(parecer_ia)
+        branco = {k: None for k, _ in ia_integridade.QUESTOES_PIP}
+        r = ia_integridade.diagnosticar(branco, None, "sk-test")
+
+        assert r["maturidade_geral"] == ia_integridade.NAO_AVALIADO
+        # nenhuma dimensao pode sair como INEXISTENTE
+        niveis = [d["nivel"] for d in r["dimensoes"].values()]
+        assert set(niveis) == {ia_integridade.NAO_AVALIADO}, niveis
+        # o resumo nao pode afirmar ausencia
+        assert "Nao ha ato formal" not in r["resumo_executivo"]
+        assert "não foram" in r["resumo_executivo"]
+        # a prioridade vira "responda o questionario", nao "implante o programa"
+        assert "questões pendentes" in r["prioridades"][0]
+        # o motivo fica explicito e o texto de piso (outra situacao) some
+        assert r["_motivo_nao_avaliado"] == "12 de 12 questões do questionário sem resposta"
+        assert "_aviso_piso_maturidade" not in r
+        # o que a IA disse fica guardado para auditoria, fora do relatorio
+        assert r["_diagnostico_ia_descartado"]["resumo_executivo"].startswith("Nao ha ato formal")
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_questionario_respondido_nao_e_neutralizado(self, mock_urlopen):
+        mock_urlopen.return_value = _mock_urlopen(_parecer_mock("CONSOLIDADO"))
+        r = ia_integridade.diagnosticar(_sim(), None, "sk-test")
+        assert r["maturidade_geral"] == "CONSOLIDADO"
+        assert "_diagnostico_ia_descartado" not in r
+        assert "_motivo_nao_avaliado" not in r
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_todas_nao_mantem_diagnostico_da_ia(self, mock_urlopen):
+        # Quem respondeu "Não" a tudo respondeu: o laudo conclui e nao neutraliza.
+        mock_urlopen.return_value = _mock_urlopen(_parecer_mock("INEXISTENTE"))
+        r = ia_integridade.diagnosticar(_nao(), None, "sk-test")
+        assert r["maturidade_geral"] == "INEXISTENTE"
+        assert "_diagnostico_ia_descartado" not in r
+
+    @patch("ia_utils.urllib.request.urlopen")
+    def test_pop_remove_campos_de_neutralizacao_injetados_pelo_llm(self, mock_urlopen):
+        parecer_ia = _parecer_mock("CONSOLIDADO")
+        parecer_ia["_diagnostico_ia_descartado"] = "FORJADO"
+        parecer_ia["_motivo_nao_avaliado"] = "FORJADO"
+        mock_urlopen.return_value = _mock_urlopen(parecer_ia)
+        r = ia_integridade.diagnosticar(_sim(), None, "sk-test")
+        assert "_diagnostico_ia_descartado" not in r
+        assert "_motivo_nao_avaliado" not in r
+
+    @patch("ia_utils.urllib.request.urlopen")
     def test_pop_remove_aviso_piso_maturidade_injetado_pelo_llm(self, mock_urlopen):
         # Pop defensivo deve apagar _aviso_piso_maturidade injetado pelo LLM quando piso não dispara
         parecer_injetado = _parecer_mock("EM DESENVOLVIMENTO")

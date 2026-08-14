@@ -92,10 +92,13 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
     story.append(t_mat)
     story.append(Spacer(1, 0.4*cm))
     if maturidade == _NAO_AVALIADO:
+        _motivo = parecer.get("_motivo_nao_avaliado")
         story.append(Paragraph(
-            "Não foi possível avaliar a maturidade: o questionário ficou majoritariamente sem "
-            "resposta. Isto <b>não</b> significa que o município não tenha Programa de Integridade "
-            "— significa que não há informação suficiente para afirmar nada a respeito.",
+            "Não foi possível avaliar a maturidade"
+            + (f": {html.escape(str(_motivo))}." if _motivo else ".")
+            + " Isto <b>não</b> significa que o município não tenha Programa de Integridade: "
+            "significa que não há informação suficiente para afirmar nada, nem a favor nem "
+            "contra.",
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2*cm))

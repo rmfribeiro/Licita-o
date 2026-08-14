@@ -108,6 +108,71 @@ def _respondida(valor) -> bool:
     return bool(txt) and txt.upper() not in ("NÃO INFORMADO", "NAO INFORMADO", "-", "N/A")
 
 
+def _base_insuficiente(respostas: dict) -> tuple[bool, int, int]:
+    """(base insuficiente?, respondidas, total).
+
+    Regra única de "não dá para concluir nada", usada tanto pelo piso quanto
+    pela neutralização do laudo — para que o selo e o texto nunca digam coisas
+    diferentes.
+    """
+    respondidas = sum(1 for k, _ in QUESTOES_PIP if _respondida(respostas.get(k)))
+    total = len(QUESTOES_PIP)
+    insuficiente = respondidas == 0 or (total - respondidas) / total >= LIMITE_SEM_RESPOSTA
+    return insuficiente, respondidas, total
+
+
+_RESUMO_NAO_AVALIADO = (
+    "Não foi possível diagnosticar a maturidade do Programa de Integridade Pública deste "
+    "município: {respondidas} de {total} questões do questionário ficaram sem resposta. "
+    "Este documento NÃO afirma que o município deixa de cumprir o Decreto 11.129/2022, a IN "
+    "CGU 21/2021, a Lei 12.846/2013 ou o Decreto 8.420/2015 — afirma apenas que não foram "
+    "apresentadas as informações necessárias para avaliar. Qualquer conclusão sobre a "
+    "existência, a ausência ou o estágio do programa depende do preenchimento do "
+    "questionário e da apresentação dos documentos comprobatórios."
+)
+
+_ACHADO_NAO_AVALIADO = (
+    "Não avaliado — as questões correspondentes do questionário não foram respondidas e não "
+    "há documento nos autos que permita verificação."
+)
+
+
+def _neutralizar_parecer(parecer: dict, respondidas: int, total: int) -> None:
+    """Apaga do laudo toda conclusão que a IA tirou sem base.
+
+    Descoberto no teste de 14/08/2026 com o formulário em branco: o selo saía
+    NÃO AVALIADO (correto), mas o corpo do relatório continuava dizendo
+    "INEXISTENTE" em todas as seis dimensões e afirmando que "não há ato formal
+    de instituição, responsável designado..." — ou seja, a acusação apenas mudou
+    do cabeçalho para o parágrafo, que é justamente a parte que o cliente copia.
+    Sem base, o documento não conclui: nem no selo, nem no texto.
+    """
+    parecer["_diagnostico_ia_descartado"] = {
+        "resumo_executivo": parecer.get("resumo_executivo"),
+        "dimensoes": parecer.get("dimensoes"),
+        "prioridades": parecer.get("prioridades"),
+    }
+    parecer["_motivo_nao_avaliado"] = (
+        f"{total - respondidas} de {total} questões do questionário sem resposta"
+    )
+    parecer["resumo_executivo"] = _RESUMO_NAO_AVALIADO.format(
+        respondidas=total - respondidas, total=total
+    )
+    parecer["dimensoes"] = {
+        chave: {"nivel": NAO_AVALIADO, "achados": [_ACHADO_NAO_AVALIADO], "recomendacoes": []}
+        for chave in LABEL_DIMENSAO
+    }
+    parecer["prioridades"] = [
+        f"Responder as {total - respondidas} questões pendentes do questionário do PIP.",
+        "Reunir os documentos comprobatórios (ato de instituição, designação do responsável, "
+        "diretrizes publicadas, plano de gestão, indicadores).",
+        "Gerar novo diagnóstico com as informações completas.",
+    ]
+    # A mensagem de piso ("rebaixada por critérios estruturantes ausentes") descreve
+    # outra situação e confundiria o leitor aqui.
+    parecer.pop("_aviso_piso_maturidade", None)
+
+
 def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
     """Aplica pisos de maturidade a partir das respostas EFETIVAS.
 
@@ -118,12 +183,11 @@ def _aplicar_piso(respostas: dict, maturidade_ia: str) -> str:
     aqui dentro do piso. O prompt pedia à IA para não presumir, mas o código
     presumia por ela.
     """
-    respondidas = {k: str(respostas.get(k)).strip()
-                   for k, _ in QUESTOES_PIP if _respondida(respostas.get(k))}
-    total = len(QUESTOES_PIP)
-    if not respondidas or (total - len(respondidas)) / total >= LIMITE_SEM_RESPOSTA:
+    if _base_insuficiente(respostas)[0]:
         # Base insuficiente: não se conclui maturidade nenhuma, nem para baixo.
         return NAO_AVALIADO
+    respondidas = {k: str(respostas.get(k)).strip()
+                   for k, _ in QUESTOES_PIP if _respondida(respostas.get(k))}
 
     # Regra 1 — todas as RESPONDIDAS são "Não" → INEXISTENTE
     if all(v == "Não" for v in respondidas.values()):
@@ -213,5 +277,11 @@ def diagnosticar(
     if _mat_piso != _mat:
         parecer["_aviso_piso_maturidade"] = _mat
     parecer["maturidade_geral"] = _mat_piso
+
+    parecer.pop("_diagnostico_ia_descartado", None)
+    parecer.pop("_motivo_nao_avaliado", None)
+    _insuf, _n_resp, _n_tot = _base_insuficiente(respostas)
+    if _insuf:
+        _neutralizar_parecer(parecer, _n_resp, _n_tot)
 
     return parecer

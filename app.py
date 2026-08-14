@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-17"
-VERSAO_NOTAS = "Diagnóstico de Integridade: questionário sem resposta não vira mais INEXISTENTE"
+VERSAO_APP = "2026.08.13-18"
+VERSAO_NOTAS = "Integridade: sem respostas, o laudo inteiro sai NÃO AVALIADO"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -877,11 +877,13 @@ with aba4:
         _mat_pip = str(_pr_pip.get("maturidade_geral") or ia_integridade.NAO_AVALIADO).strip().upper()
         st.subheader(f"{ia_integridade.ICONE_MATURIDADE.get(_mat_pip, '⚪')} Maturidade Geral: {_safe_md(_mat_pip)}")
         if _mat_pip == ia_integridade.NAO_AVALIADO:
+            _motivo_pip = _pr_pip.get("_motivo_nao_avaliado")
             st.warning(
-                "⚪ **Não foi possível avaliar a maturidade.** O questionário ficou majoritariamente "
-                "sem resposta. Isto **não** significa que o município não tenha Programa de "
-                "Integridade — significa que não há informação suficiente para afirmar nada. "
-                "Responda as questões do formulário e gere o diagnóstico novamente."
+                "⚪ **Não foi possível avaliar a maturidade**"
+                + (f" — {_safe_md(str(_motivo_pip))}." if _motivo_pip else ".")
+                + " Isto **não** significa que o município não tenha Programa de Integridade: "
+                "significa que não há informação suficiente para afirmar nada, nem a favor nem "
+                "contra. Responda as questões do formulário e gere o diagnóstico novamente."
             )
         _aviso_mat_pip = _pr_pip.get("_aviso_maturidade")
         if _aviso_mat_pip is not None:
