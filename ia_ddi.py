@@ -130,8 +130,27 @@ def analisar(dados: dict, fid: dict) -> dict:
         "portaldatransparencia.gov.br/sancoes antes de qualquer contratação.\n"
     )
 
+    # A consulta cadastral pode ter FALHADO (API pública fora do ar ou com
+    # limite de requisições). Sem avisar, a IA lê os campos vazios e escreve
+    # que a EMPRESA tem "dados cadastrais indisponíveis, impossível validar
+    # regularidade" — acusação séria por um problema que é nosso. Medido em
+    # 13/08/2026: duas consultas ao mesmo CNPJ, uma trouxe os dados e a outra
+    # não, e os pareceres saíram MÉDIO e ALTO.
+    _consultou_receita = dados.get("receita_disponivel", True)
+    _aviso_receita = "" if _consultou_receita else (
+        "\nATENÇÃO: a consulta aos dados cadastrais NÃO foi concluída (serviço "
+        "indisponível ou limite de requisições). Os campos de razão social, "
+        "situação, porte e CNAE estão vazios POR FALHA DA CONSULTA, não porque "
+        "a empresa não os possua. É PROIBIDO afirmar que a empresa tem cadastro "
+        "irregular, incompleto ou indisponível. Marque a dimensão "
+        "'situacao_cadastral' como 'alerta' e descreva que a verificação está "
+        "PENDENTE, recomendando repetir a consulta ou conferir manualmente em "
+        "solucoes.receita.fazenda.gov.br.\n"
+    )
+
     prompt = (
         f"Dados do licitante:\n{json.dumps(dados, ensure_ascii=False, indent=2)}\n"
+        f"{_aviso_receita}"
         f"{_aviso_sancoes}\n"
         f"Respostas do FID:\n"
         f"- Código de Ética ou Conduta formal: {fid.get('q1', 'Não sei')}\n"
@@ -199,6 +218,24 @@ def analisar(dados: dict, fid: dict) -> dict:
             _s.setdefault("achados", [])
             _dims["sancoes"] = _s
         parecer["sancoes_verificadas"] = False
+
+    # Mesma trava para a consulta cadastral: prompt e pedido, nao garantia.
+    if not _consultou_receita:
+        _dims = parecer.get("dimensoes")
+        if isinstance(_dims, dict):
+            _c = _dims.get("situacao_cadastral")
+            if not isinstance(_c, dict):
+                _c = {}
+            _c["status"] = "alerta"
+            _c["descricao"] = (
+                "VERIFICAÇÃO PENDENTE: não foi possível consultar os dados "
+                "cadastrais (serviço indisponível ou limite de requisições no "
+                "momento da análise). Isto NÃO indica irregularidade da empresa "
+                "— apenas que a consulta não foi concluída. Repita a análise em "
+                "alguns minutos ou confira manualmente na Receita Federal."
+            )
+            _dims["situacao_cadastral"] = _c
+        parecer["cadastro_verificado"] = False
 
     # Risco final = o MAIOR entre o piso (dados) e o derivado (dimensoes).
     # Nenhum dos dois vem do juizo livre do modelo.

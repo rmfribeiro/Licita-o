@@ -40,30 +40,58 @@ def _e_grande_vulto(valor: float | None) -> bool | None:
     return None if valor is None else valor > _GRANDE_VULTO_LIMITE
 
 
-def _buscar_receita(cnpj: str) -> dict | None:
-    try:
-        resp = requests.get(
-            f"https://publica.cnpj.ws/cnpj/{cnpj}",
-            timeout=_TIMEOUT,
-            headers={"Accept": "application/json"},
-        )
-        if resp.status_code != 200:
+def _buscar_receita(cnpj: str, tentativas: int = 3) -> dict | None:
+    """Consulta os dados cadastrais. Devolve None quando NÃO conseguiu consultar.
+
+    A API pública impõe limite de requisições (HTTP 429) e falha de forma
+    intermitente. Medido em 13/08/2026: duas consultas ao mesmo CNPJ, com dois
+    minutos de diferença, uma trouxe os dados e a outra voltou vazia — e os dois
+    pareceres saíram diferentes por causa disso, não por variação do modelo.
+
+    Por isso: até 3 tentativas com espera crescente, e distinção clara entre
+    "consultei e a empresa está assim" e "não consegui consultar".
+    """
+    import time as _time
+    for tentativa in range(tentativas):
+        try:
+            resp = requests.get(
+                f"https://publica.cnpj.ws/cnpj/{cnpj}",
+                timeout=_TIMEOUT,
+                headers={"Accept": "application/json"},
+            )
+            if resp.status_code == 429 and tentativa < tentativas - 1:
+                _time.sleep(2 * (tentativa + 1))   # limite de requisições: espera e repete
+                continue
+            if resp.status_code != 200:
+                return None
+            break
+        except requests.exceptions.RequestException:
+            if tentativa < tentativas - 1:
+                _time.sleep(1 + tentativa)
+                continue
             return None
+    try:
         d = resp.json()
-        return {
-            "razao_social": d.get("razao_social", ""),
-            "nome_fantasia": d.get("nome_fantasia", ""),
-            "situacao": d.get("descricao_situacao_cadastral", ""),
-            "porte": d.get("descricao_porte", ""),
-            "cnae": d.get("cnae_fiscal_descricao", ""),
-            "data_abertura": d.get("data_inicio_atividade", ""),
-            "socios": [
-                {"nome": s.get("nome_socio", ""), "cargo": s.get("cargo", "")}
-                for s in d.get("qsa", [])
-            ],
-        }
-    except requests.exceptions.RequestException:
+    except (ValueError, requests.exceptions.RequestException):
         return None
+    dados = {
+        "razao_social": d.get("razao_social", ""),
+        "nome_fantasia": d.get("nome_fantasia", ""),
+        "situacao": d.get("descricao_situacao_cadastral", ""),
+        "porte": d.get("descricao_porte", ""),
+        "cnae": d.get("cnae_fiscal_descricao", ""),
+        "data_abertura": d.get("data_inicio_atividade", ""),
+        "socios": [
+            {"nome": s.get("nome_socio", ""), "cargo": s.get("cargo", "")}
+            for s in d.get("qsa", [])
+        ],
+    }
+    # Resposta 200 mas sem razão social não é empresa sem nome: é resposta
+    # inútil. Tratar como falha de consulta evita que o parecer descreva a
+    # EMPRESA como "dados cadastrais indisponíveis" quando o problema é nosso.
+    if not (dados["razao_social"] or "").strip():
+        return None
+    return dados
 
 
 def _buscar_ceis(cnpj: str) -> list:
