@@ -177,9 +177,15 @@ def gerar_pdf(
     for dim_key, (dim_label, params) in DIMENSOES_PI.items():
         dim = dims_qualitativo.get(dim_key) or {}
         sintese = str(dim.get("sintese") or "-")
-        score_d = por_dimensao.get(dim_key, 0.0)
+        # `.get(chave, 0.0)` NAO cobre chave existente com valor None — e e
+        # exatamente isso que `calcular_scores` devolve para dimensao sem
+        # resposta. Formatar None com ":.0f" derruba a geracao do PDF inteiro
+        # (visto em 13/08/2026: "unsupported format string passed to NoneType").
+        score_d = por_dimensao.get(dim_key)
+        _score_txt = (f"{score_d:.0f}/100" if isinstance(score_d, (int, float))
+                      else "não avaliado")
         story.append(Paragraph(
-            f"<b>{html.escape(dim_label)} ({score_d:.0f}/100):</b> {html.escape(sintese)}",
+            f"<b>{html.escape(dim_label)} ({_score_txt}):</b> {html.escape(sintese)}",
             _ESTILO_CORPO,
         ))
         params_qualit = dim.get("parametros") or {}

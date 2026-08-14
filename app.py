@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.13-14"
-VERSAO_NOTAS = "Avaliacao de PI: isolamento anti-injecao e max_tokens maior"
+VERSAO_APP = "2026.08.13-15"
+VERSAO_NOTAS = "corrige quebra da tela e do PDF quando o PI sai NAO AVALIADO"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1120,25 +1120,39 @@ with aba5:
         )
         st.caption(f"Tipo de Entidade: {_tipo_label_pi}")
 
-        _nivel_pi = str(_sc_pi.get("nivel") or "INEXISTENTE").strip().upper()
-        _score_pi = _sc_pi.get("geral", 0.0)
+        # ATENCAO: com base insuficiente, `nivel` vem como "NÃO AVALIADO" e os
+        # scores vêm como None (correcao de 29/07 — nao inventar nota sobre o
+        # que nao foi informado). A EXIBICAO precisa tratar esse None: formatar
+        # None com ":.0f" derruba a tela inteira e impede ate a geracao do PDF.
+        _nivel_pi = str(_sc_pi.get("nivel") or ia_pi_empresas.NAO_AVALIADO).strip().upper()
+        _score_pi = _sc_pi.get("geral")
         _cor_pi = ia_integridade.COR_MATURIDADE_HEX.get(_nivel_pi, "#888888")
         _icone_pi = ia_integridade.ICONE_MATURIDADE.get(_nivel_pi, "⚪")
+        _nota_pi = f" — {_score_pi:.0f}/100" if isinstance(_score_pi, (int, float)) else ""
         st.markdown(
             f"<div style='background:{_cor_pi};padding:16px;border-radius:8px;"
             f"color:white;font-size:20px;font-weight:bold;text-align:center'>"
-            f"{_icone_pi} {html.escape(_nivel_pi)} — {_score_pi:.0f}/100"
+            f"{_icone_pi} {html.escape(_nivel_pi)}{_nota_pi}"
             f"</div>",
             unsafe_allow_html=True,
         )
+        if not _sc_pi.get("suficiente", True):
+            st.warning(
+                f"Base insuficiente: {_sc_pi.get('avaliados', 0)} de "
+                f"{_sc_pi.get('total_questoes', 0)} parâmetros foram informados. "
+                "Não é atribuída nota — a ausência de resposta não significa "
+                "ausência de programa de integridade. Complete o formulário ou "
+                "solicite as evidências à empresa."
+            )
         st.markdown("")
 
         # Scores por dimensão
         _por_dim = _sc_pi.get("por_dimensao") or {}
         st.markdown("**Score por Dimensão:**")
         for _dim_key, (_dim_label, _) in ia_pi_empresas.DIMENSOES_PI.items():
-            _s = _por_dim.get(_dim_key, 0.0)
-            st.write(f"• **{_dim_label}:** {_s:.0f}/100")
+            _s = _por_dim.get(_dim_key)
+            _txt = f"{_s:.0f}/100" if isinstance(_s, (int, float)) else ia_pi_empresas.NAO_AVALIADO
+            st.write(f"• **{_dim_label}:** {_txt}")
 
         # Conclusão para a hipótese
         _conc_pi = str(_pr_pi.get("conclusao_hipotese") or "")
