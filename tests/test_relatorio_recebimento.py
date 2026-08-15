@@ -100,3 +100,41 @@ class TestGerarPdf:
         )
         assert isinstance(pdf, bytes)
         assert len(pdf) > 1000
+
+
+class TestCenarioVazioNoPDF:
+    """Regra do método (13/08): testar o cenário vazio e ler o RELATÓRIO
+    INTEIRO, não só o veredito."""
+
+    _DADOS = {"numero_contrato": "001/2026", "objeto": "papel A4",
+              "data_entrega": "01/08/2026", "valor_contrato": 10000.0,
+              "descricao_entrega": "", "nao_conformidades": ""}
+
+    def _pdf_texto(self, parecer):
+        import io
+        import pdfplumber
+        pdf = relatorio_recebimento.gerar_pdf(self._DADOS, "bem", parecer)
+        with pdfplumber.open(io.BytesIO(pdf)) as d:
+            return "\n".join(p.extract_text() or "" for p in d.pages)
+
+    def test_sem_condicoes_o_pdf_nao_atesta_nem_reprova(self):
+        import ia_recebimento
+        vazio = {"parecer": ia_recebimento.PARECER_NAO_AVALIADO, "condicoes": [],
+                 "pendencias": [], "sintese": ""}
+        t = self._pdf_texto({"tipo_objeto": "bem",
+                             "recebimento_provisorio": dict(vazio),
+                             "recebimento_definitivo": dict(vazio),
+                             "recomendacoes_gerais": [], "base_legal": []})
+        assert "NÃO AVALIADO" in t
+        assert "INAPTO" not in t
+        assert "não há base para atestar" in t
+
+    def test_pdf_registra_o_que_a_ia_concluiu_quando_o_codigo_diverge(self):
+        import ia_recebimento
+        bloco = {"parecer": ia_recebimento.PARECER_NAO_AVALIADO, "_parecer_ia": "APTO",
+                 "condicoes": [], "pendencias": [], "sintese": ""}
+        t = self._pdf_texto({"tipo_objeto": "bem",
+                             "recebimento_provisorio": bloco,
+                             "recebimento_definitivo": dict(bloco),
+                             "recomendacoes_gerais": [], "base_legal": []})
+        assert "A análise concluiu APTO" in t

@@ -1,6 +1,7 @@
 # relatorio_recebimento.py
 from __future__ import annotations
 import html
+import ia_recebimento
 import io
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
@@ -16,6 +17,7 @@ from ia_recebimento import TIPOS_OBJETO, NORM_PARECER_RECV as _NORM_PARECER_RECV
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _COR_PARECER = {
+    "NÃO AVALIADO":       colors.HexColor("#808080"),
     "APTO":               colors.HexColor(_COR_STATUS["ok"]),
     "APTO COM RESSALVAS": colors.HexColor("#F39C12"),
     "INAPTO":             colors.HexColor(_COR_STATUS["critico"]),
@@ -66,7 +68,8 @@ def _rodape_todas_paginas(canvas, doc):
 
 
 def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
-    parecer_val = str(bloco.get("parecer") or "INAPTO").strip().upper()
+    # Ausencia de parecer NAO vira INAPTO no laudo que vai ao processo.
+    parecer_val = str(bloco.get("parecer") or ia_recebimento.PARECER_NAO_AVALIADO).strip().upper()
     parecer_val = _NORM_PARECER_RECV.get(parecer_val, parecer_val)
     cor_badge = _COR_PARECER.get(parecer_val, colors.grey)
 
@@ -83,10 +86,29 @@ def _render_bloco(story: list, titulo: str, bloco: dict) -> None:
     story.append(t_badge)
     story.append(Spacer(1, 0.3 * cm))
 
+    if parecer_val == ia_recebimento.PARECER_NAO_AVALIADO:
+        story.append(Paragraph(
+            "Nenhuma condição foi verificada neste bloco. Isto <b>não</b> significa que a entrega "
+            "seja irregular: significa que não há base para atestar nem para recusar. O ateste de "
+            "recebimento é ato do fiscal, com responsabilidade pessoal.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2 * cm))
+
     _aviso_pval = bloco.get("_aviso_parecer")
     if _aviso_pval is not None:
         story.append(Paragraph(
-            f"⚠ Valor original não reconhecido: '{html.escape(str(_aviso_pval))}' — registrado como INAPTO.",
+            f"⚠ Valor original não reconhecido: '{html.escape(str(_aviso_pval))}' — o parecer "
+            "acima foi derivado do status das condições verificadas.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2 * cm))
+
+    _pia = bloco.get("_parecer_ia")
+    if _pia and _pia != parecer_val:
+        story.append(Paragraph(
+            f"(i) A análise concluiu {html.escape(str(_pia))}; o parecer acima foi derivado do "
+            "status das condições do art. 140, que é o critério do sistema.",
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2 * cm))

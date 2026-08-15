@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.15-03"
-VERSAO_NOTAS = "Dosimetria: conferência automática da minuta contra o parecer"
+VERSAO_APP = "2026.08.15-04"
+VERSAO_NOTAS = "Recebimento: parecer derivado das condições; sem base, não atesta nem reprova"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1253,7 +1253,9 @@ with aba5:
 
 def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, cores: dict) -> None:
     _bloco = (pr.get(bloco_key) or {})
-    _pval = str(_bloco.get("parecer") or "INAPTO").strip().upper()
+    # Ausencia de parecer NAO vira INAPTO: reprovar por resposta malformada
+    # bloqueia o recebimento e o pagamento de quem pode ter entregue certo.
+    _pval = str(_bloco.get("parecer") or ia_recebimento.PARECER_NAO_AVALIADO).strip().upper()
     _pval = ia_recebimento.NORM_PARECER_RECV.get(_pval, _pval)
     st.markdown(
         f"<div style='background:{cores.get(_pval, '#888888')};"
@@ -1267,7 +1269,21 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
     if _aviso_pval is not None:
         _label_pval = f"'{_safe_md(str(_aviso_pval))}'" if _aviso_pval != "" else _AVISO_CAMPO_VAZIO
         st.warning(
-            f"⚠️ Valor de parecer não reconhecido: {_label_pval} — registrado como **INAPTO**. Verifique manualmente."
+            f"⚠️ Valor de parecer não reconhecido: {_label_pval} — o parecer exibido foi "
+            "derivado das condições verificadas. Confira manualmente."
+        )
+    if _pval == ia_recebimento.PARECER_NAO_AVALIADO:
+        st.warning(
+            "⚪ **Nenhuma condição foi verificada neste bloco.** Isto **não** significa que a "
+            "entrega seja irregular: significa que não há base para atestar nem para recusar. "
+            "O ateste de recebimento é ato do fiscal, com responsabilidade pessoal — o sistema "
+            "não o emite no vazio."
+        )
+    _pia = _bloco.get("_parecer_ia")
+    if _pia and _pia != _pval:
+        st.caption(
+            f"ℹ️ A IA concluiu **{_safe_md(str(_pia))}**; o parecer acima foi derivado do status "
+            "das condições do art. 140, que é o critério do sistema."
         )
     _sint = str(_bloco.get("sintese") or "")
     if _sint:
@@ -1276,11 +1292,15 @@ def _render_bloco_recv(bloco_key: str, titulo: str, pr: dict, icones: dict, core
     _conds = _conds if isinstance(_conds, list) else []
     if _conds:
         st.markdown("**Condições Verificadas:**")
-        _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌"}
+        _icone_cond = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌",
+                       "NÃO INFORMADA": "⚪"}
         for _cond in _conds:
             if not isinstance(_cond, dict) or not _cond:
                 continue
-            _st_c = str(_cond.get("status") or "AUSENTE").strip().upper()
+            # Condicao sem status NAO e condicao ausente: e condicao nao
+            # informada. A primeira acusa o fornecedor; a segunda descreve o
+            # documento.
+            _st_c = str(_cond.get("status") or "NÃO INFORMADA").strip().upper()
             _ic_c = _icone_cond.get(_st_c, "ℹ️")
             _obs_c = " ".join(str(_cond.get("observacao") or "").split())
             _desc_c = " ".join(str(_cond.get("descricao") or "").split())
@@ -1590,9 +1610,11 @@ with aba6:
             _pr_recv = st.session_state["recv_parecer"]
             st.divider()
 
-            _icone_parecer_recv = {"APTO": "🟢", "APTO COM RESSALVAS": "🟡", "INAPTO": "🔴"}
+            _icone_parecer_recv = {"APTO": "🟢", "APTO COM RESSALVAS": "🟡", "INAPTO": "🔴",
+                                   ia_recebimento.PARECER_NAO_AVALIADO: "⚪"}
             _cor_parecer_recv = {
                 "APTO": "#27AE60", "APTO COM RESSALVAS": "#F39C12", "INAPTO": "#C0392B",
+                ia_recebimento.PARECER_NAO_AVALIADO: "#808080",
             }
 
             _col_prov, _col_def = st.columns(2)

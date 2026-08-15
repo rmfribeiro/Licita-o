@@ -198,7 +198,10 @@ class TestAnalisar:
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         assert "recebimento_provisorio" in r
 
-    def test_parecer_desconhecido_vira_inapto_com_aviso(self):
+    def test_parecer_desconhecido_nao_vira_inapto(self):
+        """Antes, valor irreconhecível caía em INAPTO — uma resposta malformada
+        do modelo BLOQUEARIA o recebimento (e o pagamento) de um fornecedor que
+        pode ter entregue tudo certo. Agora o parecer vem das CONDIÇÕES."""
         parecer = {
             **_parecer_api_mock(),
             "recebimento_provisorio": {
@@ -209,10 +212,27 @@ class TestAnalisar:
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         bloco = r["recebimento_provisorio"]
-        assert bloco["parecer"] == "INAPTO"
         assert bloco.get("_aviso_parecer") == "APROVADO"
+        assert bloco["parecer"] != "INAPTO" or any(
+            str(c.get("status", "")).upper() == "AUSENTE"
+            for c in bloco.get("condicoes", []) if isinstance(c, dict)
+        )
 
-    def test_parecer_none_vira_inapto_sem_aviso(self):
+    def test_sem_condicoes_avaliadas_sai_nao_avaliado(self):
+        """Atestar recebimento sem nenhuma condição verificada seria dar (ou
+        negar) aptidão no vazio. O ateste é ato do fiscal, com responsabilidade
+        pessoal."""
+        parecer = {
+            **_parecer_api_mock(),
+            "recebimento_provisorio": {"parecer": "APTO", "condicoes": [],
+                                       "pendencias": [], "sintese": ""},
+        }
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
+        assert r["recebimento_provisorio"]["parecer"] == ia_recebimento.PARECER_NAO_AVALIADO
+
+
+    def test_parecer_none_nao_vira_inapto(self):
         parecer = {
             **_parecer_api_mock(),
             "recebimento_definitivo": {
@@ -223,8 +243,11 @@ class TestAnalisar:
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         bloco = r["recebimento_definitivo"]
-        assert bloco["parecer"] == "INAPTO"
         assert "_aviso_parecer" not in bloco
+        # o parecer sai das condicoes, nao do fallback
+        assert bloco["parecer"] in (
+            "APTO", "APTO COM RESSALVAS", "INAPTO", ia_recebimento.PARECER_NAO_AVALIADO)
+
 
     def test_pop_remove_aviso_parecer_injetado_em_sub_dict_quando_parecer_valido(self):
         parecer = {
@@ -245,3 +268,54 @@ class TestAnalisar:
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_recebimento.analisar("servico", _dados_entrega_mock(), None, "key")
         assert "_aviso_parecer" not in r
+
+
+class TestDerivacaoDoParecer:
+    """A conclusão do recebimento virou aritmética sobre as condições do art.
+    140, como já vale para ETP, DDI e Alterações Contratuais."""
+
+    def _bloco(self, *status):
+        b = {"parecer": "APTO",
+             "condicoes": [{"descricao": f"c{i}", "status": s, "observacao": ""}
+                           for i, s in enumerate(status)]}
+        ia_recebimento._derivar_parecer_das_condicoes(b)
+        return b
+
+    def test_ausente_reprova(self):
+        assert self._bloco("ATENDIDA", "AUSENTE")["parecer"] == "INAPTO"
+
+    def test_parcial_vira_ressalvas(self):
+        assert self._bloco("ATENDIDA", "PARCIAL")["parecer"] == "APTO COM RESSALVAS"
+
+    def test_todas_atendidas_e_apto(self):
+        assert self._bloco("ATENDIDA", "ATENDIDA")["parecer"] == "APTO"
+
+    def test_ausente_tem_precedencia_sobre_parcial(self):
+        assert self._bloco("PARCIAL", "AUSENTE")["parecer"] == "INAPTO"
+
+    def test_sem_condicoes_nao_conclui(self):
+        assert self._bloco()["parecer"] == ia_recebimento.PARECER_NAO_AVALIADO
+
+    def test_status_invalido_e_ignorado_nao_reprova(self):
+        b = self._bloco("ATENDIDA", "TALVEZ")
+        assert b["parecer"] == "APTO"
+
+    def test_guarda_o_que_a_ia_concluiu(self):
+        b = {"parecer": "APTO",
+             "condicoes": [{"descricao": "c", "status": "AUSENTE", "observacao": ""}]}
+        ia_recebimento._derivar_parecer_das_condicoes(b)
+        assert b["parecer"] == "INAPTO"
+        assert b["_parecer_ia"] == "APTO"
+
+
+class TestIsolamentoRecebimento:
+    def test_documento_vai_isolado_no_prompt(self):
+        import json
+        with patch("ia_utils.urllib.request.urlopen",
+                   return_value=_mock_urlopen(_parecer_api_mock())) as mock:
+            ia_recebimento.analisar("bem", _dados_entrega_mock(), "TEXTO_DO_FORNECEDOR", "key")
+        corpo = json.loads(mock.call_args[0][0].data.decode("utf-8"))
+        prompt = corpo["messages"][0]["content"]
+        assert "DOCS_RECEBIMENTO" in prompt
+        assert "TEXTO_DO_FORNECEDOR" in prompt
+        assert corpo["max_tokens"] >= 8000

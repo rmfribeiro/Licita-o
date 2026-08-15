@@ -37,6 +37,12 @@ STATUS_CONDICAO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "AUSENTE":  "AUSENTE",
 })
 
+# Estado distinto dos tres pareceres: nao e um juizo desfavoravel, e a ausencia
+# de base para qualquer juizo. Sem ele, o fallback do modulo era "INAPTO" —
+# uma resposta malformada do modelo BLOQUEARIA o recebimento (e o pagamento) de
+# um fornecedor que pode ter entregue tudo certo.
+PARECER_NAO_AVALIADO = "NÃO AVALIADO"
+
 _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "servico": (
         "Você é um fiscal de contratos especialista em recebimento de SERVIÇOS "
@@ -165,8 +171,13 @@ def analisar(
         partes.append(f"{i}. {c}")
 
     if texto_docs:
-        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
-        partes.append(f"\nDocumentos fornecidos:\n{_doc}")
+        # Isolamento anti-injecao: nota fiscal, laudo e as-built sao produzidos
+        # pela CONTRATADA — parte interessada em ser recebida. Documento de
+        # parte interessada nao entra cru no prompt.
+        _bloco, _aviso_corte = ia_utils.bloco_documento(
+            texto_docs, rotulo="conjunto de documentos", marca="DOCS_RECEBIMENTO"
+        )
+        partes.append(f"\nDocumentos fornecidos:\n{_bloco}")
         if _aviso_corte:
             partes.append(_aviso_corte)
     else:
@@ -178,12 +189,57 @@ def analisar(
     partes.append(f"\nRetorne a análise no formato JSON:\n{_ESTRUTURA_PARECER}")
 
     qualitativo = _chamar_api(
-        "\n".join(partes), api_key, modelo, _SISTEMA_POR_TIPO[tipo_objeto]
+        "\n".join(partes), api_key, modelo,
+        _SISTEMA_POR_TIPO[tipo_objeto] + ia_utils.SUFIXO_SEGURANCA,
+        max_tokens=8000,      # dois blocos (provisorio + definitivo) nao cabem em 3.000
     )
 
     qualitativo.pop("_aviso_parecer", None)
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)
         if isinstance(_b, dict):
-            _normalizar_parecer(_b, NORM_PARECER_RECV, PARECER_OPTIONS, "INAPTO", "ia_recebimento")
+            # NAO AVALIADO precisa entrar no conjunto valido, senao o proprio
+            # fallback seria tratado como valor desconhecido e o modulo marcaria
+            # um aviso de "parecer irreconhecivel" em toda resposta sem parecer.
+            _normalizar_parecer(_b, NORM_PARECER_RECV,
+                                frozenset(PARECER_OPTIONS) | {PARECER_NAO_AVALIADO},
+                                PARECER_NAO_AVALIADO, "ia_recebimento")
+            _derivar_parecer_das_condicoes(_b)
     return {**qualitativo, "tipo_objeto": tipo_objeto, "dados_entrega": dados_entrega}
+
+
+def _derivar_parecer_das_condicoes(bloco: dict) -> None:
+    """Deriva o parecer DO STATUS DAS CONDICOES verificadas.
+
+    Mesma correcao ja aplicada ao ETP, ao DDI e as Alteracoes Contratuais: a
+    conclusao nao pode ser juizo livre do modelo, senao a mesma entrega sai
+    "APTO" numa execucao e "INAPTO" na outra. A escala aqui e a do art. 140:
+
+      alguma condicao AUSENTE  -> INAPTO
+      alguma condicao PARCIAL  -> APTO COM RESSALVAS
+      todas ATENDIDAS          -> APTO
+      nenhuma condicao avaliada -> NAO AVALIADO (nao se atesta no vazio)
+
+    O que a IA concluiu fica guardado em `_parecer_ia`.
+    """
+    bloco.pop("_parecer_ia", None)
+    conds = bloco.get("condicoes")
+    if not isinstance(conds, list):
+        conds = []
+    status = [str((c or {}).get("status", "")).strip().upper()
+              for c in conds if isinstance(c, dict)]
+    status = [s for s in status if s in STATUS_CONDICAO]
+    if not status:
+        # Atestar recebimento sem nenhuma condicao verificada seria dar aptidao
+        # (ou negá-la) no vazio. O ateste e ato do fiscal, com responsabilidade
+        # pessoal — o sistema nao o substitui quando nao ha o que verificar.
+        derivado = PARECER_NAO_AVALIADO
+    elif "AUSENTE" in status:
+        derivado = "INAPTO"
+    elif "PARCIAL" in status:
+        derivado = "APTO COM RESSALVAS"
+    else:
+        derivado = "APTO"
+    if bloco.get("parecer") != derivado:
+        bloco["_parecer_ia"] = bloco.get("parecer")
+        bloco["parecer"] = derivado
