@@ -66,3 +66,50 @@ class TestSeparacaoCamadaIA:
         topo = h.split("Observacoes adicionais da IA")[0]
         assert "Total de pontos da IA" not in topo
         assert "5 ponto(s) de atencao" not in topo
+
+
+class TestObservacoesDaIaNoBlocoDoFim:
+    """Decisão de 14/08/2026, depois de medir os relatórios 3 e 4 de Laranjeiras.
+
+    Os 38 ids, os status, as contagens e o índice saíram idênticos entre as duas
+    execuções — mas as 16 "Observações da IA" mudaram TODAS, algumas com 26% de
+    similaridade. Como ficavam no miolo da tabela principal, quem comparasse dois
+    relatórios do mesmo edital veria 16 parágrafos diferentes com todos os
+    números iguais. Texto que varia vai para o bloco que avisa que varia.
+    """
+    _regra = staticmethod(TestSeparacaoCamadaIA._regra)
+    _ia = staticmethod(TestSeparacaoCamadaIA._ia)
+
+    def _html(self, apont):
+        import re
+        pct, nivel = analisador.indice_de_risco(apont)
+        h = analisador.gerar_html(apont, pct, nivel, "e.pdf", 10)
+        return re.sub(r"gerado em \d{2}/\d{2}/\d{4} \d{2}:\d{2}", "<TS>", h)
+
+    def test_observacao_sai_da_tabela_principal(self):
+        r = dict(self._regra("R01", "alerta"), observacao_ia="TEXTO_QUE_VARIA_ENTRE_ANALISES")
+        h = self._html([r])
+        antes, depois = h.split("Observacoes adicionais da IA")
+        assert "TEXTO_QUE_VARIA_ENTRE_ANALISES" not in antes
+        assert "TEXTO_QUE_VARIA_ENTRE_ANALISES" in depois
+
+    def test_bloco_do_fim_existe_so_com_observacoes(self):
+        """Sem achados livres, mas com comentários, o bloco ainda tem de aparecer."""
+        r = dict(self._regra("R01"), observacao_ia="comentario")
+        assert "Observacoes adicionais da IA" in self._html([r])
+
+    def test_tabela_principal_identica_com_observacoes_totalmente_diferentes(self):
+        base = [self._regra("R01", "inconformidade", "alta"), self._regra("R02", "alerta"),
+                self._regra("R03", "ok")]
+        r1 = [dict(a, observacao_ia=f"redacao A {i}") for i, a in enumerate(base)]
+        r2 = [dict(a, observacao_ia=f"outra redacao completamente diferente {i}")
+              for i, a in enumerate(base)]
+        d1 = self._html(r1).split("Observacoes adicionais da IA")[0]
+        d2 = self._html(r2).split("Observacoes adicionais da IA")[0]
+        assert d1 == d2
+
+    def test_comentario_indica_a_regra_que_comenta(self):
+        r = dict(self._regra("R07", "alerta"), observacao_ia="comentario")
+        depois = self._html([r]).split("Observacoes adicionais da IA")[1]
+        assert "R07" in depois
+        assert "Comentário sobre:" in depois

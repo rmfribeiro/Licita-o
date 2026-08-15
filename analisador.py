@@ -548,14 +548,17 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
         rotulo = a.get("rotulo_status") or rotulo
         trecho = f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>' if a["trecho"] else ""
         fundamento = f'<div class="fund"><b>Fundamento (recuperado via RAG):</b> {e(a["fundamento"][:320])}{"..." if len(a["fundamento"])>320 else ""}</div>' if a.get("fundamento") else ""
-        # Comentario da IA sobre um item das regras. Vai em bloco proprio e
-        # rotulado como variavel: o julgamento da linha e da regra; isto aqui e
-        # leitura auxiliar, e um modelo de linguagem nao repete a mesma redacao
-        # duas vezes. Deixar isso explicito evita que o leitor conclua que o
-        # sistema "mudou de opiniao" quando so mudou a forma de escrever.
-        obs_ia = (f'<div class="obsia"><b>Observação da IA</b> '
-                  f'<span style="color:#8a7aa0">(apoio à leitura; a redação varia entre análises)</span><br>'
-                  f'{e(a["observacao_ia"][:600])}</div>') if a.get("observacao_ia") else ""
+        # A observacao da IA sobre a linha NAO entra mais aqui: ela desce para o
+        # bloco do fim, junto com os demais achados livres.
+        #
+        # MEDIDO em 14/08/2026, comparando os relatorios 3 e 4 do edital de
+        # Laranjeiras: os 38 ids, os status, as contagens e o indice sairam
+        # IDENTICOS, mas as 16 observacoes da IA mudaram TODAS — algumas com 26%
+        # de similaridade entre uma execucao e outra. Como ficavam no miolo da
+        # tabela principal, quem comparasse dois relatorios do mesmo edital veria
+        # 16 paragrafos diferentes com todos os numeros iguais. A tabela
+        # principal existe para ser reproduzivel; texto que varia vai para o
+        # bloco que avisa que varia.
         fonte_cor = "#6C3483" if a["fonte"].startswith("IA") else "#5a6b7b"
         fonte_tag = f'<span class="fonte" style="color:{fonte_cor}">{e(a["fonte"])}</span>'
         linhas += f"""
@@ -567,7 +570,6 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
             <div class="detalhe">{e(a['detalhe'])}</div>
             {trecho}
             {fundamento}
-            {obs_ia}
             <div class="base">{e(a['base_legal'])}</div>
           </td>
           <td><span class="badge" style="background:{cor}">{e(rotulo)}</span></td>
@@ -575,7 +577,8 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
 
     # Bloco do fim: tudo o que a IA levantou por conta propria. Fica fora das
     # contagens e da tabela principal, com rotulo explicito de que varia.
-    if _ia_tab:
+    _obs_regras = [a for a in _regras_tab if a.get("observacao_ia")]
+    if _ia_tab or _obs_regras:
         _itens_ia = ""
         for a in sorted(_ia_tab, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
             _cor_ia, _rot_ia = COR_STATUS.get(a["status"], ("#888", a["status"]))
@@ -598,10 +601,28 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
           </td>
           <td><span class="badge" style="background:{_cor_ia}">{e(_rot_ia)}</span></td>
         </tr>"""
+        # Comentarios da IA sobre linhas da camada de regras. O julgamento da
+        # linha continua sendo da regra (na tabela principal); aqui fica so a
+        # leitura auxiliar, identificada pela regra que comenta.
+        for a in sorted(_obs_regras, key=lambda x: str(x["id"])):
+            _itens_ia += f"""
+        <tr>
+          <td class="id">{e(str(a['id']))}</td>
+          <td>
+            <div class="item">Comentário sobre: {e(a['item'])}</div>
+            <div class="cat">O julgamento desta linha está na tabela acima; isto é leitura auxiliar.</div>
+            <div class="detalhe">{e(a["observacao_ia"][:600])}</div>
+          </td>
+          <td><span class="badge" style="background:#8a7aa0">Observação</span></td>
+        </tr>"""
+        _n_obs = len(_obs_regras)
+        _quantos = (f"{_ia['total']} ponto(s) próprio(s)"
+                    + (f" e {_n_obs} comentário(s) sobre itens do checklist" if _n_obs else "")
+                    if _ia["total"] else f"{_n_obs} comentário(s) sobre itens do checklist")
         bloco_obs_ia = f"""
   <div class="rotulo-bloco" style="color:#6C3483">Observacoes adicionais da IA &mdash; variam entre analises</div>
   <div class="nota-camadas" style="margin:-10px 0 12px">
-    Os {_ia["total"]} ponto(s) abaixo foram levantados pela camada de IA por leitura do texto,
+    Abaixo, {_quantos} — tudo o que a camada de IA produziu por leitura do texto,
     <b>sem regra deterministica por tras</b>. Eles <b>nao entram no indice nem nas contagens</b>
     acima e <b>podem mudar de uma analise para outra</b> &mdash; assim como mudaria a marcacao de
     dois leitores humanos lendo o mesmo edital. Serve para indicar <i>onde olhar</i>; nao afirma
