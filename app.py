@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.15-04"
-VERSAO_NOTAS = "Recebimento: parecer derivado das condições; sem base, não atesta nem reprova"
+VERSAO_APP = "2026.08.15-05"
+VERSAO_NOTAS = "Nenhum tipo de objeto/sanção/hipótese vem pré-selecionado"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -988,15 +988,21 @@ with aba5:
     _hip_opcoes = dict(ia_pi_empresas.HIPOTESES_POR_TIPO.get(_tipo_entidade_pi) or {})
     _hip_chaves = list(_hip_opcoes.keys())
     _hip_labels_pi = list(_hip_opcoes.values())
+    # index=None: a hipotese legal define o que a entidade precisa comprovar.
     _hip_idx = st.selectbox(
         "Hipótese legal",
         options=range(len(_hip_chaves)),
         format_func=lambda i: _hip_labels_pi[i],
+        index=None,
+        placeholder="Selecione a hipótese legal…",
         key=f"pi_hipotese_select_{_tipo_entidade_pi}",
     )
-    _hipotese_pi = _hip_chaves[_hip_idx]
+    _hipotese_pi = _hip_chaves[_hip_idx] if _hip_idx is not None else None
 
-    if st.button("Consultar entidade", key="btn_pi_etapa1", disabled=not _cnpj_pi):
+    if _hipotese_pi is None:
+        st.caption("Selecione a hipótese legal para habilitar a consulta.")
+    if st.button("Consultar entidade", key="btn_pi_etapa1",
+                 disabled=(not _cnpj_pi) or _hipotese_pi is None):
         for _k in ("pi_etapa", "pi_dados", "pi_cnpj", "pi_hipotese",
                    "pi_tipo_entidade", "pi_respostas", "pi_parecer", "pi_pdf"):
             st.session_state.pop(_k, None)
@@ -1333,13 +1339,18 @@ with aba6:
 
         _tipos_cont_chaves = list(ia_contratos.TIPOS_ALTERACAO.keys())
         _tipos_cont_labels = list(ia_contratos.TIPOS_ALTERACAO.values())
+        # index=None pela mesma razao do recebimento: reajuste, repactuacao e
+        # reequilibrio tem REQUISITOS LEGAIS distintos, e a opcao 1 vinha
+        # pre-selecionada.
         _tipo_cont_idx = st.selectbox(
             "Tipo de alteração contratual",
             options=range(len(_tipos_cont_chaves)),
             format_func=lambda i: _tipos_cont_labels[i],
+            index=None,
+            placeholder="Selecione o tipo de alteração…",
             key="cont_tipo_select",
         )
-        _tipo_cont = _tipos_cont_chaves[_tipo_cont_idx]
+        _tipo_cont = _tipos_cont_chaves[_tipo_cont_idx] if _tipo_cont_idx is not None else None
 
         _col_num_cont, _col_data_cont = st.columns(2)
         _num_cont = _col_num_cont.text_input(
@@ -1364,7 +1375,12 @@ with aba6:
         )
 
         if st.button("Analisar Pedido", type="primary", key="btn_cont"):
-            if not _api_key_cont:
+            if _tipo_cont is None:
+                st.error(
+                    "Selecione o tipo de alteração contratual — reajuste, repactuação e "
+                    "reequilíbrio têm requisitos legais diferentes."
+                )
+            elif not _api_key_cont:
                 st.error(
                     "ANTHROPIC_API_KEY não configurada — "
                     "configure via variável de ambiente ou secrets.toml."
@@ -1516,13 +1532,22 @@ with aba6:
 
         _tipos_recv_chaves = list(ia_recebimento.TIPOS_OBJETO.keys())
         _tipos_recv_labels = list(ia_recebimento.TIPOS_OBJETO.values())
+        # index=None: o selectbox vinha com a PRIMEIRA opcao pre-selecionada, e a
+        # escolha aqui determina QUAL CHECKLIST LEGAL sera aplicado. Medido no
+        # teste de recebimento de 15/08/2026: um contrato de FORNECIMENTO DE BEM
+        # foi analisado como SERVICO (opcao 1 da lista), e o parecer verificou
+        # "medicao elaborada pelo fiscal" em vez de "quantidade conferida" e
+        # "qualidade aparente". O relatorio saiu coerente consigo mesmo e errado
+        # quanto ao objeto — o pior tipo de erro, porque nao parece erro.
         _tipo_recv_idx = st.selectbox(
             "Tipo de objeto contratual",
             options=range(len(_tipos_recv_chaves)),
             format_func=lambda i: _tipos_recv_labels[i],
+            index=None,
+            placeholder="Selecione o tipo do objeto…",
             key="recv_tipo_select",
         )
-        _tipo_recv = _tipos_recv_chaves[_tipo_recv_idx]
+        _tipo_recv = _tipos_recv_chaves[_tipo_recv_idx] if _tipo_recv_idx is not None else None
 
         _col_num_recv, _col_data_recv = st.columns(2)
         _num_recv = _col_num_recv.text_input(
@@ -1554,6 +1579,11 @@ with aba6:
                 st.error(
                     "ANTHROPIC_API_KEY não configurada — "
                     "configure via variável de ambiente ou secrets.toml."
+                )
+            elif _tipo_recv is None:
+                st.error(
+                    "Selecione o tipo de objeto contratual — bem, serviço e obra têm "
+                    "condições de recebimento diferentes no art. 140."
                 )
             elif not _desc_recv.strip():
                 st.error("Preencha a descrição do que foi entregue/executado.")
@@ -2099,13 +2129,18 @@ with aba9:
     with _col_reab2:
         _tipo_sancao_opcoes = list(ia_reabilitacao.TIPOS_SANCAO.keys())
         _tipo_sancao_labels = list(ia_reabilitacao.TIPOS_SANCAO.values())
+        # index=None: impedimento e inidoneidade tem condicoes e prazos de
+        # reabilitacao diferentes.
         _tipo_sancao_idx    = st.selectbox(
             "Tipo de Sanção",
             options=range(len(_tipo_sancao_opcoes)),
             format_func=lambda i: _tipo_sancao_labels[i],
+            index=None,
+            placeholder="Selecione o tipo de sanção…",
             key="reab_tipo_sancao_select",
         )
-    _tipo_sancao_reab = _tipo_sancao_opcoes[_tipo_sancao_idx]
+    _tipo_sancao_reab = (_tipo_sancao_opcoes[_tipo_sancao_idx]
+                         if _tipo_sancao_idx is not None else None)
 
     _col_reab3, _col_reab4 = st.columns(2)
     with _col_reab3:
@@ -2155,11 +2190,13 @@ with aba9:
         key="reab_conds_ato",
     )
 
+    if _tipo_sancao_reab is None:
+        st.caption("Selecione o tipo de sanção para habilitar a verificação.")
     if st.button(
         "Verificar Elegibilidade →",
         type="primary",
         key="btn_reab_etapa1",
-        disabled=not _cnpj_reab,
+        disabled=(not _cnpj_reab) or _tipo_sancao_reab is None,
     ):
         for _k in ("reab_etapa", "reab_dados_empresa", "reab_prazo",
                    "reab_dados_sancao", "reab_respostas", "reab_parecer",
