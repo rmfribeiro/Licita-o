@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.14-05"
-VERSAO_NOTAS = "IA não repete assuntos que viraram código; bloco da IA em ordem estável"
+VERSAO_APP = "2026.08.14-06"
+VERSAO_NOTAS = "Dosimetria: o sistema não arbitra mais sanção, gravidade nem percentual de multa"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1862,7 +1862,7 @@ with aba8:
         _enq_sanc  = _pr_sanc.get("enquadramento") or {}
         _dos_sanc  = _pr_sanc.get("dosimetria") or {}
         _alerta_sanc = _pr_sanc.get("alerta_criminal") or {}
-        _tipo_sanc = str(_enq_sanc.get("tipo_sancao") or "multa")
+        _tipo_sanc = str(_enq_sanc.get("tipo_sancao") or ia_sancoes.SANCAO_NAO_DETERMINADA)
         if _tipo_sanc == "multa" and _dad_sanc.get("valor_contrato") is None:
             st.info(
                 "Valor do contrato não informado — a estimativa monetária da multa não foi calculada."
@@ -1889,6 +1889,20 @@ with aba8:
             f"{_icone_sanc} {html.escape(_label_sanc.upper())}</div>",
             unsafe_allow_html=True,
         )
+        if _tipo_sanc == ia_sancoes.SANCAO_NAO_DETERMINADA:
+            st.warning(
+                "⚪ **A análise não determinou o tipo de sanção.** Isto **não** significa que "
+                "não haja infração: significa que os elementos apresentados não permitiram "
+                "enquadrá-la. A minuta do ato não é gerada nesta situação — não se redige ato "
+                "que aplica penalidade sem saber qual penalidade. Revise o documento de "
+                "apuração e gere novamente."
+            )
+        _aviso_tipo_ia = _pr_sanc.get("_tipo_sancao_ia")
+        if _aviso_tipo_ia:
+            st.caption(
+                f"⚠️ A IA devolveu um tipo de sanção não reconhecido: "
+                f"'{_safe_md(str(_aviso_tipo_ia))}'. Registrado como não determinado."
+            )
         st.caption(
             f"Enquadramento: {_safe_md(_enq_sanc.get('artigo') or '')} — "
             f"{_safe_md(_enq_sanc.get('justificativa') or '')}"
@@ -1907,7 +1921,7 @@ with aba8:
 
         st.divider()
         st.markdown("**Dosimetria**")
-        _nivel_sanc = str(_dos_sanc.get("nivel_gravidade") or "MÉDIO").strip().upper()
+        _nivel_sanc = str(_dos_sanc.get("nivel_gravidade") or ia_sancoes.GRAVIDADE_NAO_AVALIADA).strip().upper()
         _cor_nivel_sanc = {"LEVE": "#27AE60", "MÉDIO": "#F39C12", "GRAVE": "#C0392B"}.get(
             _nivel_sanc, "#888888"
         )
@@ -1925,18 +1939,45 @@ with aba8:
         _linhas_dos_sanc.append(["Agravantes", ", ".join(_agrav_sanc) or "—"])
         _linhas_dos_sanc.append(["Atenuantes", ", ".join(_aten_sanc) or "—"])
         if _tipo_sanc == "multa":
-            _pct_sanc = _dos_sanc.get("percentual_multa") or 0.5
-            _val_sanc = _dos_sanc.get("valor_multa_estimado") or 0.0
-            _linhas_dos_sanc.append(["% da Multa", f"{_pct_sanc:.1f}%"])
-            if _val_sanc > 0:
+            # None aqui e o caso NORMAL quando a analise nao apurou percentual.
+            # Formatar None com :.1f quebra a tela — foi exatamente o que
+            # aconteceu no modulo de PI em 13/08. Guardar os dois pontos.
+            _pct_sanc = _dos_sanc.get("percentual_multa")
+            _val_sanc = _dos_sanc.get("valor_multa_estimado")
+            if isinstance(_pct_sanc, (int, float)):
+                _linhas_dos_sanc.append(["% da Multa", f"{_pct_sanc:.1f}%"])
+            else:
+                _linhas_dos_sanc.append(
+                    ["% da Multa", "não determinado — aplicar o percentual previsto no edital/contrato"]
+                )
+            if isinstance(_val_sanc, (int, float)) and _val_sanc > 0:
                 _linhas_dos_sanc.append(["Valor Estimado", f"R$ {_val_sanc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")])
         elif _tipo_sanc in ("impedimento", "inidoneidade"):
             _prazo_sanc = _dos_sanc.get("prazo_sancao")
             _linhas_dos_sanc.append(["Prazo", f"{_prazo_sanc} ano(s)" if _prazo_sanc else "—"])
 
         st.table(_linhas_dos_sanc)
+        _pct_ia_sanc = _pr_sanc.get("_percentual_ia")
+        if _pct_ia_sanc:
+            st.warning(
+                f"⚠️ A IA propôs multa de {_safe_md(str(_pct_ia_sanc))}%, acima do teto de "
+                f"{ia_sancoes.TETO_MULTA_PCT:.0f}% do art. 156, §3º, da Lei 14.133/2021. "
+                "O valor exibido foi limitado ao teto legal."
+            )
+        _grav_ia_sanc = _pr_sanc.get("_gravidade_ia")
+        if _grav_ia_sanc:
+            st.caption(
+                f"⚠️ Nível de gravidade não reconhecido devolvido pela IA: "
+                f"'{_safe_md(str(_grav_ia_sanc))}'. Registrado como NÃO AVALIADO."
+            )
 
-        if _alerta_sanc.get("configura_crime"):
+        if _alerta_sanc.get("configura_crime") is None:
+            st.caption(
+                "A análise não avaliou se a conduta pode configurar crime do art. 178 da "
+                "Lei 14.133/2021. Ausência de alerta aqui **não** equivale a descarte da "
+                "hipótese criminal."
+            )
+        elif _alerta_sanc.get("configura_crime"):
             st.error(
                 f"⚠️ **ALERTA CRIMINAL — Art. 178, Lei 14.133/2021**\n\n"
                 f"**Artigo:** {_safe_md(_alerta_sanc.get('artigo_178') or '—')}\n\n"

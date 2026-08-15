@@ -70,12 +70,32 @@ class TestConstantes:
 
 
 class TestNormalizacao:
-    def test_tipo_sancao_invalido_normaliza_para_multa(self):
+    def test_tipo_sancao_invalido_nao_vira_multa(self):
+        """Antes: tipo irreconhecível virava "multa" — o CÓDIGO escolhia a
+        sanção. Agora sai como não determinada, com o valor da IA registrado."""
         parecer = {**_parecer_api_mock()}
         parecer["enquadramento"] = {**parecer["enquadramento"], "tipo_sancao": "inexistente"}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
-        assert r["enquadramento"]["tipo_sancao"] == "multa"
+        assert r["enquadramento"]["tipo_sancao"] == ia_sancoes.SANCAO_NAO_DETERMINADA
+        assert r["_tipo_sancao_ia"] == "inexistente"
+
+    def test_tipo_sancao_ausente_nao_vira_multa(self):
+        parecer = {**_parecer_api_mock()}
+        parecer["enquadramento"] = {k: v for k, v in parecer["enquadramento"].items()
+                                    if k != "tipo_sancao"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+        assert r["enquadramento"]["tipo_sancao"] == ia_sancoes.SANCAO_NAO_DETERMINADA
+        assert "_tipo_sancao_ia" not in r          # nao veio nada: nao ha o que registrar
+
+    def test_minuta_bloqueada_sem_sancao_determinada(self):
+        """Não se redige ato que aplica penalidade sem saber qual penalidade."""
+        parecer = {"enquadramento": {"tipo_sancao": ia_sancoes.SANCAO_NAO_DETERMINADA},
+                   "dosimetria": {}}
+        with pytest.raises(ValueError, match="tipo de sanção"):
+            ia_sancoes.gerar_minuta(parecer, _dados_formulario_mock(), "key")
+
 
     def test_tipo_sancao_case_insensitive(self):
         parecer = {**_parecer_api_mock()}
@@ -84,12 +104,35 @@ class TestNormalizacao:
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["enquadramento"]["tipo_sancao"] == "multa"
 
-    def test_percentual_multa_clampado_minimo(self):
+    def test_percentual_ausente_nao_vira_meio_por_cento(self):
+        """O `or 0.5`: sem percentual, o código inventava 0,5%, multiplicava pelo
+        valor do contrato e produzia um VALOR EM REAIS na minuta do ato."""
+        parecer = {**_parecer_api_mock()}
+        parecer["dosimetria"] = {k: v for k, v in parecer["dosimetria"].items()
+                                 if k != "percentual_multa"}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+        assert r["dosimetria"]["percentual_multa"] is None
+        assert r["dosimetria"]["valor_multa_estimado"] is None
+
+    def test_percentual_baixo_e_legitimo_e_preservado(self):
+        """0,1% é lícito se o edital assim previu. O piso de 0,5% era invenção."""
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 0.1}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
-        assert r["dosimetria"]["percentual_multa"] == 0.5
+        assert r["dosimetria"]["percentual_multa"] == 0.1
+
+    def test_percentual_acima_do_teto_e_limitado_com_aviso(self):
+        """Art. 156, §3º: teto de 30%. Limitar em silêncio esconderia que a IA
+        propôs acima do teto."""
+        parecer = {**_parecer_api_mock()}
+        parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 45.0}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+        assert r["dosimetria"]["percentual_multa"] == ia_sancoes.TETO_MULTA_PCT
+        assert r["_percentual_ia"] == 45.0
+
 
     def test_percentual_multa_clampado_maximo(self):
         parecer = {**_parecer_api_mock()}
@@ -105,28 +148,40 @@ class TestNormalizacao:
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["dosimetria"]["percentual_multa"] == 10.0
 
-    def test_configura_crime_sempre_bool_false(self):
+    def test_crime_nao_avaliado_nao_vira_nao_configura(self):
+        """bool(None) dizia ao leitor que a hipótese criminal foi analisada e
+        descartada. Ausência de avaliação é None."""
         parecer = {**_parecer_api_mock()}
-        parecer["alerta_criminal"] = {**parecer["alerta_criminal"], "configura_crime": 0}
+        parecer["alerta_criminal"] = {k: v for k, v in parecer["alerta_criminal"].items()
+                                      if k != "configura_crime"}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
-        assert isinstance(r["alerta_criminal"]["configura_crime"], bool)
+        assert r["alerta_criminal"]["configura_crime"] is None
+
+    def test_crime_false_explicito_e_preservado(self):
+        parecer = {**_parecer_api_mock()}
+        parecer["alerta_criminal"] = {**parecer["alerta_criminal"], "configura_crime": False}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert r["alerta_criminal"]["configura_crime"] is False
 
-    def test_configura_crime_sempre_bool_true(self):
+
+    def test_crime_true_explicito_e_preservado(self):
         parecer = {**_parecer_api_mock()}
-        parecer["alerta_criminal"] = {**parecer["alerta_criminal"], "configura_crime": 1}
+        parecer["alerta_criminal"] = {**parecer["alerta_criminal"], "configura_crime": True}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
-        assert isinstance(r["alerta_criminal"]["configura_crime"], bool)
         assert r["alerta_criminal"]["configura_crime"] is True
 
-    def test_nivel_gravidade_invalido_normaliza_para_medio(self):
+
+    def test_gravidade_invalida_nao_vira_medio(self):
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "nivel_gravidade": "ALTISSIMO"}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
-        assert r["dosimetria"]["nivel_gravidade"] == "MÉDIO"
+        assert r["dosimetria"]["nivel_gravidade"] == ia_sancoes.GRAVIDADE_NAO_AVALIADA
+        assert r["_gravidade_ia"] == "ALTISSIMO"
+
 
     def test_valor_contrato_zero_zera_estimativa_multa(self):
         parecer = {**_parecer_api_mock()}
@@ -135,11 +190,14 @@ class TestNormalizacao:
             r = ia_sancoes.analisar_dosimetria(dados, None, "key")
         assert r["dosimetria"]["valor_multa_estimado"] == 0.0
 
-    def test_valor_contrato_ausente_zera_estimativa_multa(self):
+    def test_valor_contrato_ausente_nao_estima_multa(self):
+        """R$ 0,00 parece um valor calculado. Sem valor de contrato não há
+        estimativa — o campo fica vazio."""
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(_parecer_api_mock())):
             r = ia_sancoes.analisar_dosimetria(dados, None, "key")
-        assert r["dosimetria"]["valor_multa_estimado"] == 0.0
+        assert r["dosimetria"]["valor_multa_estimado"] is None
+
 
     def test_valor_contrato_ausente_prompt_contem_nao_informado(self):
         dados = {k: v for k, v in _dados_formulario_mock().items() if k != "valor_contrato"}

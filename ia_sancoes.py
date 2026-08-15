@@ -16,6 +16,16 @@ TIPOS_SANCAO: frozenset = frozenset({"advertencia", "multa", "impedimento", "ini
 
 NIVEIS_GRAVIDADE: frozenset = frozenset({"LEVE", "MÉDIO", "GRAVE"})
 
+# Estados de "sem base para afirmar". Este modulo produz uma MINUTA DE ATO que
+# aplica penalidade e, no caso da multa, um VALOR EM DINHEIRO. Preencher lacuna
+# com valor plausivel aqui nao e imprecisao: e inventar sancao.
+SANCAO_NAO_DETERMINADA = "nao_determinada"
+GRAVIDADE_NAO_AVALIADA = "NÃO AVALIADO"
+
+# Art. 156, §3º: a multa nao pode superar 30% do valor do contrato. Nao ha, na
+# lei, percentual MINIMO — o piso de 0,5% que existia aqui era invencao nossa.
+TETO_MULTA_PCT = 30.0
+
 REINCIDENCIA_OPCOES: types.MappingProxyType[str, str] = types.MappingProxyType({
     "Sim":            "Sim",
     "Não":            "Não",
@@ -79,33 +89,69 @@ _ESTRUTURA_PARECER = """{
 
 
 def _normalizar(parecer: dict, valor_contrato: float | None) -> dict:
+    """Normaliza o parecer SEM preencher lacuna com valor plausivel.
+
+    A versao anterior fazia, nesta ordem:
+        tipo_sancao      or "multa"
+        nivel_gravidade  or "MÉDIO"
+        percentual_multa or 0.5      -> e depois max(0.5, ...)
+    Ou seja: quando o modelo nao devolvia o campo, o CODIGO escolhia a sancao,
+    escolhia a gravidade e escolhia um percentual — que em seguida multiplicava
+    o valor do contrato e virava um VALOR EM REAIS na minuta do ato. Um numero
+    inventado num documento que aplica penalidade a uma empresa. E o mesmo
+    padrao do "0.0" da Pesquisa de Mercado e do 'or "Não"' do Integridade, no
+    modulo onde ele custa mais caro.
+    """
+    for _k in ("_tipo_sancao_ia", "_gravidade_ia", "_percentual_ia"):
+        parecer.pop(_k, None)
+
     enq = parecer.get("enquadramento") or {}
-    _tipo = str(enq.get("tipo_sancao") or "multa").strip().lower()
-    if _tipo not in TIPOS_SANCAO:
-        _tipo = "multa"
+    _tipo_bruto = str(enq.get("tipo_sancao") or "").strip().lower()
+    if _tipo_bruto in TIPOS_SANCAO:
+        _tipo = _tipo_bruto
+    else:
+        _tipo = SANCAO_NAO_DETERMINADA
+        if _tipo_bruto:                      # veio algo, mas irreconhecivel
+            parecer["_tipo_sancao_ia"] = _tipo_bruto
     enq["tipo_sancao"] = _tipo
 
     dos = parecer.get("dosimetria") or {}
-    _nivel = str(dos.get("nivel_gravidade") or "MÉDIO").strip().upper()
-    if _nivel not in NIVEIS_GRAVIDADE:
-        _nivel = "MÉDIO"
+    _nivel_bruto = str(dos.get("nivel_gravidade") or "").strip().upper()
+    if _nivel_bruto in NIVEIS_GRAVIDADE:
+        _nivel = _nivel_bruto
+    else:
+        _nivel = GRAVIDADE_NAO_AVALIADA
+        if _nivel_bruto:
+            parecer["_gravidade_ia"] = _nivel_bruto
     dos["nivel_gravidade"] = _nivel
 
     if _tipo == "multa":
-        _pct = _safe_float(dos.get("percentual_multa") or 0.5)
-        dos["percentual_multa"] = max(0.5, min(30.0, _pct))
-        if valor_contrato is not None:
-            dos["valor_multa_estimado"] = round(
-                valor_contrato * dos["percentual_multa"] / 100, 2
-            )
+        _bruto = dos.get("percentual_multa")
+        _pct = _safe_float(_bruto) if _bruto is not None else None
+        if _pct is None or _pct <= 0:
+            # Sem percentual, NAO ha multa a estimar. O percentual aplicavel vem
+            # do edital/contrato; o sistema nao pode arbitra-lo.
+            dos["percentual_multa"] = None
+            dos["valor_multa_estimado"] = None
         else:
-            # Sem valor de contrato: zera estimativa para não exibir alucinação do LLM
-            dos["valor_multa_estimado"] = 0.0
+            if _pct > TETO_MULTA_PCT:
+                # Nao silenciar: o teto legal foi aplicado, e o gestor precisa
+                # saber que a IA propos acima dele.
+                parecer["_percentual_ia"] = _pct
+                _pct = TETO_MULTA_PCT
+            dos["percentual_multa"] = _pct
+            dos["valor_multa_estimado"] = (
+                round(valor_contrato * _pct / 100, 2) if valor_contrato is not None else None
+            )
     else:
         dos.pop("valor_multa_estimado", None)
+        dos.pop("percentual_multa", None)
 
     alerta = parecer.get("alerta_criminal") or {}
-    alerta["configura_crime"] = bool(alerta.get("configura_crime"))
+    _crime = alerta.get("configura_crime")
+    # None nao e "nao configura crime": e "nao avaliado". bool(None) dizia ao
+    # leitor que a conduta foi analisada e descartada como crime.
+    alerta["configura_crime"] = bool(_crime) if isinstance(_crime, bool) else None
 
     parecer["enquadramento"] = enq
     parecer["dosimetria"] = dos
@@ -138,9 +184,14 @@ def analisar_dosimetria(
         )
 
     if texto_docs:
-        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="documento de apuração")
+        # Isolamento anti-injecao: o documento de apuracao costuma vir com a
+        # DEFESA da empresa apenada anexada. Parte interessada escrevendo dentro
+        # do texto que o modelo le — o pior caso possivel para prompt cru.
+        _bloco, _aviso_corte = ia_utils.bloco_documento(
+            texto_docs, rotulo="documento de apuração", marca="DOCS_APURACAO"
+        )
         partes.append(
-            f"\nDocumento de apuração dos fatos (relatório / termo de ocorrência):\n{_doc}"
+            f"\nDocumento de apuração dos fatos (relatório / termo de ocorrência):\n{_bloco}"
         )
         if _aviso_corte:
             partes.append(_aviso_corte)
@@ -152,7 +203,11 @@ def analisar_dosimetria(
 
     partes.append(f"\nRetorne a análise no formato JSON:\n{_ESTRUTURA_PARECER}")
 
-    resultado = _chamar_api("\n".join(partes), api_key, modelo, _SISTEMA_DOSIMETRIA)
+    resultado = _chamar_api(
+        "\n".join(partes), api_key, modelo,
+        _SISTEMA_DOSIMETRIA + ia_utils.SUFIXO_SEGURANCA,
+        max_tokens=8000,
+    )
     return _normalizar(resultado, valor_contrato)
 
 
@@ -164,7 +219,13 @@ def gerar_minuta(
 ) -> str:
     enq = parecer.get("enquadramento") or {}
     dos = parecer.get("dosimetria") or {}
-    tipo = str(enq.get("tipo_sancao") or "multa")
+    tipo = str(enq.get("tipo_sancao") or SANCAO_NAO_DETERMINADA)
+    if tipo == SANCAO_NAO_DETERMINADA or tipo not in TIPOS_SANCAO:
+        # Nao se redige ato que aplica penalidade sem saber QUAL penalidade.
+        raise ValueError(
+            "a análise não determinou o tipo de sanção; sem isso não é possível "
+            "redigir a minuta do ato"
+        )
     label_sancao = LABEL_SANCAO.get(tipo, tipo.title())
 
     autoridade = str(dados_formulario.get("autoridade") or "Autoridade Competente")
@@ -188,12 +249,22 @@ def gerar_minuta(
     ]
 
     if tipo == "multa":
-        _pct_m = dos.get("percentual_multa") or 0.5
-        _val_est = _safe_float(dos.get("valor_multa_estimado"))
-        _linha_multa = f"Percentual da multa: {_pct_m}%"
-        if _val_est > 0:
-            _linha_multa += f" ({_fmt_brl(_val_est)} estimado)"
-        partes.append(_linha_multa)
+        # Sem percentual apurado a minuta NAO pode trazer um numero: ela mandaria
+        # a empresa pagar um valor que o sistema inventou.
+        _pct_m = dos.get("percentual_multa")
+        if _pct_m is None:
+            partes.append(
+                "Percentual da multa: NÃO DETERMINADO pela análise. Na minuta, deixe o "
+                "percentual e o valor em branco, com a indicação de que devem ser "
+                "preenchidos conforme o percentual previsto no edital e no contrato. "
+                "NÃO arbitre percentual nem valor."
+            )
+        else:
+            _val_est = dos.get("valor_multa_estimado")
+            _linha_multa = f"Percentual da multa: {_pct_m}%"
+            if _val_est:
+                _linha_multa += f" ({_fmt_brl(_safe_float(_val_est))} estimado)"
+            partes.append(_linha_multa)
     elif tipo in ("impedimento", "inidoneidade"):
         _prazo = dos.get("prazo_sancao")
         if _prazo:
@@ -218,5 +289,9 @@ def gerar_minuta(
     )
     partes.append('\nRetorne SOMENTE: {"minuta": "texto completo do ato"}')
 
-    resultado = _chamar_api("\n".join(partes), api_key, modelo, _SISTEMA_MINUTA)
+    resultado = _chamar_api(
+        "\n".join(partes), api_key, modelo,
+        _SISTEMA_MINUTA + ia_utils.SUFIXO_SEGURANCA,
+        max_tokens=8000,          # ato administrativo inteiro nao cabe em 3.000
+    )
     return str(resultado.get("minuta") or "")

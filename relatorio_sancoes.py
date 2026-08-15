@@ -1,5 +1,6 @@
 from __future__ import annotations
 import html
+import ia_sancoes
 import io
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
@@ -147,8 +148,10 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
 
     # ── Badge da sanção ───────────────────────────────────────────────────────
     enq = parecer.get("enquadramento") or {}
-    tipo = str(enq.get("tipo_sancao") or "multa").lower()
-    label_sancao = _LABEL_SANCAO.get(tipo, tipo.title())
+    # Ausencia NAO vira "multa": o PDF e a peca que o gestor junta ao processo.
+    tipo = str(enq.get("tipo_sancao") or ia_sancoes.SANCAO_NAO_DETERMINADA).lower()
+    label_sancao = ("SANÇÃO NÃO DETERMINADA" if tipo == ia_sancoes.SANCAO_NAO_DETERMINADA
+                    else _LABEL_SANCAO.get(tipo, tipo.title()))
     cor_badge = _COR_SANCAO.get(tipo, colors.grey)
 
     story.append(Paragraph("Sanção Sugerida", _ESTILO_H2))
@@ -162,6 +165,15 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         ("PADDING",    (0, 0), (-1, -1), 10),
     ]))
     story.append(t_badge)
+    if tipo == ia_sancoes.SANCAO_NAO_DETERMINADA:
+        story.append(Spacer(1, 0.2 * cm))
+        story.append(Paragraph(
+            "A análise não determinou o tipo de sanção cabível. Isto <b>não</b> significa "
+            "ausência de infração: significa que os elementos apresentados não permitiram o "
+            "enquadramento. Nenhuma penalidade e nenhum valor devem ser extraídos deste "
+            "documento nesta situação.",
+            _ESTILO_CORPO,
+        ))
     story.append(Spacer(1, 0.3 * cm))
     story.append(Paragraph(
         f"<b>Artigo:</b> {html.escape(str(enq.get('artigo') or '-'))}",
@@ -190,7 +202,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
 
     # ── Tabela de dosimetria ──────────────────────────────────────────────────
     dos = parecer.get("dosimetria") or {}
-    nivel = str(dos.get("nivel_gravidade") or "MÉDIO").strip().upper()
+    nivel = str(dos.get("nivel_gravidade") or ia_sancoes.GRAVIDADE_NAO_AVALIADA).strip().upper()
     cor_nivel = _COR_GRAVIDADE.get(nivel, colors.grey)
     agravantes = "; ".join(str(a) for a in _as_list(dos.get("agravantes")) if a) or "—"
     atenuantes = "; ".join(str(a) for a in _as_list(dos.get("atenuantes")) if a) or "—"
@@ -204,11 +216,18 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         ["Atenuantes",  html.escape(atenuantes)],
     ]
     if tipo == "multa":
-        pct = _safe_float(dos.get("percentual_multa"))
-        val = _safe_float(dos.get("valor_multa_estimado"))
-        linhas_dos.append(["% da Multa", f"{pct:.1f}%"])
-        if val > 0:
-            linhas_dos.append(["Valor Estimado", _fmt_brl(val)])
+        # percentual/valor podem vir None (nao apurados). Formatar None com :.1f
+        # quebra a geracao do PDF — mesmo defeito do modulo de PI em 13/08.
+        pct = dos.get("percentual_multa")
+        val = dos.get("valor_multa_estimado")
+        if isinstance(pct, (int, float)):
+            linhas_dos.append(["% da Multa", f"{pct:.1f}%"])
+        else:
+            linhas_dos.append(
+                ["% da Multa", "não determinado — aplicar o percentual previsto no edital/contrato"]
+            )
+        if isinstance(val, (int, float)) and val > 0:
+            linhas_dos.append(["Valor Estimado", _fmt_brl(_safe_float(val))])
     elif tipo in ("impedimento", "inidoneidade"):
         prazo = dos.get("prazo_sancao")
         linhas_dos.append(["Prazo da Sanção", f"{prazo} ano(s)" if prazo else "—"])
@@ -222,11 +241,39 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         ("VALIGN",     (0, 0), (-1, -1), "TOP"),
     ]))
     story.append(t_dos)
+    # O PDF e a peca que vai ao processo: o aviso do teto legal precisa estar
+    # AQUI, nao so na tela. Limitar em silencio esconderia do gestor que a IA
+    # propos multa acima do maximo do art. 156, §3º.
+    _pct_ia = parecer.get("_percentual_ia")
+    if _pct_ia:
+        story.append(Spacer(1, 0.2 * cm))
+        story.append(Paragraph(
+            f"A análise propôs multa de {html.escape(str(_pct_ia))}%, acima do teto de "
+            f"{ia_sancoes.TETO_MULTA_PCT:.0f}% do art. 156, §3º, da Lei 14.133/2021. "
+            "O percentual acima foi limitado ao teto legal.",
+            _ESTILO_CORPO,
+        ))
+    _grav_ia = parecer.get("_gravidade_ia")
+    if _grav_ia:
+        story.append(Spacer(1, 0.2 * cm))
+        story.append(Paragraph(
+            f"Nível de gravidade não reconhecido devolvido pela análise: "
+            f"'{html.escape(str(_grav_ia))}'. Registrado como NÃO AVALIADO.",
+            _ESTILO_CORPO,
+        ))
     story.append(Spacer(1, 0.4 * cm))
 
     # ── Alerta criminal ───────────────────────────────────────────────────────
     alerta = parecer.get("alerta_criminal") or {}
-    if alerta.get("configura_crime"):
+    if alerta.get("configura_crime") is None:
+        story.append(Paragraph(
+            "A análise não avaliou se a conduta pode configurar crime do art. 178 da Lei "
+            "14.133/2021. A ausência de alerta neste documento <b>não</b> equivale a "
+            "descarte da hipótese criminal.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2 * cm))
+    elif alerta.get("configura_crime"):
         story.append(Paragraph("⚠ ALERTA — Possível Crime (Art. 178, Lei 14.133/2021)", _ESTILO_ALERTA))
         if alerta.get("artigo_178"):
             story.append(Paragraph(
