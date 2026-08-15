@@ -71,16 +71,14 @@ SISTEMA = (
 #
 # Para acrescentar uma verificacao no futuro, basta somar um item aqui.
 VERIFICACOES_CRUZADAS = (
-    {
-        "id": "X01",
-        "item": "Prazo de entrega: edital x Termo de Referencia",
-        "o_que_checar": (
-            "Compare o prazo de entrega/execucao previsto no corpo do edital com o "
-            "previsto no Termo de Referencia e na minuta de contrato. Divergencia entre "
-            "eles (inclusive 'dias' contra 'dias uteis') e inconformidade, porque gera "
-            "inseguranca sobre a obrigacao do contratado e da margem a impugnacao."
-        ),
-    },
+    # NAO recriar aqui a conferencia do prazo de entrega: ela virou codigo em
+    # verificacao_prazos.py (achados P01 e P02), em 14/08/2026. O X01 oscilava
+    # entre "revisar" e "inconformidade" no mesmo edital — e o que ele fazia era
+    # localizar numeros e comparar marcos temporais, trabalho de codigo. O
+    # modulo novo ainda separa o que o X01 misturava: numero do prazo (P01) e
+    # termo inicial (P02). No edital de Laranjeiras os dois prazos sao de 30
+    # dias, mas um conta da nota de empenho e outro da solicitacao atestada —
+    # divergencia real que a pergunta unica do X01 escondia.
     {
         "id": "X02",
         "item": "Forma e prazo de pagamento: edital x Termo de Referencia",

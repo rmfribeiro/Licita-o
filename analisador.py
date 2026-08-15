@@ -212,6 +212,15 @@ def analisar(texto, regras):
     except Exception as e:
         print("Aviso: verificacao de anexos indisponivel:", e)
 
+    # Conferencia deterministica do prazo de entrega (P01..P02), que substitui a
+    # verificacao X01 da IA. Localizar numeros e comparar marcos temporais entre
+    # as pecas e leitura mecanica. Ver verificacao_prazos.py.
+    try:
+        import verificacao_prazos
+        apontamentos.extend(verificacao_prazos.verificar(texto))
+    except Exception as e:
+        print("Aviso: verificacao de prazos indisponivel:", e)
+
     for r in regras:
         encontrados = [t for t in r["termos"] if contem(texto, t)]
         trecho = None

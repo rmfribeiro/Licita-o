@@ -79,17 +79,26 @@ class TestGeradorParecer:
         """Se o modelo reescrever o titulo, prevalece o texto oficial — e o que
         garante que dois relatorios do mesmo edital sejam comparaveis."""
         payload = {"achados": [{
-            "id": "X01", "item": "Prazo de entrega batendo diferente",
+            "id": "X02", "item": "Pagamento saindo diferente",
             "categoria": "c", "severidade": "alta", "status": "inconformidade",
-            "detalhe": "10 dias contra 10 dias uteis", "trecho": "",
+            "detalhe": "30 dias contra 30 dias uteis", "trecho": "",
         }]}
         with patch("ia_utils.urllib.request.urlopen", return_value=mock_urlopen(payload)):
             resultado = ia_semantica.gerar_pareceres(_TEXTO, _REGRAS, _BASE_RAG)
-        x01 = next(a for a in resultado if a["id"] == "X01")
-        oficial = next(c for c in ia_semantica.VERIFICACOES_CRUZADAS if c["id"] == "X01")
-        assert x01["item"] == oficial["item"]              # titulo padronizado
-        assert x01["detalhe"] == "10 dias contra 10 dias uteis"  # analise preservada
-        assert x01["status"] == "inconformidade"
+        x02 = next(a for a in resultado if a["id"] == "X02")
+        oficial = next(c for c in ia_semantica.VERIFICACOES_CRUZADAS if c["id"] == "X02")
+        assert x02["item"] == oficial["item"]              # titulo padronizado
+        assert x02["detalhe"] == "30 dias contra 30 dias uteis"  # analise preservada
+        assert x02["status"] == "inconformidade"
+
+    def test_x01_saiu_da_ia_e_nao_pode_voltar(self):
+        """O prazo de entrega virou codigo (verificacao_prazos.py, P01/P02) em
+        14/08/2026. Recriar o X01 aqui traria de volta duas linhas sobre o mesmo
+        assunto, que podem se contradizer no mesmo relatorio — foi o que ja
+        aconteceu com o R03 x D01 (datas)."""
+        ids = {c["id"] for c in ia_semantica.VERIFICACOES_CRUZADAS}
+        assert "X01" not in ids
+        assert "X03" not in ids and "X04" not in ids       # datas e anexos, idem
 
     def test_achados_livres_sao_limitados(self):
         payload = {"achados": [
