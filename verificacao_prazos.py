@@ -218,9 +218,21 @@ def extrair_prazos_entrega(texto: str) -> list[dict]:
 
 
 # --------------------------------------------------------------- achados
+# Rotulo exibido no selo do relatorio. O padrao de "alerta" no analisador e
+# "Alerta - possivel ausencia", que descreve requisito nao localizado — nao
+# descreve divergencia entre pecas, que e o que P01 e P02 apontam.
+_ROTULO_STATUS = {
+    "alerta":         "Alerta - divergência entre peças",
+    "inconformidade": "Inconformidade",
+    "revisar":        "Revisar (não verificável no texto)",
+    "ok":             "Conforme",
+}
+
+
 def _achado(pid, item, status, severidade, detalhe, trecho=""):
     return {
         "id": pid, "categoria": CATEGORIA, "item": item,
+        "rotulo_status": _ROTULO_STATUS.get(status),
         "base_legal": BASE_LEGAL, "severidade": severidade,
         "tipo": "automatica", "status": status, "detalhe": detalhe,
         "trecho": (trecho or "")[:400], "fonte": "Automatico", "fundamento": "",
@@ -281,6 +293,7 @@ def verificar(texto: str) -> list[dict]:
             f"afastar dúvida na execução.",
             prazos[0]["trecho"],
         )
+        p01["rotulo_status"] = "Alerta - previsto em uma só peça"
     else:
         (valor, unidade) = next(iter(combos))
         p01 = _achado(

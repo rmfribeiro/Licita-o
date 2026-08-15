@@ -539,6 +539,13 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     _regras_tab, _ia_tab = separar_camadas(apont)
     for a in sorted(_regras_tab, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
         cor, rotulo = COR_STATUS.get(a["status"], ("#888", a["status"]))
+        # O rotulo padrao de "alerta" e "Alerta - possivel ausencia", que serve
+        # para as regras do checklist (requisito nao localizado). Nao serve para
+        # achados que apontam DIVERGENCIA entre pecas — chamar de "possivel
+        # ausencia" o que e contradicao entre dois trechos do edital descreve
+        # errado o achado num documento juridico. Quem produz o achado pode
+        # informar o proprio rotulo.
+        rotulo = a.get("rotulo_status") or rotulo
         trecho = f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>' if a["trecho"] else ""
         fundamento = f'<div class="fund"><b>Fundamento (recuperado via RAG):</b> {e(a["fundamento"][:320])}{"..." if len(a["fundamento"])>320 else ""}</div>' if a.get("fundamento") else ""
         # Comentario da IA sobre um item das regras. Vai em bloco proprio e
@@ -572,6 +579,7 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
         _itens_ia = ""
         for a in sorted(_ia_tab, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
             _cor_ia, _rot_ia = COR_STATUS.get(a["status"], ("#888", a["status"]))
+            _rot_ia = a.get("rotulo_status") or _rot_ia
             _tr_ia = (f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>'
                       if a.get("trecho") else "")
             _fu_ia = (f'<div class="fund"><b>Fundamento (recuperado via RAG):</b> '

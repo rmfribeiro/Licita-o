@@ -157,3 +157,26 @@ class TestAchados:
             assert a["fonte"] == "Automatico"      # entra no indice, nao no bloco da IA
             assert a["status"] in ("inconformidade", "alerta", "revisar", "ok")
             assert a["severidade"] in ("alta", "media", "baixa")
+
+
+class TestRotuloDoSelo:
+    """O rótulo padrão de "alerta" no analisador é "Alerta - possivel ausencia",
+    que descreve requisito não localizado. Chamar de "possível ausência" uma
+    DIVERGÊNCIA entre duas peças do edital descreve errado o achado — e isto é
+    um documento jurídico."""
+
+    def test_p02_nao_e_rotulado_como_possivel_ausencia(self):
+        texto = ("5.3. O prazo de entrega sera de 30 (trinta) dias contados da nota de empenho.\n"
+                 "11.4. As entregas dos itens deverao ser efetuadas em 30 (trinta) dias apos "
+                 "atestada a solicitacao.\n")
+        p02 = next(a for a in VP.verificar(texto) if a["id"] == "P02")
+        assert p02["rotulo_status"] == "Alerta - divergência entre peças"
+
+    def test_regra_comum_mantem_o_rotulo_padrao(self):
+        import analisador
+        regra = {"id": "R99", "item": "Requisito", "categoria": "C", "status": "alerta",
+                 "severidade": "media", "detalhe": "nao localizado", "trecho": "",
+                 "fonte": "Automatico", "fundamento": "", "base_legal": "art. 1"}
+        pct, nivel = analisador.indice_de_risco([regra])
+        html = analisador.gerar_html([regra], pct, nivel, "e.pdf", 1)
+        assert "Alerta - possivel ausencia" in html
