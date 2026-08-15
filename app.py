@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.14-06"
-VERSAO_NOTAS = "Dosimetria: o sistema não arbitra mais sanção, gravidade nem percentual de multa"
+VERSAO_APP = "2026.08.14-07"
+VERSAO_NOTAS = "Dosimetria: reincidência deixa de vir pré-marcada como Sim"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1769,12 +1769,24 @@ with aba8:
             key="sanc_valor",
         )
     with _col_sanc2:
+        # index=None: sem isso o Streamlit deixa "Sim" PRE-SELECIONADO — a
+        # primeira opcao da lista. O sistema chegaria ao prompt afirmando que o
+        # fornecedor e reincidente sem ninguem ter respondido, e a reincidencia
+        # e AGRAVANTE do art. 157, III: agravaria a pena de uma empresa por um
+        # default de interface. Mesma causa do incidente do PI em 29/07 e do
+        # formulario do PIP.
         _reincidencia_sanc = st.radio(
             "Reincidência do Fornecedor?",
             list(ia_sancoes.REINCIDENCIA_OPCOES.keys()),
+            index=None,
             horizontal=True,
             key="sanc_reincidencia",
         )
+        if _reincidencia_sanc is None:
+            st.caption(
+                "Sem resposta, a reincidência constará como **não verificada** — "
+                "e não será considerada como agravante."
+            )
         _autoridade_sanc = st.text_input(
             "Autoridade Competente",
             placeholder="ex: Secretário Municipal de Obras",
