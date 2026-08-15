@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.15-01"
-VERSAO_NOTAS = "Dosimetria: base de cálculo da multa e dispositivos corretos na minuta"
+VERSAO_APP = "2026.08.15-02"
+VERSAO_NOTAS = "Dosimetria: o cálculo da multa passou do modelo para o código"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1965,6 +1965,11 @@ with aba8:
             _base_sanc = _dos_sanc.get("base_calculo_multa")
             if _base_sanc:
                 _linhas_dos_sanc.append(["Base de cálculo", str(_base_sanc)])
+            _vb_sanc = _dos_sanc.get("valor_base_calculo")
+            if isinstance(_vb_sanc, (int, float)) and _vb_sanc > 0:
+                _linhas_dos_sanc.append(
+                    ["Valor da base", f"R$ {_vb_sanc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")]
+                )
             if isinstance(_val_sanc, (int, float)) and _val_sanc > 0:
                 _linhas_dos_sanc.append(["Valor Estimado", f"R$ {_val_sanc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")])
         elif _tipo_sanc in ("impedimento", "inidoneidade"):

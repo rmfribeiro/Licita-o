@@ -48,8 +48,10 @@ _SISTEMA_DOSIMETRIA = (
     "da Lei 14.133/2021, indicando o artigo específico quando aplicável. "
     "Ao propor multa, identifique no documento a CLÁUSULA CONTRATUAL de penalidades e "
     "informe em 'base_calculo_multa' sobre QUAL base o percentual incide (valor total do "
-    "contrato, valor da parcela inadimplida ou outra). A base muda o valor devido e é "
-    "definida pelo contrato, não pelo analista. "
+    "contrato, valor da parcela inadimplida ou outra) e, em 'valor_base_calculo', o VALOR "
+    "dessa base em reais quando ele constar do documento (apenas o número, sem símbolo). "
+    "Se o valor não constar, deixe 'valor_base_calculo' nulo — não estime. A base muda o "
+    "valor devido e é definida pelo contrato, não pelo analista. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
 )
 
@@ -93,6 +95,7 @@ _ESTRUTURA_PARECER = """{
   },
   "dosimetria": {
     "base_calculo_multa": "valor total do contrato | valor da parcela inadimplida | outra (descrever)",
+    "valor_base_calculo": 52000.00,
     "percentual_multa": 10.0,
     "valor_multa_estimado": 15000.00,
     "prazo_sancao": null,
@@ -174,15 +177,27 @@ def _normalizar(parecer: dict, valor_contrato: float | None) -> dict:
             # sistema apresentou 10% de R$ 240.000 = R$ 24.000, 4,6x mais.
             _base = str(dos.get("base_calculo_multa") or "").strip().lower()
             _base_e_total = (not _base) or ("total" in _base) or ("contrato" in _base and "parcela" not in _base)
-            if valor_contrato is not None and _base_e_total:
-                dos["valor_multa_estimado"] = round(valor_contrato * _pct / 100, 2)
+            _valor_base = _safe_float(dos.get("valor_base_calculo")) if dos.get("valor_base_calculo") is not None else None
+            dos["valor_base_calculo"] = _valor_base
+
+            if _base_e_total:
+                _sobre = valor_contrato
             else:
-                dos["valor_multa_estimado"] = None
-                if valor_contrato is not None and not _base_e_total:
+                # Base diferente do total: so calculamos se o VALOR dessa base veio
+                # do documento. A aritmetica e do codigo, nao do modelo — foi assim
+                # com o indice do edital, com a maturidade do PIP e com o parecer
+                # das alteracoes contratuais.
+                _sobre = _valor_base
+                if _sobre is None:
                     parecer["_base_nao_calculavel"] = dos.get("base_calculo_multa")
+            dos["valor_multa_estimado"] = (
+                round(_sobre * _pct / 100, 2) if _sobre is not None else None
+            )
     else:
         dos.pop("valor_multa_estimado", None)
         dos.pop("percentual_multa", None)
+        dos.pop("base_calculo_multa", None)
+        dos.pop("valor_base_calculo", None)
 
     alerta = parecer.get("alerta_criminal") or {}
     _crime = alerta.get("configura_crime")
@@ -329,6 +344,17 @@ def gerar_minuta(
     _base_m = dos.get("base_calculo_multa")
     if tipo == "multa" and _base_m:
         partes.append(f"Base de cálculo da multa (conforme o contrato): {_base_m}")
+        _vb = dos.get("valor_base_calculo")
+        if _vb:
+            partes.append("Valor da base de cálculo: " + _fmt_brl(_safe_float(_vb)))
+        _ve = dos.get("valor_multa_estimado")
+        partes.append(
+            ("Valor da multa JÁ CALCULADO pelo sistema: " + _fmt_brl(_safe_float(_ve)) +
+             ". Use EXATAMENTE este valor no ato; não refaça o cálculo.")
+            if _ve else
+            "Valor da multa: NÃO CALCULADO (a base de cálculo não consta em reais no "
+            "documento). Deixe o valor em branco no ato, como lacuna sublinhada."
+        )
     partes.append("\n" + _ANDAIME_LEGAL_MINUTA)
 
     resultado = _chamar_api(

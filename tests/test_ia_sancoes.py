@@ -307,14 +307,15 @@ class TestBaseDeCalculoDaMulta:
     (R$ 240.000) = R$ 24.000 — 4,6x mais. A base é definida pelo contrato, não
     pelo sistema, e o código só tinha o valor total para multiplicar."""
 
-    def _roda(self, base):
+    def _roda(self, base, valor_base=None):
         parecer = {**_parecer_api_mock()}
         parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 10.0,
-                                 "base_calculo_multa": base}
+                                 "base_calculo_multa": base,
+                                 "valor_base_calculo": valor_base}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             return ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
 
-    def test_base_parcela_inadimplida_nao_estima_valor(self):
+    def test_base_diferente_sem_valor_nao_estima(self):
         r = self._roda("valor da parcela inadimplida")
         assert r["dosimetria"]["percentual_multa"] == 10.0
         assert r["dosimetria"]["valor_multa_estimado"] is None
@@ -347,3 +348,45 @@ class TestAndaimeLegalDaMinuta:
         import json
         corpo = json.loads(mock.call_args[0][0].data.decode("utf-8"))
         assert "art. 166" in corpo["messages"][0]["content"]
+
+
+    def test_aritmetica_da_multa_e_do_codigo_nao_do_modelo(self):
+        """Medido nos testes 1 e 2 (15/08/2026): com a base correta, a IA
+        calculou R$ 5.200,00 no texto da minuta enquanto a tabela do parecer
+        deixava o valor em branco — o número certo, mas vindo do lugar errado.
+        Conta é do código, como já vale para o índice do edital, a maturidade do
+        PIP e o parecer das alterações contratuais."""
+        parecer = {**_parecer_api_mock()}
+        parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 10.0,
+                                 "base_calculo_multa": "valor da parcela inadimplida",
+                                 "valor_base_calculo": 52000.0}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+        assert r["dosimetria"]["valor_multa_estimado"] == 5200.0
+        assert "_base_nao_calculavel" not in r
+
+    def test_minuta_recebe_o_valor_ja_calculado(self):
+        import json
+        parecer = {**_parecer_api_mock()}
+        parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 10.0,
+                                 "base_calculo_multa": "valor da parcela inadimplida",
+                                 "valor_base_calculo": 52000.0,
+                                 "valor_multa_estimado": 5200.0}
+        with patch("ia_utils.urllib.request.urlopen",
+                   return_value=_mock_urlopen({"minuta": "x"})) as mock:
+            ia_sancoes.gerar_minuta(parecer, _dados_formulario_mock(), "key")
+        corpo = json.loads(mock.call_args[0][0].data.decode("utf-8"))
+        prompt = corpo["messages"][0]["content"]
+        assert "JÁ CALCULADO pelo sistema" in prompt
+        assert "5.200,00" in prompt
+        assert "não refaça o cálculo" in prompt
+
+    def test_sancao_nao_pecuniaria_nao_carrega_base_de_calculo(self):
+        parecer = {**_parecer_api_mock()}
+        parecer["enquadramento"] = {**parecer["enquadramento"], "tipo_sancao": "advertencia"}
+        parecer["dosimetria"] = {**parecer["dosimetria"], "base_calculo_multa": "x",
+                                 "valor_base_calculo": 1.0}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+        assert "base_calculo_multa" not in r["dosimetria"]
+        assert "valor_base_calculo" not in r["dosimetria"]

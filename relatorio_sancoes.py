@@ -229,6 +229,9 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         base_calc = dos.get("base_calculo_multa")
         if base_calc:
             linhas_dos.append(["Base de cálculo", html.escape(str(base_calc))])
+        v_base = dos.get("valor_base_calculo")
+        if isinstance(v_base, (int, float)) and v_base > 0:
+            linhas_dos.append(["Valor da base", _fmt_brl(_safe_float(v_base))])
         if isinstance(val, (int, float)) and val > 0:
             linhas_dos.append(["Valor Estimado", _fmt_brl(_safe_float(val))])
     elif tipo in ("impedimento", "inidoneidade"):
