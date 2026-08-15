@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.15-02"
-VERSAO_NOTAS = "Dosimetria: o cálculo da multa passou do modelo para o código"
+VERSAO_APP = "2026.08.15-03"
+VERSAO_NOTAS = "Dosimetria: conferência automática da minuta contra o parecer"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -1847,6 +1847,11 @@ with aba8:
                             "O parecer de dosimetria está disponível normalmente."
                         )
 
+                    # A minuta e texto livre; a conferencia garante que ela
+                    # REPRODUZ o que o parecer decidiu (valor, %, sancao, CNPJ).
+                    st.session_state["sanc_divergencias"] = ia_sancoes.conferir_minuta(
+                        _minuta_sanc, _parecer_sanc, _dados_sanc
+                    )
                     st.session_state["sanc_parecer"]    = _parecer_sanc
                     _registrar_uso_app("Dosimetria de Sanções")
                     st.session_state["sanc_minuta"]     = _minuta_sanc
@@ -1865,6 +1870,16 @@ with aba8:
         _min_sanc  = st.session_state["sanc_minuta"]
         _dad_sanc  = st.session_state["sanc_dados"]
         _av_sanc   = st.session_state["sanc_avisos"]
+        _div_sanc  = st.session_state.get("sanc_divergencias") or []
+        if _div_sanc:
+            st.error(
+                "⚠️ **A minuta não confere com o parecer.** A redação do ato é gerada por IA e "
+                "foi conferida automaticamente contra os valores calculados. Divergências "
+                "encontradas:\n\n"
+                + "\n".join(f"- {_safe_md(_d)}" for _d in _div_sanc)
+                + "\n\n**Não assine o ato sem corrigir.** Os números corretos são os da tabela "
+                "de dosimetria acima, calculados pelo sistema."
+            )
 
         for _aviso_sanc in _av_sanc:
             st.warning(_safe_md(_aviso_sanc))
@@ -2024,8 +2039,9 @@ with aba8:
 
         if "sanc_pdf" not in st.session_state and not st.session_state.get("sanc_pdf_falhou"):
             try:
+                _parecer_pdf_sanc = {**_pr_sanc, "_divergencias_minuta": _div_sanc}
                 st.session_state["sanc_pdf"] = relatorio_sancoes.gerar_pdf(
-                    _dad_sanc, _pr_sanc, _min_sanc
+                    _dad_sanc, _parecer_pdf_sanc, _min_sanc
                 )
             except Exception as _e_sanc_pdf:
                 st.session_state["sanc_pdf_falhou"] = str(_e_sanc_pdf) or "Erro desconhecido"

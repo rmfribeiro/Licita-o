@@ -390,3 +390,79 @@ class TestAndaimeLegalDaMinuta:
             r = ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
         assert "base_calculo_multa" not in r["dosimetria"]
         assert "valor_base_calculo" not in r["dosimetria"]
+
+
+class TestConferenciaDaMinuta:
+    """Decisão de 15/08/2026, depois dos testes 3 e 4.
+
+    A minuta é texto livre e a redação varia entre execuções — aceitável num
+    rascunho que será revisado. O que não é aceitável é a redação CONTRADIZER o
+    parecer: a tabela dizer R$ 5.200,00 e o ato mandar recolher R$ 52.000,00.
+    Nos testes 3 e 4 bateu, mas isso foi observação, não garantia.
+    """
+    _PARECER = {"enquadramento": {"tipo_sancao": "multa"},
+                "dosimetria": {"percentual_multa": 10.0, "valor_multa_estimado": 5200.0}}
+    _DADOS = {"cnpj": "11222333000144"}
+
+    def _confere(self, minuta):
+        return ia_sancoes.conferir_minuta(minuta, self._PARECER, self._DADOS)
+
+    def test_minuta_coerente_nao_gera_aviso(self):
+        m = "Aplicar MULTA de R$ 5.200,00, correspondente a 10%, à empresa CNPJ 11.222.333/0001-44."
+        assert self._confere(m) == []
+
+    def test_valor_divergente_e_apontado(self):
+        m = "Aplicar MULTA de R$ 52.000,00 (10%) à empresa CNPJ 11.222.333/0001-44."
+        avisos = self._confere(m)
+        assert any("valor calculado" in a for a in avisos)
+
+    def test_cnpj_ausente_e_apontado(self):
+        assert any("CNPJ" in a for a in self._confere("Aplicar MULTA de R$ 5.200,00 (10%)."))
+
+    def test_sancao_trocada_e_apontada(self):
+        avisos = self._confere("Aplicar ADVERTÊNCIA à empresa CNPJ 11.222.333/0001-44.")
+        assert any("sanção decidida" in a for a in avisos)
+
+    def test_minuta_vazia_nao_inventa_divergencia(self):
+        """Minuta bloqueada (sanção não determinada) não é minuta divergente."""
+        assert self._confere("") == []
+        assert self._confere(None) == []
+
+    def test_valor_escrito_sem_separador_de_milhar_e_aceito(self):
+        m = "MULTA de R$ 5200,00 (10%) — CNPJ 11.222.333/0001-44."
+        assert self._confere(m) == []
+
+    def test_cnpj_com_ou_sem_formatacao_e_aceito(self):
+        m = "MULTA de R$ 5.200,00 (10%) — CNPJ 11222333000144."
+        assert self._confere(m) == []
+
+    def test_prazo_da_sancao_restritiva_e_conferido(self):
+        parecer = {"enquadramento": {"tipo_sancao": "impedimento"},
+                   "dosimetria": {"prazo_sancao": 2}}
+        avisos = ia_sancoes.conferir_minuta(
+            "Fica a empresa impedida de licitar. CNPJ 11.222.333/0001-44.", parecer, self._DADOS)
+        assert any("prazo da sanção" in a for a in avisos)
+
+    def test_prazo_dentro_do_cnpj_nao_conta_como_prazo(self):
+        """Defeito pego por este próprio teste: `str(2) in minuta` dava positivo
+        dentro do CNPJ "11.222.333" e a conferência aprovava uma minuta sem
+        prazo nenhum."""
+        parecer = {"enquadramento": {"tipo_sancao": "impedimento"},
+                   "dosimetria": {"prazo_sancao": 2}}
+        ok = ia_sancoes.conferir_minuta(
+            "Impedida de licitar pelo prazo de 2 (dois) anos. CNPJ 11.222.333/0001-44.",
+            parecer, self._DADOS)
+        assert ok == []
+
+    def test_percentual_solto_no_texto_nao_conta(self):
+        """Igual: o "10" de uma data ou de um número de contrato não pode valer
+        como o percentual da multa."""
+        m = ("Aplicar MULTA de R$ 5.200,00 à empresa CNPJ 11.222.333/0001-44, "
+             "conforme processo instaurado em 10/05/2026.")
+        avisos = self._confere(m)
+        assert any("percentual" in a for a in avisos)
+
+    def test_percentual_por_extenso_e_aceito(self):
+        m = ("MULTA de R$ 5.200,00, correspondente a 10 (dez) por cento, "
+             "CNPJ 11.222.333/0001-44.")
+        assert self._confere(m) == []

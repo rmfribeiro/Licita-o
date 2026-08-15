@@ -1,5 +1,7 @@
 from __future__ import annotations
+import re
 import types
+import unicodedata
 import ia_utils
 
 from ia_utils import (
@@ -11,6 +13,21 @@ from ia_utils import (
 )
 
 _MODELO_PADRAO = "claude-haiku-4-5-20251001"
+
+
+def _norm_texto(s: str) -> str:
+    s = unicodedata.normalize("NFD", str(s or ""))
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", s).lower()
+
+
+# Como cada sancao pode ser nomeada dentro do ato.
+_TERMOS_SANCAO = {
+    "advertencia":  ("advertencia", "advertir"),
+    "multa":        ("multa",),
+    "impedimento":  ("impedimento", "impedir de licitar", "impedida de licitar"),
+    "inidoneidade": ("inidoneidade", "inidonea", "declarar inidonea"),
+}
 
 TIPOS_SANCAO: frozenset = frozenset({"advertencia", "multa", "impedimento", "inidoneidade"})
 
@@ -261,6 +278,92 @@ def analisar_dosimetria(
         max_tokens=8000,
     )
     return _normalizar(resultado, valor_contrato)
+
+
+def _digitos(valor) -> str:
+    return re.sub(r"\D", "", str(valor or ""))
+
+
+def _formas_do_valor(valor: float) -> tuple[str, ...]:
+    """Como o mesmo valor pode aparecer escrito num ato administrativo."""
+    centavos = round(float(valor), 2)
+    inteiro = int(centavos)
+    br = f"{centavos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    formas = {br, br.replace(".", ""), f"{centavos:.2f}".replace(".", ",")}
+    if centavos == inteiro:                       # 5200.0 -> "5.200" e "5200"
+        formas.add(f"{inteiro:,}".replace(",", "."))
+        formas.add(str(inteiro))
+    return tuple(f for f in formas if f)
+
+
+def conferir_minuta(minuta: str, parecer: dict, dados_formulario: dict) -> list[str]:
+    """Confere se a minuta REPRODUZ o que o parecer decidiu.
+
+    POR QUE ESTA FUNCAO EXISTE (decisao de 15/08/2026)
+    --------------------------------------------------
+    A minuta e texto livre do modelo, e a redacao varia entre execucoes — o que
+    e aceitavel num rascunho de ato que sera revisado. O que NAO e aceitavel e a
+    redacao CONTRADIZER o parecer: a tabela dizer multa de R$ 5.200,00 e o ato
+    mandar recolher R$ 52.000,00. Nos testes 3 e 4 os dois bateram, mas isso foi
+    observacao, nao garantia — e observacao nao protege o proximo caso.
+    Aqui a conferencia vira codigo: valor, percentual, tipo de sancao e CNPJ
+    saem do parecer e sao PROCURADOS no texto. O que nao for encontrado vira
+    aviso ao gestor, nao silencio.
+
+    Devolve a lista de divergencias (vazia = minuta coerente).
+    """
+    avisos: list[str] = []
+    if not (minuta or "").strip():
+        return avisos                              # sem minuta nao ha o que conferir
+
+    alvo = _norm_texto(minuta)
+    enq = parecer.get("enquadramento") or {}
+    dos = parecer.get("dosimetria") or {}
+    tipo = str(enq.get("tipo_sancao") or "")
+
+    # 1) tipo de sancao
+    _rotulo = LABEL_SANCAO.get(tipo, "")
+    if _rotulo:
+        _termos = {_norm_texto(_rotulo)}
+        _termos |= {_norm_texto(t) for t in _TERMOS_SANCAO.get(tipo, ())}
+        if not any(t in alvo for t in _termos if t):
+            avisos.append(
+                f"a minuta não menciona a sanção decidida no parecer ({_rotulo})"
+            )
+    # 2) percentual e valor da multa
+    if tipo == "multa":
+        _pct = dos.get("percentual_multa")
+        if isinstance(_pct, (int, float)):
+            # O numero precisa estar JUNTO de "%" ou "por cento". Procurar o
+            # numero solto no texto encontraria o "10" de uma data ou de um
+            # numero de contrato e daria a minuta por conferida sem estar.
+            _num = (f"{_pct:g}").replace(".", "[.,]")
+            if not re.search(rf"\b{_num}\b\s*(?:%|\(?\s*\w+\s*\)?\s*por\s+cento|por\s+cento)",
+                             minuta, re.IGNORECASE):
+                avisos.append(f"a minuta não repete o percentual da multa ({_pct}%)")
+        _val = dos.get("valor_multa_estimado")
+        if isinstance(_val, (int, float)) and _val > 0:
+            if not any(f in minuta for f in _formas_do_valor(_val)):
+                avisos.append(
+                    f"a minuta não repete o valor calculado da multa "
+                    f"({_fmt_brl(_safe_float(_val))}) — confira se o ato traz outro número"
+                )
+    # 3) prazo da sancao restritiva
+    if tipo in ("impedimento", "inidoneidade"):
+        _prazo = dos.get("prazo_sancao")
+        if _prazo:
+            # DEFEITO PEGO PELO PROPRIO TESTE (15/08/2026): `str(2) in minuta`
+            # dava positivo dentro do CNPJ "11.222.333" e a conferencia aprovava
+            # uma minuta que nao trazia prazo nenhum. O numero tem de vir
+            # acompanhado da palavra "ano".
+            if not re.search(rf"\b{re.escape(str(_prazo))}\b[^\n]{{0,30}}ano",
+                             minuta, re.IGNORECASE):
+                avisos.append(f"a minuta não repete o prazo da sanção ({_prazo} ano(s))")
+    # 4) CNPJ do apenado — errar o destinatario do ato e o pior dos casos
+    _cnpj = _digitos(dados_formulario.get("cnpj"))
+    if len(_cnpj) == 14 and _cnpj not in _digitos(minuta):
+        avisos.append("o CNPJ do fornecedor apenado não aparece na minuta")
+    return avisos
 
 
 def gerar_minuta(

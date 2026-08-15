@@ -330,6 +330,27 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
     story.append(Paragraph(disclaimers.TEXTO_PDF_MINUTA, _ESTILO_AVISO_MINUTA))
     story.append(Spacer(1, 0.2 * cm))
 
+    # Conferencia automatica da minuta contra o parecer. Vem ANTES do texto do
+    # ato: quem vai assinar precisa ver o alerta primeiro. Criada em 15/08/2026
+    # porque a redacao da minuta e livre e nada garantia que ela reproduzisse os
+    # numeros calculados — a tabela podia dizer R$ 5.200,00 e o ato, outro valor.
+    _div_min = parecer.get("_divergencias_minuta") or []
+    if _div_min:
+        story.append(Paragraph(
+            "<b>ATENÇÃO — A MINUTA ABAIXO NÃO CONFERE COM O PARECER.</b> A redação do ato é "
+            "gerada por inteligência artificial e foi conferida automaticamente contra os "
+            "valores calculados pelo sistema. Divergências encontradas:",
+            _ESTILO_AVISO_MINUTA,
+        ))
+        for _d in _div_min:
+            story.append(Paragraph(f"— {html.escape(str(_d))}", _ESTILO_AVISO_MINUTA))
+        story.append(Paragraph(
+            "Não assine o ato sem corrigir. Os números corretos são os da tabela de "
+            "dosimetria deste relatório.",
+            _ESTILO_AVISO_MINUTA,
+        ))
+        story.append(Spacer(1, 0.3 * cm))
+
     if minuta:
         for linha in minuta.split("\n"):
             story.append(Paragraph(html.escape(linha) if linha.strip() else " ", _ESTILO_MINUTA))
