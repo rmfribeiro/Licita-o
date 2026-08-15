@@ -580,7 +580,11 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     _obs_regras = [a for a in _regras_tab if a.get("observacao_ia")]
     if _ia_tab or _obs_regras:
         _itens_ia = ""
-        for a in sorted(_ia_tab, key=lambda x: (ordem.get(x["status"], 4), str(x["id"]))):
+        # Ordenado por ID, nao por status: o status dos achados livres muda entre
+        # execucoes (medido em 14/08/2026: EXTRA-1 e EXTRA-3 trocaram de lugar
+        # entre os relatorios 5 e 6 so porque a IA mudou a severidade). Ordem
+        # estavel facilita comparar dois relatorios lado a lado.
+        for a in sorted(_ia_tab, key=lambda x: str(x["id"])):
             _cor_ia, _rot_ia = COR_STATUS.get(a["status"], ("#888", a["status"]))
             _rot_ia = a.get("rotulo_status") or _rot_ia
             _tr_ia = (f'<div class="trecho">&ldquo;{e(a["trecho"])}&rdquo;</div>'

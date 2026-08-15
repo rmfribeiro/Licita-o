@@ -187,6 +187,16 @@ def montar_prompt(texto_edital, regras_semanticas, rag):
         "acima, registre com id 'EXTRA-n' — no MAXIMO 3, apenas o que tiver impacto "
         "juridico ou economico real. Nao use os EXTRA para repetir, com outro nome, algo "
         "ja coberto pelo checklist ou pelas verificacoes cruzadas.\n"
+        # MEDIDO em 14/08/2026 (relatorios 5 e 6 de Laranjeiras): um EXTRA da 2a
+        # execucao apontou "divergencia nos prazos de entrega" — assunto que ja
+        # virou codigo (P01/P02) e que aparece na tabela principal. Duas linhas
+        # sobre o mesmo fato, uma deterministica e outra variavel, podem se
+        # contradizer no mesmo relatorio; foi o que aconteceu com R03 x D01.
+        "NAO registre EXTRA sobre estes assuntos, ja verificados por codigo "
+        "deterministico e presentes no relatorio: (a) prazo de entrega ou de execucao e "
+        "seu termo inicial; (b) datas do certame, prazo minimo de publicidade e ordem "
+        "cronologica; (c) numeracao e sequencia dos anexos. Se notar algo relevante "
+        "nesses temas, ignore — ja esta coberto.\n"
         "Responda SOMENTE com JSON valido no formato:\n"
         '{\"achados\":[{\"id\":\"...\",\"item\":\"...\",\"categoria\":\"...\",'
         '\"severidade\":\"alta|media|baixa\",\"status\":\"inconformidade|alerta|revisar|ok\",'
