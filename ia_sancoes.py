@@ -46,7 +46,31 @@ _SISTEMA_DOSIMETRIA = (
     "fundamentando juridicamente a escolha e o grau da penalidade. "
     "Avalie também se a conduta descrita pode configurar crime tipificado no Art. 178 "
     "da Lei 14.133/2021, indicando o artigo específico quando aplicável. "
+    "Ao propor multa, identifique no documento a CLÁUSULA CONTRATUAL de penalidades e "
+    "informe em 'base_calculo_multa' sobre QUAL base o percentual incide (valor total do "
+    "contrato, valor da parcela inadimplida ou outra). A base muda o valor devido e é "
+    "definida pelo contrato, não pelo analista. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+)
+
+# Referencias corretas, dadas ao modelo em vez de deixa-lo inventar.
+# MEDIDO no teste 1 da Dosimetria (15/08/2026): a minuta assegurou recurso
+# "conforme art. 157, §4º, da Lei 14.133/2021". O prazo (15 dias uteis) estava
+# certo, mas o dispositivo esta ERRADO e o paragrafo nao existe: o art. 157
+# trata da DEFESA PREVIA na multa; o RECURSO e o art. 166. Citacao errada numa
+# peca levada a assinatura da autoridade e defeito grave.
+_ANDAIME_LEGAL_MINUTA = (
+    "Use EXATAMENTE estes dispositivos ao redigir, sem inventar parágrafos:\n"
+    "- Defesa prévia na multa: art. 157 da Lei 14.133/2021 — 15 (quinze) dias úteis "
+    "contados da intimação. O art. 157 NÃO tem parágrafos; não cite '§' dele.\n"
+    "- Recurso contra advertência, multa e impedimento: art. 166 da Lei 14.133/2021 — "
+    "15 (quinze) dias úteis contados da intimação.\n"
+    "- Declaração de inidoneidade: cabe PEDIDO DE RECONSIDERAÇÃO (art. 167), não recurso.\n"
+    "- Processo de responsabilização: art. 158.\n"
+    "NÃO invente prazo de recolhimento da multa, número de portaria, data nem qualquer "
+    "outro dado que não esteja acima: onde faltar informação, deixe lacuna sublinhada "
+    "(ex.: 'no prazo de ____ dias, conforme previsto no contrato'). Um número inventado "
+    "num ato administrativo vira obrigação para a empresa."
 )
 
 _SISTEMA_MINUTA = (
@@ -54,6 +78,7 @@ _SISTEMA_MINUTA = (
     "de processos administrativos sancionadores no âmbito da Lei 14.133/2021. "
     "Redija a minuta do ato administrativo de aplicação de sanção com linguagem formal, "
     "seguindo o padrão de atos oficiais da Administração Pública brasileira. "
+    "Revise a ortografia antes de responder: o texto vai à assinatura de autoridade. "
     'Responda SOMENTE com JSON válido no formato {"minuta": "texto completo"}. '
     "Não inclua texto fora do JSON."
 )
@@ -67,6 +92,7 @@ _ESTRUTURA_PARECER = """{
     "justificativa": "fundamentação da escolha da sanção"
   },
   "dosimetria": {
+    "base_calculo_multa": "valor total do contrato | valor da parcela inadimplida | outra (descrever)",
     "percentual_multa": 10.0,
     "valor_multa_estimado": 15000.00,
     "prazo_sancao": null,
@@ -102,7 +128,7 @@ def _normalizar(parecer: dict, valor_contrato: float | None) -> dict:
     padrao do "0.0" da Pesquisa de Mercado e do 'or "Não"' do Integridade, no
     modulo onde ele custa mais caro.
     """
-    for _k in ("_tipo_sancao_ia", "_gravidade_ia", "_percentual_ia"):
+    for _k in ("_tipo_sancao_ia", "_gravidade_ia", "_percentual_ia", "_base_nao_calculavel"):
         parecer.pop(_k, None)
 
     enq = parecer.get("enquadramento") or {}
@@ -140,9 +166,20 @@ def _normalizar(parecer: dict, valor_contrato: float | None) -> dict:
                 parecer["_percentual_ia"] = _pct
                 _pct = TETO_MULTA_PCT
             dos["percentual_multa"] = _pct
-            dos["valor_multa_estimado"] = (
-                round(valor_contrato * _pct / 100, 2) if valor_contrato is not None else None
-            )
+            # A estimativa em reais so faz sentido se a base for o VALOR TOTAL do
+            # contrato — que e o unico numero que temos. Quando o contrato manda
+            # incidir sobre a parcela inadimplida (caso comum na multa moratoria),
+            # calcular sobre o total infla a divida. Medido no teste 1 (15/08):
+            # clausula limitava a 10% da parcela inadimplida (R$ 52.000), e o
+            # sistema apresentou 10% de R$ 240.000 = R$ 24.000, 4,6x mais.
+            _base = str(dos.get("base_calculo_multa") or "").strip().lower()
+            _base_e_total = (not _base) or ("total" in _base) or ("contrato" in _base and "parcela" not in _base)
+            if valor_contrato is not None and _base_e_total:
+                dos["valor_multa_estimado"] = round(valor_contrato * _pct / 100, 2)
+            else:
+                dos["valor_multa_estimado"] = None
+                if valor_contrato is not None and not _base_e_total:
+                    parecer["_base_nao_calculavel"] = dos.get("base_calculo_multa")
     else:
         dos.pop("valor_multa_estimado", None)
         dos.pop("percentual_multa", None)
@@ -288,6 +325,11 @@ def gerar_minuta(
         "(Art. 157, §4º, Lei 14.133/2021), e local para assinatura da autoridade."
     )
     partes.append('\nRetorne SOMENTE: {"minuta": "texto completo do ato"}')
+
+    _base_m = dos.get("base_calculo_multa")
+    if tipo == "multa" and _base_m:
+        partes.append(f"Base de cálculo da multa (conforme o contrato): {_base_m}")
+    partes.append("\n" + _ANDAIME_LEGAL_MINUTA)
 
     resultado = _chamar_api(
         "\n".join(partes), api_key, modelo,

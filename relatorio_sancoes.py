@@ -226,6 +226,9 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
             linhas_dos.append(
                 ["% da Multa", "não determinado — aplicar o percentual previsto no edital/contrato"]
             )
+        base_calc = dos.get("base_calculo_multa")
+        if base_calc:
+            linhas_dos.append(["Base de cálculo", html.escape(str(base_calc))])
         if isinstance(val, (int, float)) and val > 0:
             linhas_dos.append(["Valor Estimado", _fmt_brl(_safe_float(val))])
     elif tipo in ("impedimento", "inidoneidade"):
@@ -244,6 +247,16 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
     # O PDF e a peca que vai ao processo: o aviso do teto legal precisa estar
     # AQUI, nao so na tela. Limitar em silencio esconderia do gestor que a IA
     # propos multa acima do maximo do art. 156, §3º.
+    _base_nc = parecer.get("_base_nao_calculavel")
+    if _base_nc:
+        story.append(Spacer(1, 0.2 * cm))
+        story.append(Paragraph(
+            f"O contrato manda a multa incidir sobre <b>{html.escape(str(_base_nc))}</b>, e não "
+            "sobre o valor total do contrato. Este relatório <b>não estimou a quantia</b>: ela "
+            "deve ser calculada sobre a base contratual correta. Aplicar o percentual sobre o "
+            "valor total infla a dívida.",
+            _ESTILO_CORPO,
+        ))
     _pct_ia = parecer.get("_percentual_ia")
     if _pct_ia:
         story.append(Spacer(1, 0.2 * cm))

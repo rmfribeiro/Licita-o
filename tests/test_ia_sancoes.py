@@ -299,3 +299,51 @@ class TestGerarMinuta:
         mock_open.assert_called_once()
         corpo = json.loads(mock_open.call_args.args[0].data.decode("utf-8"))
         assert "não informado" in corpo["messages"][0]["content"]
+
+
+class TestBaseDeCalculoDaMulta:
+    """Medido no teste 1 real (15/08/2026): o contrato limitava a multa a 10% da
+    PARCELA INADIMPLIDA (R$ 52.000), e o sistema apresentou 10% do VALOR TOTAL
+    (R$ 240.000) = R$ 24.000 — 4,6x mais. A base é definida pelo contrato, não
+    pelo sistema, e o código só tinha o valor total para multiplicar."""
+
+    def _roda(self, base):
+        parecer = {**_parecer_api_mock()}
+        parecer["dosimetria"] = {**parecer["dosimetria"], "percentual_multa": 10.0,
+                                 "base_calculo_multa": base}
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            return ia_sancoes.analisar_dosimetria(_dados_formulario_mock(), None, "key")
+
+    def test_base_parcela_inadimplida_nao_estima_valor(self):
+        r = self._roda("valor da parcela inadimplida")
+        assert r["dosimetria"]["percentual_multa"] == 10.0
+        assert r["dosimetria"]["valor_multa_estimado"] is None
+        assert r["_base_nao_calculavel"] == "valor da parcela inadimplida"
+
+    def test_base_valor_total_estima_normalmente(self):
+        r = self._roda("valor total do contrato")
+        assert isinstance(r["dosimetria"]["valor_multa_estimado"], float)
+        assert "_base_nao_calculavel" not in r
+
+    def test_base_ausente_mantem_comportamento_antigo(self):
+        r = self._roda(None)
+        assert isinstance(r["dosimetria"]["valor_multa_estimado"], float)
+        assert "_base_nao_calculavel" not in r
+
+
+class TestAndaimeLegalDaMinuta:
+    def test_prompt_da_minuta_traz_os_dispositivos_certos(self):
+        """A minuta do teste 1 citou "art. 157, §4º" para o recurso. O art. 157
+        trata da DEFESA prévia e não tem parágrafos; recurso é o art. 166."""
+        assert "art. 166" in ia_sancoes._ANDAIME_LEGAL_MINUTA
+        assert "NÃO tem parágrafos" in ia_sancoes._ANDAIME_LEGAL_MINUTA
+        assert "art. 167" in ia_sancoes._ANDAIME_LEGAL_MINUTA
+
+    def test_andaime_vai_ao_prompt(self):
+        parecer = _parecer_api_mock()
+        with patch("ia_utils.urllib.request.urlopen",
+                   return_value=_mock_urlopen({"minuta": "texto"})) as mock:
+            ia_sancoes.gerar_minuta(parecer, _dados_formulario_mock(), "key")
+        import json
+        corpo = json.loads(mock.call_args[0][0].data.decode("utf-8"))
+        assert "art. 166" in corpo["messages"][0]["content"]
