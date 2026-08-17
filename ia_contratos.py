@@ -164,6 +164,7 @@ def analisar(
         max_tokens=8000,
     )
 
+    qualitativo["_documentos_analisados"] = ia_utils.manifesto_documentos(texto_docs)
     _normalizar_parecer(qualitativo, NORM_PARECER_CONT, PARECER_OPTIONS, "INDEFERÍVEL", "ia_contratos")
     _derivar_parecer_dos_requisitos(qualitativo)
     return {**qualitativo, "tipo_alteracao": tipo, "dados_contrato": dados_contrato}

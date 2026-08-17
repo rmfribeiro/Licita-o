@@ -277,6 +277,7 @@ def analisar_dosimetria(
         _SISTEMA_DOSIMETRIA + ia_utils.SUFIXO_SEGURANCA,
         max_tokens=8000,
     )
+    resultado["_documentos_analisados"] = ia_utils.manifesto_documentos(texto_docs)
     return _normalizar(resultado, valor_contrato)
 
 

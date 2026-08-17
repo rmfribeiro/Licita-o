@@ -265,6 +265,7 @@ def analisar(
         max_tokens=8000,        # 5 condicoes + observacoes + sintese nao cabem em 3.000
     )
 
+    parecer["_documentos_analisados"] = ia_utils.manifesto_documentos(texto_docs)
     _normalizar_parecer(parecer, NORM_PARECER_REAB,
                         frozenset(PARECER_OPTIONS) | {PARECER_NAO_AVALIADO},
                         PARECER_NAO_AVALIADO, "ia_reabilitacao")

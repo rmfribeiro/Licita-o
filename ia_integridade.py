@@ -259,6 +259,7 @@ def diagnosticar(
         max_tokens=8000,
     )
 
+    parecer["_documentos_analisados"] = ia_utils.manifesto_documentos(texto_docs)
     parecer.pop("_aviso_maturidade", None)
     parecer.pop("_aviso_piso_maturidade", None)
     _raw_mat = parecer.get("maturidade_geral")

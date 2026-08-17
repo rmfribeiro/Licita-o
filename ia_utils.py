@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging as _logging
 import re
+import re as _re
 import types
 import urllib.error
 import urllib.request
@@ -389,3 +390,49 @@ def aviso_adequacao_story(parecer: dict, estilo) -> list:
         ),
         Spacer(1, 0.2 * cm),
     ]
+
+
+# ---------------------------------------------------------------- manifesto
+# O etp_extrator marca cada arquivo lido com "[ARQUIVO: nome]" antes de
+# concatenar. Aqui isso vira uma LISTA para o relatorio.
+_RE_MARCA_ARQUIVO = _re.compile(r"\[ARQUIVO:\s*([^\]]+)\]")
+
+
+def manifesto_documentos(texto: str | None) -> list[dict]:
+    """Quais arquivos entraram nesta analise, e com quanto texto cada um.
+
+    POR QUE ISTO EXISTE (17/08/2026)
+    --------------------------------
+    Num teste de Reabilitacao, um parecer citou "GRU no 2022/4471" — numero que
+    so existia num documento que o Roberto acreditava ter SUBSTITUIDO. Levou uma
+    conversa inteira e comparacao de marcadores de texto para descobrir qual
+    arquivo tinha sido lido de fato. O `st.file_uploader` com
+    accept_multiple_files=True ACRESCENTA arquivos: quem arrasta um novo sem
+    remover o anterior analisa os dois sem perceber.
+
+    Relatorio que nao diz o que leu obriga o leitor a confiar. Listar os
+    arquivos transforma um erro invisivel em erro obvio — e e determinístico,
+    nao depende do modelo.
+    """
+    if not texto:
+        return []
+    marcas = list(_RE_MARCA_ARQUIVO.finditer(texto))
+    if not marcas:
+        # Texto sem marcacao (chamada direta, teste, ou extrator antigo).
+        return [{"arquivo": "(documento enviado)", "chars": len(texto)}]
+    itens: list[dict] = []
+    for i, m in enumerate(marcas):
+        fim = marcas[i + 1].start() if i + 1 < len(marcas) else len(texto)
+        itens.append({
+            "arquivo": m.group(1).strip(),
+            "chars": len(texto[m.end():fim].strip()),
+        })
+    return itens
+
+
+def linhas_manifesto(docs: list[dict] | None) -> list[str]:
+    """Manifesto em linhas prontas para tela e PDF."""
+    if not docs:
+        return []
+    return [f"{d.get('arquivo', '?')} — {int(d.get('chars', 0)):,} caracteres extraídos"
+            .replace(",", ".") for d in docs]

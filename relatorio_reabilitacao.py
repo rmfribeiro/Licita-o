@@ -1,5 +1,6 @@
 from __future__ import annotations
 import html
+import ia_utils
 import ia_reabilitacao
 import io
 from datetime import datetime
@@ -178,6 +179,21 @@ def gerar_relatorio_tecnico(
     story.append(Paragraph("Síntese", _H2))
     story.append(Paragraph(html.escape(str(parecer.get("sintese") or "-")), _CORPO))
     story.append(Spacer(1, 0.3*cm))
+
+    # MANIFESTO (17/08/2026): o relatorio diz QUAIS arquivos leu. Sem isso, um
+    # documento residual no uploader entra na analise sem ninguem perceber —
+    # foi o que aconteceu no teste de Reabilitacao, e custou uma conversa
+    # inteira de deducao por marcadores de texto para descobrir.
+    _docs_lidos = parecer.get("_documentos_analisados") or []
+    story.append(Paragraph("Documentos Analisados", _H2))
+    if _docs_lidos:
+        for _l in ia_utils.linhas_manifesto(_docs_lidos):
+            story.append(Paragraph(f"- {html.escape(_l)}", _CORPO))
+    else:
+        story.append(Paragraph(
+            "Nenhum documento foi anexado a esta análise. As conclusões acima apoiam-se "
+            "apenas nos dados informados no formulário.", _CORPO))
+    story.append(Spacer(1, 0.3 * cm))
 
     story.append(Paragraph("Base Legal", _H2))
     for bl in (parecer.get("base_legal") or []):

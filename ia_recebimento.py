@@ -194,6 +194,7 @@ def analisar(
         max_tokens=8000,      # dois blocos (provisorio + definitivo) nao cabem em 3.000
     )
 
+    qualitativo["_documentos_analisados"] = ia_utils.manifesto_documentos(texto_docs)
     qualitativo.pop("_aviso_parecer", None)
     for _bk in ("recebimento_provisorio", "recebimento_definitivo"):
         _b = qualitativo.get(_bk)

@@ -67,6 +67,27 @@ def _safe_md(s: object) -> str:
     )
 
 
+
+def _mostrar_documentos_lidos(parecer: dict) -> None:
+    """Lista os arquivos que entraram na analise.
+
+    Criado em 17/08/2026: no teste da Reabilitacao, um parecer citou dado de um
+    documento que o Roberto acreditava ter substituido. O `st.file_uploader`
+    com accept_multiple_files=True ACRESCENTA arquivos — arrastar um novo sem
+    remover o anterior analisa os dois. Relatorio que nao diz o que leu obriga
+    o leitor a confiar; dizer transforma o erro invisivel em erro obvio.
+    """
+    _docs = (parecer or {}).get("_documentos_analisados") or []
+    if _docs:
+        st.caption(
+            "📎 **Documentos analisados:** "
+            + " · ".join(_safe_md(l) for l in ia_utils.linhas_manifesto(_docs))
+        )
+    else:
+        st.caption(
+            "📎 Nenhum documento anexado — a análise apoia-se apenas nos dados do formulário."
+        )
+
 def _mostrar_aviso_adequacao(parecer: dict) -> None:
     val = parecer.get("_aviso_adequacao")
     if val is not None:
@@ -100,8 +121,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.16-01"
-VERSAO_NOTAS = "Reabilitação: condições do art. 163 não vêm mais pré-respondidas"
+VERSAO_APP = "2026.08.17-01"
+VERSAO_NOTAS = "Relatórios passam a listar os documentos efetivamente analisados"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -926,6 +947,8 @@ with aba4:
         if _resumo_pip:
             st.info(_safe_md(_resumo_pip))
 
+        _mostrar_documentos_lidos(_pr_pip)
+
         _dims_pip = _pr_pip.get("dimensoes") or {}
         for _ch, _lb in ia_integridade.LABEL_DIMENSAO.items():
             _d   = _dims_pip.get(_ch) or {}
@@ -1659,6 +1682,8 @@ with aba6:
                     _pr_recv, _icone_parecer_recv, _cor_parecer_recv,
                 )
 
+            _mostrar_documentos_lidos(_pr_recv)
+
             _recs_recv = _pr_recv.get("recomendacoes_gerais")
             _recs_recv = _recs_recv if isinstance(_recs_recv, list) else []
             if _recs_recv:
@@ -2080,6 +2105,8 @@ with aba8:
                 f"**Recomendação:** {_safe_md(_alerta_sanc.get('recomendacao') or '—')}"
             )
 
+        _mostrar_documentos_lidos(_pr_sanc)
+
         with st.expander("Base Legal"):
             for _bl_sanc in (_pr_sanc.get("base_legal") or []):
                 if _bl_sanc:
@@ -2465,6 +2492,8 @@ with aba9:
                     f"ℹ️ A IA concluiu **{_safe_md(str(_pia_reab))}**; o parecer acima foi "
                     "derivado das condições cumulativas do art. 163, que é o critério do sistema."
                 )
+
+            _mostrar_documentos_lidos(_pr3_reab)
 
             _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []
             _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—",
