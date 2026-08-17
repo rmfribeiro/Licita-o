@@ -103,7 +103,7 @@ def gerar_relatorio_tecnico(
         ["Razão Social",      html.escape(str(dados_empresa.get("razao_social") or "-"))],
         ["CNPJ",              _fmt_cnpj(cnpj)],
         ["Tipo de Sanção",    html.escape(_tipo_label)],
-        ["Data da Sanção",    html.escape(str(dados_sancao.get("data_aplicacao") or "-"))],
+        ["Data da Sanção",    html.escape(ia_utils.fmt_data_br(dados_sancao.get("data_aplicacao"), "-"))],
         ["Órgão Sancionador", html.escape(str(dados_sancao.get("orgao") or "-"))],
     ]
     t_id = Table(linhas_id, colWidths=[5*cm, 12*cm])
@@ -191,8 +191,7 @@ def gerar_relatorio_tecnico(
             story.append(Paragraph(f"- {html.escape(_l)}", _CORPO))
     else:
         story.append(Paragraph(
-            "Nenhum documento foi anexado a esta análise. As conclusões acima apoiam-se "
-            "apenas nos dados informados no formulário.", _CORPO))
+            f"<b>{html.escape(ia_utils.AVISO_SEM_LASTRO)}</b>", _CORPO))
     story.append(Spacer(1, 0.3 * cm))
 
     story.append(Paragraph("Base Legal", _H2))
@@ -229,7 +228,7 @@ def gerar_minuta_requerimento(
     _razao      = html.escape(str(dados_empresa.get("razao_social") or "REQUERENTE"))
     _cnpj_fmt   = _fmt_cnpj(cnpj)
     _orgao      = html.escape(str(dados_sancao.get("orgao") or "não identificado"))
-    _data_apl   = html.escape(str(dados_sancao.get("data_aplicacao") or "não informada"))
+    _data_apl   = html.escape(ia_utils.fmt_data_br(dados_sancao.get("data_aplicacao")))
 
     story.append(Spacer(1, 0.5*cm))
     story.append(Paragraph("<b>REQUERIMENTO DE REABILITAÇÃO</b>", _TITULO_REQ))

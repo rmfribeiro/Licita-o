@@ -20,6 +20,12 @@ _SISTEMA = (
     "respostas do questionário e nos documentos fornecidos, à luz do Decreto 11.129/2022, "
     "da IN CGU 21/2021, da Lei 12.846/2013 (art. 7º, III) e do Decreto 8.420/2015. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    "\n\nREGRA DO LASTRO DOCUMENTAL — obrigatória:\n"
+    "As respostas do questionário são DECLARAÇÕES do órgão, não são prova. Ao descrever "
+    "uma dimensão, deixe claro quando o único suporte é a resposta do formulário, "
+    "escrevendo 'declarado no formulário, sem comprovação documental anexada'. NUNCA "
+    "escreva 'comprovado', 'confirmado' ou 'verificado' sobre algo que só consta do "
+    "questionário."
 )
 
 _ESTRUTURA_PARECER = """{

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import date as _date, datetime as _datetime
 import hashlib
 import json
 import logging as _logging
@@ -436,3 +437,39 @@ def linhas_manifesto(docs: list[dict] | None) -> list[str]:
         return []
     return [f"{d.get('arquivo', '?')} — {int(d.get('chars', 0)):,} caracteres extraídos"
             .replace(",", ".") for d in docs]
+
+
+def fmt_data_br(valor, default: str = "não informada") -> str:
+    """Data sempre em DD/MM/AAAA para o leitor brasileiro.
+
+    O `st.date_input` devolve um `datetime.date`, cujo str() e ISO
+    ("2022-03-10"), e o Streamlit exibia "2022/03/10" no campo. Num parecer
+    juridico brasileiro isso e ruido: quem le espera 10/03/2022, e datas como
+    "03/10/2022" abrem margem para trocar mes por dia.
+    """
+    if valor in (None, ""):
+        return default
+    if isinstance(valor, _date):
+        return valor.strftime("%d/%m/%Y")
+    txt = str(valor).strip()
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
+        try:
+            return _datetime.strptime(txt[:10], fmt).date().strftime("%d/%m/%Y")
+        except ValueError:
+            continue
+    return txt          # ja esta em DD/MM/AAAA ou e formato desconhecido
+
+
+# Aviso deterministico, identico nos tres modulos que usam questionario.
+AVISO_SEM_LASTRO = (
+    "ATENÇÃO — NENHUM DOCUMENTO FOI ANEXADO A ESTA ANÁLISE. Todas as conclusões acima "
+    "repousam exclusivamente nas DECLARAÇÕES prestadas no formulário, que não foram "
+    "confrontadas com prova documental. Este relatório NÃO comprova o cumprimento de "
+    "nenhum requisito legal: apenas registra o que foi declarado. Antes de qualquer "
+    "decisão, exija e confira os documentos comprobatórios."
+)
+
+
+def sem_lastro_documental(parecer: dict) -> bool:
+    """True quando a analise correu sem nenhum documento anexado."""
+    return not (parecer or {}).get("_documentos_analisados")

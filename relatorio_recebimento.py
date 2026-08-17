@@ -214,8 +214,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
                 story.append(Paragraph(f"- {html.escape(_l)}", _ESTILO_CORPO))
         else:
             story.append(Paragraph(
-                "Nenhum documento foi anexado a esta análise. As conclusões acima apoiam-se "
-                "apenas nos dados informados no formulário.", _ESTILO_CORPO))
+                f"<b>{html.escape(ia_utils.AVISO_SEM_LASTRO)}</b>", _ESTILO_CORPO))
         story.append(Spacer(1, 0.3 * cm))
 
         story.append(Paragraph("Base Legal", _ESTILO_H2))

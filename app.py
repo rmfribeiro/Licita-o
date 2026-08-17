@@ -84,9 +84,7 @@ def _mostrar_documentos_lidos(parecer: dict) -> None:
             + " · ".join(_safe_md(l) for l in ia_utils.linhas_manifesto(_docs))
         )
     else:
-        st.caption(
-            "📎 Nenhum documento anexado — a análise apoia-se apenas nos dados do formulário."
-        )
+        st.warning("📎 " + ia_utils.AVISO_SEM_LASTRO)
 
 def _mostrar_aviso_adequacao(parecer: dict) -> None:
     val = parecer.get("_aviso_adequacao")
@@ -121,8 +119,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.17-01"
-VERSAO_NOTAS = "Relatórios passam a listar os documentos efetivamente analisados"
+VERSAO_APP = "2026.08.17-02"
+VERSAO_NOTAS = "Declarado ≠ comprovado; aviso sem lastro documental; data em DD/MM/AAAA"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -2174,6 +2172,7 @@ with aba9:
         _data_sancao_reab = st.date_input(
             "Data de aplicação da sanção",
             value=None,
+            format="DD/MM/YYYY",     # o padrao do Streamlit e AAAA/MM/DD
             key="reab_data_sancao",
         )
     with _col_reab4:

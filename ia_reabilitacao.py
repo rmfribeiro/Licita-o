@@ -72,12 +72,31 @@ def calcular_prazo(
     }
 
 
+# REGRA DO LASTRO DOCUMENTAL (17/08/2026).
+# No teste 5 da Reabilitacao o parecer afirmou "COMPROVADO o pagamento integral
+# da multa no valor de R$ 38.400,00" — valor que existia APENAS no formulario,
+# num pedido cujo documento nao mencionava multa alguma. Resposta de formulario
+# e DECLARACAO do gestor, nao prova. O art. 163 exige comprovacao, e um parecer
+# que diz "comprovado" sobre o que ninguem comprovou nao se sustenta se o
+# controle pedir o documento.
+REGRA_LASTRO = (
+    "\n\nREGRA DO LASTRO DOCUMENTAL — obrigatória:\n"
+    "As respostas do QUESTIONÁRIO são DECLARAÇÕES do gestor, não são prova. "
+    "Só classifique uma condição como ATENDIDA quando houver lastro nos DOCUMENTOS "
+    "anexados. Quando a condição estiver apenas declarada no formulário, sem documento "
+    "que a comprove, use status PARCIAL e escreva na observação, literalmente: "
+    "'declarado no formulário, sem comprovação documental anexada'. "
+    "NUNCA escreva 'comprovado', 'confirmado' ou 'verificado' sobre algo que só consta "
+    "do formulário. Se nenhum documento foi anexado, nenhuma condição pode ser ATENDIDA."
+)
+
 _SISTEMA = (
     "Você é um especialista em licitações e contratos públicos brasileiros. "
     "Analise o pedido de reabilitação de fornecedor com base no Art. 163, Parágrafo Único, "
     "da Lei 14.133/2021. Avalie cada uma das 5 condições cumulativas e emita parecer de "
     "elegibilidade motivado. "
     "Responda SOMENTE com JSON válido no formato especificado. Não inclua texto fora do JSON."
+    + REGRA_LASTRO
 )
 
 _ESTRUTURA_PARECER = """{

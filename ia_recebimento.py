@@ -43,6 +43,19 @@ STATUS_CONDICAO: types.MappingProxyType[str, str] = types.MappingProxyType({
 # um fornecedor que pode ter entregue tudo certo.
 PARECER_NAO_AVALIADO = "NÃO AVALIADO"
 
+# REGRA DO LASTRO DOCUMENTAL (17/08/2026) — ver ia_reabilitacao.REGRA_LASTRO
+# para o incidente que a originou. Aqui a descricao da entrega tambem e
+# declaracao do fiscal, nao prova.
+REGRA_LASTRO = (
+    "\n\nREGRA DO LASTRO DOCUMENTAL — obrigatória:\n"
+    "A descrição da entrega e as demais informações do formulário são DECLARAÇÕES do "
+    "gestor, não são prova. Só classifique uma condição como ATENDIDA quando houver "
+    "lastro nos DOCUMENTOS anexados. Quando a condição estiver apenas declarada, use "
+    "status PARCIAL e escreva na observação, literalmente: 'declarado no formulário, sem "
+    "comprovação documental anexada'. NUNCA escreva 'comprovado', 'confirmado' ou "
+    "'atestado' sobre algo que só consta do formulário."
+)
+
 _SISTEMA_POR_TIPO: types.MappingProxyType[str, str] = types.MappingProxyType({
     "servico": (
         "Você é um fiscal de contratos especialista em recebimento de SERVIÇOS "
@@ -190,7 +203,7 @@ def analisar(
 
     qualitativo = _chamar_api(
         "\n".join(partes), api_key, modelo,
-        _SISTEMA_POR_TIPO[tipo_objeto] + ia_utils.SUFIXO_SEGURANCA,
+        _SISTEMA_POR_TIPO[tipo_objeto] + REGRA_LASTRO + ia_utils.SUFIXO_SEGURANCA,
         max_tokens=8000,      # dois blocos (provisorio + definitivo) nao cabem em 3.000
     )
 
