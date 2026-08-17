@@ -1,5 +1,6 @@
 from __future__ import annotations
 import html
+import ia_reabilitacao
 import io
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
@@ -16,6 +17,7 @@ from ia_reabilitacao import TIPOS_SANCAO as _LABEL_SANCAO
 import disclaimers  # >>> DISCLAIMER (1/4): importa os textos centralizados
 
 _COR_PARECER = {
+    "NÃO AVALIADO":           colors.HexColor("#808080"),
     "ELEGÍVEL":               colors.HexColor(_COR_STATUS["ok"]),
     "ELEGÍVEL COM RESSALVAS": colors.HexColor(_COR_STATUS["alerta"]),
     "INELEGÍVEL":             colors.HexColor(_COR_STATUS["critico"]),
@@ -114,7 +116,9 @@ def gerar_relatorio_tecnico(
     story.append(t_id)
     story.append(Spacer(1, 0.4*cm))
 
-    _pval    = str(parecer.get("parecer") or "INELEGÍVEL").strip().upper()
+    # Ausencia de parecer NAO vira INELEGIVEL no laudo que vai ao processo.
+    _pval    = str(parecer.get("parecer")
+                   or ia_reabilitacao.PARECER_NAO_AVALIADO).strip().upper()
     _cor_par = _COR_PARECER.get(_pval, colors.grey)
     story.append(Paragraph("Parecer de Elegibilidade", _H2))
     t_badge = Table(
@@ -128,11 +132,27 @@ def gerar_relatorio_tecnico(
     ]))
     story.append(t_badge)
     story.append(Spacer(1, 0.4*cm))
+    if _pval == ia_reabilitacao.PARECER_NAO_AVALIADO:
+        story.append(Paragraph(
+            "Nenhuma condição do art. 163 foi avaliada. Isto <b>não</b> significa que a empresa "
+            "seja inelegível: significa que não há base para deferir nem para negar a "
+            "reabilitação. A decisão é da autoridade competente.",
+            _CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
     _aviso_par_reab = parecer.get("_aviso_parecer")
     if _aviso_par_reab is not None:
         story.append(Paragraph(
             f"⚠ Valor de parecer não reconhecido: '{html.escape(str(_aviso_par_reab))}'"
-            " — registrado como INELEGÍVEL. Verifique manualmente.",
+            " — o parecer acima foi derivado do status das 5 condições cumulativas.",
+            _CORPO,
+        ))
+        story.append(Spacer(1, 0.2*cm))
+    _pia = parecer.get("_parecer_ia")
+    if _pia and _pia != _pval:
+        story.append(Paragraph(
+            f"(i) A análise concluiu {html.escape(str(_pia))}; o parecer acima foi derivado das "
+            "condições cumulativas do art. 163, que é o critério do sistema.",
             _CORPO,
         ))
         story.append(Spacer(1, 0.2*cm))

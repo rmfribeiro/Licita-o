@@ -356,7 +356,10 @@ class TestAnalisar:
         mock_url.assert_not_called()
         assert r["parecer"] == "INELEGÍVEL"
 
-    def test_parecer_desconhecido_vira_inelegivel_com_aviso(self):
+    def test_parecer_desconhecido_nao_vira_inelegivel(self):
+        """Negar reabilitação por resposta malformada do modelo mantém uma
+        empresa fora do mercado público sem base. Negar sem fundamento é tão
+        grave quanto deferir — o parecer agora vem das CONDIÇÕES do art. 163."""
         api_result = {**_parecer_api_mock(), "parecer": "ELEGÍVEL PARCIALMENTE"}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
             r = ia_reabilitacao.analisar(
@@ -368,8 +371,9 @@ class TestAnalisar:
                 "key",
                 data_referencia=date(2026, 6, 1),
             )
-        assert r["parecer"] == "INELEGÍVEL"
         assert r.get("_aviso_parecer") == "ELEGÍVEL PARCIALMENTE"
+        assert r["parecer"] == "ELEGÍVEL"       # as 5 condições estão ATENDIDA
+
 
     def test_parecer_reconhecido_nao_seta_aviso(self):
         api_result = {**_parecer_api_mock(), "parecer": "ELEGÍVEL COM RESSALVAS"}
@@ -383,10 +387,13 @@ class TestAnalisar:
                 "key",
                 data_referencia=date(2026, 6, 1),
             )
-        assert r["parecer"] == "ELEGÍVEL COM RESSALVAS"
         assert "_aviso_parecer" not in r
+        # a IA disse COM RESSALVAS, mas as 5 condicoes estao ATENDIDA: manda a aritmetica
+        assert r["parecer"] == "ELEGÍVEL"
+        assert r["_parecer_ia"] == "ELEGÍVEL COM RESSALVAS"
 
-    def test_parecer_none_vira_inelegivel_sem_aviso(self):
+
+    def test_parecer_none_nao_vira_inelegivel(self):
         api_result = {**_parecer_api_mock(), "parecer": None}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
             r = ia_reabilitacao.analisar(
@@ -398,10 +405,11 @@ class TestAnalisar:
                 "key",
                 data_referencia=date(2026, 6, 1),
             )
-        assert r["parecer"] == "INELEGÍVEL"
         assert "_aviso_parecer" not in r
+        assert r["parecer"] == "ELEGÍVEL"
 
-    def test_parecer_vazio_vira_inelegivel_com_aviso_vazio(self):
+
+    def test_parecer_vazio_seta_aviso_vazio(self):
         api_result = {**_parecer_api_mock(), "parecer": ""}
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(api_result)):
             r = ia_reabilitacao.analisar(
@@ -413,8 +421,9 @@ class TestAnalisar:
                 "key",
                 data_referencia=date(2026, 6, 1),
             )
-        assert r["parecer"] == "INELEGÍVEL"
         assert r.get("_aviso_parecer") == ""
+        assert r["parecer"] == "ELEGÍVEL"
+
 
     def test_pop_remove_aviso_parecer_injetado_pelo_llm_quando_parecer_valido(self):
         api_result = {**_parecer_api_mock(), "_aviso_parecer": "FORJADO"}
@@ -430,3 +439,83 @@ class TestAnalisar:
             )
         assert r["parecer"] == "ELEGÍVEL"
         assert "_aviso_parecer" not in r
+
+
+class TestDerivacaoDaElegibilidade:
+    """As condições do parágrafo único do art. 163 são CUMULATIVAS: basta uma
+    não atendida para que a reabilitação não possa ser deferida."""
+
+    def _parecer(self, *status):
+        p = {"parecer": "ELEGÍVEL",
+             "condicoes_avaliadas": [{"numero": str(i), "descricao": "c", "status": s,
+                                      "observacao": ""} for i, s in enumerate(status)]}
+        ia_reabilitacao._derivar_parecer_das_condicoes(p)
+        return p
+
+    def test_uma_ausente_torna_inelegivel(self):
+        assert self._parecer("ATENDIDA", "ATENDIDA", "AUSENTE")["parecer"] == "INELEGÍVEL"
+
+    def test_parcial_vira_ressalvas(self):
+        assert self._parecer("ATENDIDA", "PARCIAL")["parecer"] == "ELEGÍVEL COM RESSALVAS"
+
+    def test_ausente_tem_precedencia_sobre_parcial(self):
+        assert self._parecer("PARCIAL", "AUSENTE")["parecer"] == "INELEGÍVEL"
+
+    def test_todas_atendidas_e_elegivel(self):
+        assert self._parecer("ATENDIDA", "ATENDIDA")["parecer"] == "ELEGÍVEL"
+
+    def test_na_e_neutro(self):
+        """Nem toda sanção tem dano a reparar. Exigir reparação onde não houve
+        dano seria criar requisito que a lei não faz."""
+        assert self._parecer("ATENDIDA", "N.A.", "ATENDIDA")["parecer"] == "ELEGÍVEL"
+
+    def test_sem_condicoes_nao_conclui(self):
+        assert self._parecer()["parecer"] == ia_reabilitacao.PARECER_NAO_AVALIADO
+
+    def test_guarda_o_juizo_da_ia(self):
+        p = {"parecer": "ELEGÍVEL",
+             "condicoes_avaliadas": [{"numero": "I", "descricao": "c",
+                                      "status": "AUSENTE", "observacao": ""}]}
+        ia_reabilitacao._derivar_parecer_das_condicoes(p)
+        assert p["parecer"] == "INELEGÍVEL"
+        assert p["_parecer_ia"] == "ELEGÍVEL"
+
+
+class TestMultaSemPresuncao:
+    """`dados_sancao.get("multa_aplicada", False)` transformava NÃO RESPONDIDO em
+    "não houve multa" — e, sem multa, a condição II (quitação) sumia da análise,
+    EM FAVOR da empresa que pede reabilitação."""
+
+    def _prompt(self, dados_sancao):
+        import json
+        with patch("ia_utils.urllib.request.urlopen",
+                   return_value=_mock_urlopen(_parecer_api_mock())) as mock:
+            ia_reabilitacao.analisar("impedimento", _dados_empresa_mock(), dados_sancao,
+                                     _respostas_mock(), None, "key",
+                                     data_referencia=date(2026, 6, 1))
+        corpo = json.loads(mock.call_args[0][0].data.decode("utf-8"))
+        return corpo["messages"][0]["content"], corpo
+
+    def test_multa_nao_informada_nao_vira_nao(self):
+        dados = {k: v for k, v in _dados_sancao_mock().items() if k != "multa_aplicada"}
+        prompt, _ = self._prompt(dados)
+        assert "Multa aplicada: não informado" in prompt
+        assert "NÃO presuma ausência de multa" in prompt
+
+    def test_multa_aplicada_sem_quitacao_informada(self):
+        dados = {**_dados_sancao_mock(), "multa_aplicada": True}
+        dados.pop("multa_quitada", None)
+        prompt, _ = self._prompt(dados)
+        assert "Multa quitada: não informado" in prompt
+
+    def test_documento_isolado_e_tokens_folgados(self):
+        import json
+        with patch("ia_utils.urllib.request.urlopen",
+                   return_value=_mock_urlopen(_parecer_api_mock())) as mock:
+            ia_reabilitacao.analisar("impedimento", _dados_empresa_mock(),
+                                     _dados_sancao_mock(), _respostas_mock(),
+                                     "DOCUMENTO_DA_EMPRESA_SANCIONADA", "key",
+                                     data_referencia=date(2026, 6, 1))
+        corpo = json.loads(mock.call_args[0][0].data.decode("utf-8"))
+        assert "DOCS_REABILITACAO" in corpo["messages"][0]["content"]
+        assert corpo["max_tokens"] >= 8000

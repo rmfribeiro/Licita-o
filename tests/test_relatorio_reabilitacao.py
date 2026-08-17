@@ -96,3 +96,36 @@ class TestGerarMinutaRequerimento:
             for pg in doc.pages:
                 texto += pg.extract_text() or ""
         assert "Inidoneidade" in texto
+
+
+class TestCenarioVazioNoPDF:
+    """Regra do método: testar o cenário vazio e ler o RELATÓRIO INTEIRO."""
+
+    _CNPJ = "33444555000166"
+    _EMP = {"cnpj": _CNPJ, "razao_social": "GAMA SERVIÇOS LTDA"}
+    _SANC = {"orgao": "Prefeitura X", "data_aplicacao": "2022-03-10"}
+
+    def _texto(self, parecer):
+        import io
+        import pdfplumber
+        pdf = relatorio_reabilitacao.gerar_relatorio_tecnico(
+            self._CNPJ, self._EMP, self._SANC, parecer)
+        with pdfplumber.open(io.BytesIO(pdf)) as d:
+            return "\n".join(p.extract_text() or "" for p in d.pages)
+
+    def test_sem_condicoes_avaliadas_nao_nega_reabilitacao(self):
+        import ia_reabilitacao
+        t = self._texto({"parecer": ia_reabilitacao.PARECER_NAO_AVALIADO,
+                         "condicoes_avaliadas": [], "sintese": "", "base_legal": []})
+        assert "NÃO AVALIADO" in t
+        assert "INELEGÍVEL" not in t
+        assert "não há base para deferir" in t
+
+    def test_pdf_registra_divergencia_entre_ia_e_codigo(self):
+        t = self._texto({"parecer": "INELEGÍVEL", "_parecer_ia": "ELEGÍVEL",
+                         "condicoes_avaliadas": [
+                             {"numero": "IV", "descricao": "c", "status": "AUSENTE",
+                              "observacao": ""}],
+                         "sintese": "", "base_legal": []})
+        assert "A análise concluiu ELEGÍVEL" in t
+        assert "INELEGÍVEL" in t

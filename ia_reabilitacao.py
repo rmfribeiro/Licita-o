@@ -28,6 +28,11 @@ PARECER_OPTIONS: types.MappingProxyType[str, str] = types.MappingProxyType({
     "INELEGÍVEL":             "INELEGÍVEL",
 })
 
+# Estado distinto dos tres pareceres. Aqui o fallback antigo era INELEGIVEL —
+# negar reabilitacao por resposta malformada do modelo mantem uma empresa fora
+# do mercado publico sem base. Negar sem fundamento e tao grave quanto deferir.
+PARECER_NAO_AVALIADO = "NÃO AVALIADO"
+
 NORM_PARECER_REAB: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ELEGIVEL":               "ELEGÍVEL",
     "ELEGIVEL COM RESSALVAS": "ELEGÍVEL COM RESSALVAS",
@@ -187,8 +192,11 @@ def analisar(
             }
 
     _tipo_label    = TIPOS_SANCAO[tipo_sancao]
-    _multa_apl     = dados_sancao.get("multa_aplicada", False)
-    _multa_quit    = dados_sancao.get("multa_quitada",  False)
+    # `, False` transformava NAO RESPONDIDO em "nao houve multa" — e, sem multa,
+    # a condicao II do art. 163 (quitacao) simplesmente sumia da analise, EM
+    # FAVOR da empresa que pede reabilitacao. Ausencia agora e ausencia.
+    _multa_apl     = dados_sancao.get("multa_aplicada")
+    _multa_quit    = dados_sancao.get("multa_quitada")
     _multa_valor   = dados_sancao.get("multa_valor")
 
     partes = [
@@ -201,16 +209,35 @@ def analisar(
         "Condições do Art. 163, Par. Único, Lei 14.133/2021:",
         f"Condição I — Reparação integral do dano: {respostas_condicoes.get('reparacao') or 'não informado'}",
         f"  Descrição/comprovação: {respostas_condicoes.get('reparacao_descricao') or 'não informada'}",
-        f"Condição II — Multa aplicada: {'Sim' if _multa_apl else 'Não'}",
+        "Condição II — Multa aplicada: " + (
+            "não informado" if _multa_apl is None else ("Sim" if _multa_apl else "Não")
+        ),
     ]
-    if _multa_apl:
+    if _multa_apl is None:
+        partes.append(
+            "  ATENÇÃO: não foi informado se houve multa. NÃO presuma ausência de multa "
+            "nem quitação: registre a condição II como não verificada."
+        )
+    elif _multa_apl:
         partes.append(
             "  Valor: " + _fmt_brl_opcional(_multa_valor, default='não informado')
         )
-        partes.append(f"  Multa quitada: {'Sim' if _multa_quit else 'Não'}")
+        partes.append("  Multa quitada: " + (
+            "não informado" if _multa_quit is None else ("Sim" if _multa_quit else "Não")
+        ))
 
     partes += [
-        f"Condição III — Prazo mínimo ({PRAZOS_MINIMOS_ANOS[tipo_sancao]} ano(s)): Decorrido (verificado automaticamente)",
+        # So se afirma "decorrido" quando a data foi lida e conferida. Quando o
+        # parser falha, a guarda acima e PULADA — e a versao anterior mandava ao
+        # modelo "Decorrido (verificado automaticamente)" mesmo assim, afirmando
+        # o que ninguem verificou, na condicao que e puro calculo de calendario.
+        (f"Condição III — Prazo mínimo ({PRAZOS_MINIMOS_ANOS[tipo_sancao]} ano(s)): "
+         "Decorrido (verificado automaticamente pelo sistema)"
+         if isinstance(_data_apl, date) else
+         f"Condição III — Prazo mínimo ({PRAZOS_MINIMOS_ANOS[tipo_sancao]} ano(s)): "
+         "NÃO FOI POSSÍVEL VERIFICAR — a data de aplicação da sanção não foi informada ou "
+         "não pôde ser interpretada. Registre esta condição como não verificada; não "
+         "presuma que o prazo decorreu."),
         "Condição IV — Condições do ato punitivo:",
         f"  Descrição das condições: {dados_sancao.get('condicoes_ato_punitivo') or 'não informado'}",
         f"  Condições cumpridas: {respostas_condicoes.get('cond_ato_cumpridas') or 'não informado'}",
@@ -218,8 +245,13 @@ def analisar(
     ]
 
     if texto_docs:
-        _doc, _aviso_corte = ia_utils.preparar_documento(texto_docs, rotulo="conjunto de documentos")
-        partes.append(f"\nDocumentos comprobatórios fornecidos:\n{_doc}")
+        # Isolamento anti-injecao: estes documentos sao juntados pela EMPRESA
+        # SANCIONADA que pede para voltar a contratar com a Administracao. Nao
+        # ha parte mais interessada no resultado.
+        _bloco, _aviso_corte = ia_utils.bloco_documento(
+            texto_docs, rotulo="conjunto de documentos", marca="DOCS_REABILITACAO"
+        )
+        partes.append(f"\nDocumentos comprobatórios fornecidos:\n{_bloco}")
         if _aviso_corte:
             partes.append(_aviso_corte)
     else:
@@ -228,8 +260,54 @@ def analisar(
     partes.append(f"\nRetorne o parecer no formato JSON:\n{_ESTRUTURA_PARECER}")
 
     parecer = _chamar_api(
-        "\n".join(partes), api_key, modelo, _SISTEMA, max_tokens=3000
+        "\n".join(partes), api_key, modelo,
+        _SISTEMA + ia_utils.SUFIXO_SEGURANCA,
+        max_tokens=8000,        # 5 condicoes + observacoes + sintese nao cabem em 3.000
     )
 
-    _normalizar_parecer(parecer, NORM_PARECER_REAB, PARECER_OPTIONS, "INELEGÍVEL", "ia_reabilitacao")
+    _normalizar_parecer(parecer, NORM_PARECER_REAB,
+                        frozenset(PARECER_OPTIONS) | {PARECER_NAO_AVALIADO},
+                        PARECER_NAO_AVALIADO, "ia_reabilitacao")
+    _derivar_parecer_das_condicoes(parecer)
     return {**parecer, "dados_empresa": dados_empresa, "dados_sancao": dados_sancao}
+
+
+# Status que a IA pode atribuir a cada condicao do art. 163.
+STATUS_CONDICAO_REAB = frozenset({"ATENDIDA", "PARCIAL", "AUSENTE", "N.A."})
+
+
+def _derivar_parecer_das_condicoes(parecer: dict) -> None:
+    """Deriva a elegibilidade DO STATUS DAS CONDICOES do art. 163.
+
+    As condicoes do paragrafo unico do art. 163 sao CUMULATIVAS: basta uma nao
+    atendida para que a reabilitacao nao possa ser deferida. Deixar a conclusao
+    ao juizo livre do modelo permitia sair "ELEGIVEL" com uma condicao AUSENTE
+    listada logo abaixo — mesmo defeito ja corrigido no ETP, DDI, Alteracoes e
+    Recebimento.
+
+      alguma condicao AUSENTE   -> INELEGIVEL
+      alguma condicao PARCIAL   -> ELEGIVEL COM RESSALVAS
+      todas ATENDIDA ou N.A.    -> ELEGIVEL
+      nenhuma condicao avaliada -> NAO AVALIADO
+
+    "N.A." e neutro de proposito: nao ha dano a reparar em toda sancao, e exigir
+    reparacao onde nao houve dano seria criar requisito que a lei nao faz.
+    """
+    parecer.pop("_parecer_ia", None)
+    conds = parecer.get("condicoes_avaliadas")
+    if not isinstance(conds, list):
+        conds = []
+    status = [str((c or {}).get("status", "")).strip().upper()
+              for c in conds if isinstance(c, dict)]
+    status = [s for s in status if s in STATUS_CONDICAO_REAB]
+    if not status:
+        derivado = PARECER_NAO_AVALIADO
+    elif "AUSENTE" in status:
+        derivado = "INELEGÍVEL"
+    elif "PARCIAL" in status:
+        derivado = "ELEGÍVEL COM RESSALVAS"
+    else:
+        derivado = "ELEGÍVEL"
+    if parecer.get("parecer") != derivado:
+        parecer["_parecer_ia"] = parecer.get("parecer")
+        parecer["parecer"] = derivado

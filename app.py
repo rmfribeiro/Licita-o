@@ -100,8 +100,8 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.15-05"
-VERSAO_NOTAS = "Nenhum tipo de objeto/sanção/hipótese vem pré-selecionado"
+VERSAO_APP = "2026.08.16-01"
+VERSAO_NOTAS = "Reabilitação: condições do art. 163 não vêm mais pré-respondidas"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
                    page_icon=_icone_marca, layout="wide")
@@ -2156,33 +2156,41 @@ with aba9:
             key="reab_orgao",
         )
 
-    _multa_aplicada_reab = st.radio(
+    # index=None: "Não" vinha pre-marcado, e "nao houve multa" DISPENSA a
+    # condicao II do art. 163 (quitacao). O default respondia, em favor da
+    # empresa que pede reabilitacao, uma pergunta que ninguem fez.
+    _multa_aplicada_opt = st.radio(
         "Multa foi aplicada?",
         options=["Não", "Sim"],
+        index=None,
         horizontal=True,
         key="reab_multa_aplicada",
-    ) == "Sim"
+    )
+    _multa_aplicada_reab = None if _multa_aplicada_opt is None else (_multa_aplicada_opt == "Sim")
 
-    _multa_valor_reab = 0.0
-    _multa_quitada_reab = False
+    _multa_valor_reab = None
+    _multa_quitada_reab = None
     if _multa_aplicada_reab:
         _col_mv, _col_mq = st.columns(2)
         with _col_mv:
             _multa_valor_reab = st.number_input(
                 "Valor da multa (R$)",
                 min_value=0.0,
-                value=0.0,
+                value=None,          # 0,00 nao e "sem valor": e uma multa de zero real
                 step=100.0,
                 format="%.2f",
                 key="reab_multa_valor",
             )
         with _col_mq:
-            _multa_quitada_reab = st.radio(
+            _multa_quitada_opt = st.radio(
                 "Multa quitada?",
                 options=["Não", "Sim"],
+                index=None,
                 horizontal=True,
                 key="reab_multa_quitada",
-            ) == "Sim"
+            )
+            _multa_quitada_reab = (None if _multa_quitada_opt is None
+                                   else (_multa_quitada_opt == "Sim"))
 
     _conds_ato_reab = st.text_area(
         "Condições definidas no ato punitivo (Condição IV)",
@@ -2290,9 +2298,15 @@ with aba9:
         else:
             st.warning("Data de aplicação não informada — prazo não calculado.")
 
+        # index=None nas tres condicoes abaixo. Vinham pre-marcadas com a
+        # PRIMEIRA opcao — "Sim (integral)", "Sim" e "Realizada" —, ou seja, o
+        # formulario ja chegava afirmando que tres das cinco condicoes
+        # CUMULATIVAS do art. 163 estavam cumpridas. Sem ninguem responder, o
+        # sistema poderia recomendar reabilitar quem nao pode ser reabilitado.
         _reparacao_reab = st.radio(
             "Condição I — Reparação integral do dano à Administração:",
             options=["Sim (integral)", "Parcial", "Não", "N.A. (sem dano apurado)"],
+            index=None,
             horizontal=True,
             key="reab_reparacao",
         )
@@ -2304,12 +2318,14 @@ with aba9:
         _cond_ato_cumpridas_reab = st.radio(
             "Condição IV — Condições do ato punitivo foram cumpridas?",
             options=["Sim", "Parcial", "Não", "N.A. (sem condições no ato)"],
+            index=None,
             horizontal=True,
             key="reab_cond_ato_cumpridas",
         )
         _analise_juridica_reab = st.radio(
             "Condição V — Análise jurídica prévia:",
             options=["Realizada", "Em andamento", "Não realizada"],
+            index=None,
             horizontal=True,
             key="reab_analise_juridica",
         )
@@ -2321,10 +2337,30 @@ with aba9:
             key="reab_docs",
         )
 
+        # As tres condicoes abaixo sao CUMULATIVAS no art. 163: sem resposta, o
+        # sistema nao tem base para dizer que foram cumpridas nem descumpridas.
+        _faltando_reab = [
+            _rot for _rot, _val in (
+                ("Condição I — reparação do dano", _reparacao_reab),
+                ("Condição IV — condições do ato punitivo", _cond_ato_cumpridas_reab),
+                ("Condição V — análise jurídica prévia", _analise_juridica_reab),
+                ("Multa foi aplicada?", _multa_aplicada_reab),
+            ) if _val is None
+        ]
+        if _multa_aplicada_reab and _multa_quitada_reab is None:
+            _faltando_reab.append("Multa quitada?")
+        if _faltando_reab:
+            st.info(
+                "Responda antes de analisar: "
+                + ", ".join(_faltando_reab)
+                + ". As condições do art. 163 são cumulativas — o sistema não presume "
+                "cumprimento nem descumprimento."
+            )
         if st.button(
             "Analisar Elegibilidade →",
             type="primary",
             key="btn_reab_etapa2",
+            disabled=bool(_faltando_reab),
         ):
             if not _api_key_reab:
                 st.error(
@@ -2398,26 +2434,48 @@ with aba9:
             st.divider()
             st.markdown("### Resultado da Análise de Elegibilidade")
 
-            _pval_reab = str(_pr3_reab.get("parecer") or "INELEGÍVEL").strip().upper()
+            # Ausencia de parecer NAO vira INELEGIVEL: negar sem base mantem a
+            # empresa fora do mercado publico por defeito de resposta do modelo.
+            _pval_reab = str(_pr3_reab.get("parecer")
+                             or ia_reabilitacao.PARECER_NAO_AVALIADO).strip().upper()
             _icone_reab = {
                 "ELEGÍVEL":               "🟢",
                 "ELEGÍVEL COM RESSALVAS": "🟡",
                 "INELEGÍVEL":             "🔴",
+                ia_reabilitacao.PARECER_NAO_AVALIADO: "⚪",
             }
             st.subheader(f"{_icone_reab.get(_pval_reab, '⚪')} {_safe_md(_pval_reab)}")
             _aviso_reab = _pr3_reab.get("_aviso_parecer")
             if _aviso_reab is not None:
                 _label_reab = f"'{_safe_md(str(_aviso_reab))}'" if _aviso_reab != "" else _AVISO_CAMPO_VAZIO
                 st.warning(
-                    f"⚠️ Valor de parecer não reconhecido: {_label_reab} — registrado como **INELEGÍVEL**. Verifique manualmente."
+                    f"⚠️ Valor de parecer não reconhecido: {_label_reab} — o parecer exibido "
+                    "foi derivado do status das 5 condições. Verifique manualmente."
+                )
+            if _pval_reab == ia_reabilitacao.PARECER_NAO_AVALIADO:
+                st.warning(
+                    "⚪ **Nenhuma condição do art. 163 foi avaliada.** Isto **não** significa "
+                    "que a empresa seja inelegível: significa que não há base para deferir "
+                    "nem para negar. A reabilitação é decisão da autoridade, com "
+                    "responsabilidade própria — o sistema não a emite no vazio."
+                )
+            _pia_reab = _pr3_reab.get("_parecer_ia")
+            if _pia_reab and _pia_reab != _pval_reab:
+                st.caption(
+                    f"ℹ️ A IA concluiu **{_safe_md(str(_pia_reab))}**; o parecer acima foi "
+                    "derivado das condições cumulativas do art. 163, que é o critério do sistema."
                 )
 
             _conds_reab = _pr3_reab.get("condicoes_avaliadas") or []
-            _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—"}
+            _ic_st_reab = {"ATENDIDA": "✅", "PARCIAL": "⚠️", "AUSENTE": "❌", "N.A.": "—",
+                           "NÃO INFORMADA": "⚪"}
             for _c in _conds_reab:
                 if not _c:
                     continue
-                _st_c = str(_c.get("status") or "AUSENTE").strip().upper()
+                # Condicao sem status NAO e condicao ausente: e condicao nao
+                # informada. A primeira nega a reabilitacao; a segunda descreve
+                # o estado da instrucao do pedido.
+                _st_c = str(_c.get("status") or "NÃO INFORMADA").strip().upper()
                 _ic_c = _ic_st_reab.get(_st_c, "ℹ️")
                 with st.expander(
                     f"{_ic_c} Condição {_safe_md(_c.get('numero','?'))}: "
