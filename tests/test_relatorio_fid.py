@@ -161,3 +161,31 @@ class TestSituacaoDeclaradaNoPDF:
         txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
         assert "declarado:" not in txt
         assert "Situação registrada como pendente" not in txt
+
+
+class TestRessalvaNaConclusao:
+    """Defeito real do 3º teste: a tabela já saía 'pendente — declarado' e a
+    conclusão, logo abaixo, afirmava os mesmos vícios como constatados
+    ('vícios identificados', 'certidão vencida'). É a conclusão que a pessoa lê
+    e para; o aviso em maiúsculas ficava na última página."""
+
+    def test_sem_lastro_a_ressalva_aparece_colada_na_conclusao(self):
+        p = _parecer(conclusao="A diligência é necessária em razão de vícios "
+                               "identificados: certidão de FGTS vencida.")
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
+        assert "RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA" in txt
+        assert "declarado no formulário e não conferido" in txt
+        # tem de vir DEPOIS da conclusão, não no fim do documento
+        assert txt.index("vícios identificados") < txt.index("RESSALVA OBRIGATÓRIA")
+        assert txt.index("RESSALVA OBRIGATÓRIA") < txt.index("Prazo de Resposta")
+
+    def test_com_documento_anexado_nao_ha_ressalva(self):
+        p = _parecer(conclusao="Vícios identificados nos documentos anexados.",
+                     _documentos_analisados=[{"arquivo": "fgts.pdf", "chars": 800}])
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
+        assert "RESSALVA OBRIGATÓRIA" not in txt
+
+    def test_sem_conclusao_nao_ha_ressalva_orfa(self):
+        p = _parecer(conclusao="")
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
+        assert "RESSALVA OBRIGATÓRIA" not in txt

@@ -26,6 +26,11 @@ _ESTILO_BADGE  = ParagraphStyle("fid_badge",   parent=_estilos_base["Normal"],  
 _ESTILO_OFICIO = ParagraphStyle("fid_oficio",  parent=_estilos_base["Normal"],   fontSize=9,  spaceAfter=4, leading=14)
 _ESTILO_CELULA = ParagraphStyle("fid_celula",  parent=_estilos_base["Normal"],   fontSize=8,  leading=9.5, spaceAfter=0)
 _ESTILO_CEL_CAB = ParagraphStyle("fid_cel_cab", parent=_ESTILO_CELULA, textColor=colors.white)
+_ESTILO_RESSALVA = ParagraphStyle(
+    "fid_ressalva", parent=_estilos_base["Normal"], fontSize=9, leading=11,
+    textColor=colors.HexColor("#7B241C"), backColor=colors.HexColor("#FDEDEC"),
+    borderColor=colors.HexColor("#C0392B"), borderWidth=0.7, borderPadding=5,
+    spaceBefore=2, spaceAfter=2)
 
 # >>> DISCLAIMER (2/3): estilo do rodapé fixo + função que o desenha em CADA página.
 _ESTILO_RODAPE = ParagraphStyle(
@@ -97,6 +102,17 @@ NOTA_DECLARADO = (
     "* Situação registrada como <b>pendente</b> porque o vício indicado foi apenas "
     "DECLARADO no formulário, sem comprovação documental anexada. O sistema não "
     "constatou o vício: apenas registra o que lhe foi informado."
+)
+
+# A conclusao acima e texto livre do modelo e costuma afirmar os vicios como
+# constatados. Esta frase e escrita pelo codigo, nao pelo modelo, e so aparece
+# quando nao houve documento anexado.
+RESSALVA_CONCLUSAO = (
+    "<b>RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:</b> nenhum documento foi anexado a esta "
+    "análise. Onde a conclusão diz que um vício foi <i>identificado</i>, <i>constatado</i> "
+    "ou <i>verificado</i>, leia-se <b>declarado no formulário e não conferido</b>. O sistema "
+    "não teve acesso a documento algum do licitante e não afirma que os vícios existam — "
+    "apenas registra que foram relatados. Confira os documentos antes de expedir a diligência."
 )
 
 
@@ -248,6 +264,16 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
     if conclusao:
         story.append(Paragraph("Conclusão", _ESTILO_H2))
         story.append(Paragraph(html.escape(conclusao), _ESTILO_CORPO))
+        # DEFEITO REAL, pego no 3o teste (17/08/2026): a tabela ja saia
+        # "pendente — declarado", e a conclusao logo abaixo afirmava os MESMOS
+        # vicios como constatados ("vicios identificados", "certidao vencida").
+        # O campo estruturado obedeceu a regra do lastro; o texto livre nao — e
+        # e a conclusao que a pessoa le e para. O aviso em maiusculas existe,
+        # mas fica na ultima pagina, longe daqui. Frase escrita por codigo,
+        # colada onde o olho esta: nao depende de o modelo lembrar.
+        if ia_utils.sem_lastro_documental(parecer):
+            story.append(Spacer(1, 0.15 * cm))
+            story.append(Paragraph(RESSALVA_CONCLUSAO, _ESTILO_RESSALVA))
         story.append(Spacer(1, 0.3 * cm))
 
     _prazo_geral = parecer.get("prazo_resposta_sugerido")

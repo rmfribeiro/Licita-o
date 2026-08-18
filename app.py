@@ -119,7 +119,7 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.17-04"
+VERSAO_APP = "2026.08.17-05"
 VERSAO_NOTAS = "Declarado ≠ comprovado; aviso sem lastro documental; data em DD/MM/AAAA"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
@@ -3125,6 +3125,18 @@ with aba11:
         if _conclusao_fid:
             st.markdown("#### Conclusão")
             st.write(_safe_md(_conclusao_fid))
+            # A conclusao e texto livre e costuma afirmar os vicios como
+            # constatados, mesmo com a tabela dizendo "declarado". A ressalva e
+            # escrita por codigo e fica colada nela.
+            if ia_utils.sem_lastro_documental(_p_fid):
+                st.error(
+                    "**RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:** nenhum documento foi "
+                    "anexado a esta análise. Onde a conclusão diz que um vício foi "
+                    "*identificado*, *constatado* ou *verificado*, leia-se **declarado no "
+                    "formulário e não conferido**. O sistema não teve acesso a documento "
+                    "algum do licitante e não afirma que os vícios existam — apenas "
+                    "registra que foram relatados."
+                )
 
         with st.expander("Base Legal"):
             for _bl_fid in (_p_fid.get("base_legal") or []):
