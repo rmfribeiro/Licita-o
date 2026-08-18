@@ -189,3 +189,41 @@ class TestRessalvaNaConclusao:
         p = _parecer(conclusao="")
         txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
         assert "RESSALVA OBRIGATÓRIA" not in txt
+
+
+class TestIdentificacaoNaoVaza:
+    """Terceira aparição do mesmo defeito, achada no T3a: a tabela de
+    Identificação também usava string crua. Nos testes o objeto era curto
+    ('Serviços de TI') e nada aparecia — mas o objeto de uma licitação real tem
+    duas ou três linhas. O campo mais comprido do formulário era o menos
+    testado."""
+
+    _OBJETO = ("Registro de preços para eventual aquisição de material de expediente, "
+               "papelaria, suprimentos de informática e materiais de consumo destinados "
+               "às unidades administrativas e escolares do Município")
+    _ORGAO = ("Prefeitura Municipal de Exemplo — Secretaria Municipal de Administração "
+              "e Planejamento")
+
+    def _pdf(self):
+        d = {**_dados(), "objeto": self._OBJETO, "orgao": self._ORGAO,
+             "razao_social": "Alfa Comércio de Materiais de Expediente e "
+                             "Suprimentos de Informática Ltda ME"}
+        return relatorio_fid.gerar_pdf(d, "habilitacao", _parecer())
+
+    def test_objeto_longo_quebra_dentro_da_celula(self):
+        import io
+        import pdfplumber
+        with pdfplumber.open(io.BytesIO(self._pdf())) as doc:
+            pagina = doc.pages[0]
+            largura = pagina.width
+            # nenhuma palavra pode terminar fora da margem direita da pagina
+            for w in pagina.extract_words():
+                assert w["x1"] <= largura - 40, f"'{w['text']}' vaza da margem (x1={w['x1']:.0f})"
+
+    def test_texto_do_objeto_chega_inteiro(self):
+        txt = _texto_do_pdf(self._pdf())
+        # a pontuacao gruda no token ("papelaria,"), entao compara-se sem ela
+        palavras = {w.strip(".,;:—-") for w in txt.split()}
+        for p in ("Registro", "preços", "papelaria", "suprimentos",
+                  "administrativas", "escolares", "Município"):
+            assert p in palavras, p

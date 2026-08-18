@@ -26,6 +26,7 @@ _ESTILO_BADGE  = ParagraphStyle("fid_badge",   parent=_estilos_base["Normal"],  
 _ESTILO_OFICIO = ParagraphStyle("fid_oficio",  parent=_estilos_base["Normal"],   fontSize=9,  spaceAfter=4, leading=14)
 _ESTILO_CELULA = ParagraphStyle("fid_celula",  parent=_estilos_base["Normal"],   fontSize=8,  leading=9.5, spaceAfter=0)
 _ESTILO_CEL_CAB = ParagraphStyle("fid_cel_cab", parent=_ESTILO_CELULA, textColor=colors.white)
+_ESTILO_ID     = ParagraphStyle("fid_id",      parent=_estilos_base["Normal"],   fontSize=9,  leading=10.5, spaceAfter=0)
 _ESTILO_RESSALVA = ParagraphStyle(
     "fid_ressalva", parent=_estilos_base["Normal"], fontSize=9, leading=11,
     textColor=colors.HexColor("#7B241C"), backColor=colors.HexColor("#FDEDEC"),
@@ -137,22 +138,29 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
 
     story.append(Paragraph("Identificação", _ESTILO_H2))
     fase_label = FASES_PROCESSO.get(fase, fase)
+    # Mesma correcao da tabela de documentos, aplicada aqui depois do 3o teste:
+    # string crua nao quebra linha. O objeto de uma licitacao real tem duas ou
+    # tres linhas ("Registro de precos para eventual aquisicao de material de
+    # expediente, papelaria, suprimentos de informatica...") e vazava para fora
+    # da margem da pagina. Nos testes o objeto era curto e o defeito nao
+    # aparecia — o campo mais comprido do formulario era o menos testado.
+    _id = lambda t: Paragraph(html.escape(str(t)), _ESTILO_ID)
     linhas_id = [
-        ["Licitante",          html.escape(str(dados_licitante.get("razao_social") or "-"))],
-        ["CNPJ",               html.escape(str(dados_licitante.get("cnpj") or "-"))],
-        ["Nº Edital/Processo", html.escape(str(dados_licitante.get("numero_edital") or "-"))],
-        ["Objeto",             html.escape(str(dados_licitante.get("objeto") or "-"))],
-        ["Órgão",              html.escape(str(dados_licitante.get("orgao") or "-"))],
-        ["Fase",               html.escape(fase_label)],
+        [_id("Licitante"),          _id(dados_licitante.get("razao_social") or "-")],
+        [_id("CNPJ"),               _id(dados_licitante.get("cnpj") or "-")],
+        [_id("Nº Edital/Processo"), _id(dados_licitante.get("numero_edital") or "-")],
+        [_id("Objeto"),             _id(dados_licitante.get("objeto") or "-")],
+        [_id("Órgão"),              _id(dados_licitante.get("orgao") or "-")],
+        [_id("Fase"),               _id(fase_label)],
     ]
     t_id = Table(linhas_id, colWidths=[4.5 * cm, 12.5 * cm])
     t_id.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F2F2F2")),
-        ("FONTSIZE",   (0, 0), (-1, -1), 9),
         ("GRID",       (0, 0), (-1, -1), 0.5, colors.grey),
         ("PADDING",    (0, 0), (-1, -1), 4),
         ("VALIGN",     (0, 0), (-1, -1), "TOP"),
     ]))
+    t_id.hAlign = "LEFT"
     story.append(t_id)
     story.append(Spacer(1, 0.4 * cm))
 
