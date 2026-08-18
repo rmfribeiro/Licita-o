@@ -11,6 +11,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, fmt_brl_opcional as _fmt_brl_opcional
+import ia_utils
 import branding
 import disclaimers  # >>> DISCLAIMER (1/4): importa os textos centralizados
 
@@ -81,7 +82,7 @@ def gerar_mapa_precos(
     story.append(Paragraph("Mapa de Preços", _H1))
     story.append(Paragraph(html.escape(objeto), _H2))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}", _PEQUENO
+        ia_utils.carimbo_brasilia(), _PEQUENO
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
@@ -242,7 +243,7 @@ def gerar_relatorio_pesquisa(
     story.append(Paragraph("Relatório de Pesquisa de Preços de Mercado", _H1))
     story.append(Paragraph("Art. 23, Lei 14.133/2021 + IN SEGES/MGI 65/2021", _PEQUENO))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}", _PEQUENO
+        ia_utils.carimbo_brasilia(), _PEQUENO
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 

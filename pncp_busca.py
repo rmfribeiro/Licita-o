@@ -34,6 +34,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, date as _date
 
 # Reaproveita o calculo que ja existe no sistema (nao duplica logica)
+import ia_utils
 import ia_pesquisa_mercado
 
 # ---------------------------------------------------------------------------
@@ -141,7 +142,7 @@ DEFESO_ELEITORAL = (_date(2026, 7, 4), _date(2026, 10, 25))
 
 
 def _aviso_defeso_eleitoral(hoje=None) -> str:
-    hoje = hoje or _date.today()
+    hoje = hoje or ia_utils.hoje_brasilia()
     ini, fim = DEFESO_ELEITORAL
     if not (ini <= hoje <= fim):
         return ""
@@ -220,8 +221,9 @@ def _iterar_contratacoes(termo: str, ufs=None, dias=None,
     """
     if dias is None:
         dias = DIAS_PARA_TRAS
-    ini = (datetime.now() - timedelta(days=dias)).strftime("%Y%m%d")
-    fim = datetime.now().strftime("%Y%m%d")
+    _hoje = ia_utils.hoje_brasilia()
+    ini = (_hoje - timedelta(days=dias)).strftime("%Y%m%d")
+    fim = _hoje.strftime("%Y%m%d")
     termo_norm = _norm(termo)
     vistas = 0
 

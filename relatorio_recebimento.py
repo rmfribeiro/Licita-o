@@ -158,7 +158,7 @@ def gerar_pdf(dados_entrega: dict, tipo_objeto: str, parecer: dict) -> bytes:
     story.append(Paragraph("Monitor de Recebimento Contratual", _ESTILO_H1))
     story.append(Paragraph("Art. 140, I e II — Lei 14.133/2021", _ESTILO_PEQUENO))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}", _ESTILO_PEQUENO,
+        ia_utils.carimbo_brasilia(), _ESTILO_PEQUENO,
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 

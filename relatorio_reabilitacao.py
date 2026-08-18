@@ -92,7 +92,7 @@ def gerar_relatorio_tecnico(
     story.append(Paragraph("Reabilitação de Fornecedor — Relatório Técnico", _H1))
     story.append(Paragraph("Art. 163, Par. Único, Lei 14.133/2021", _PEQUENO))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _PEQUENO
+        ia_utils.carimbo_brasilia(), _PEQUENO
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 

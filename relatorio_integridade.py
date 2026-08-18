@@ -73,7 +73,7 @@ def gerar_pdf(municipio: str, parecer: dict) -> bytes:
         _ESTILO_PEQUENO,
     ))
     story.append(Paragraph(f"Município: {html.escape(str(municipio or ''))}", _ESTILO_PEQUENO))
-    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}", _ESTILO_PEQUENO))
+    story.append(Paragraph(ia_utils.carimbo_brasilia(), _ESTILO_PEQUENO))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
     # Nível de maturidade geral

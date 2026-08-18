@@ -119,7 +119,7 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.17-07"
+VERSAO_APP = "2026.08.18-01"
 VERSAO_NOTAS = "Declarado ≠ comprovado; aviso sem lastro documental; data em DD/MM/AAAA"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
@@ -345,8 +345,7 @@ with st.sidebar:
 
             # --- Consolidação de cobrança do mês ---
             with st.expander("💰 Uso e cobrança do mês"):
-                from datetime import datetime as _dt_uso
-                _agora_uso = _dt_uso.now()
+                _agora_uso = ia_utils.agora_brasilia()
                 _mes_ref = st.selectbox(
                     "Mês de referência",
                     list(range(1, 13)),
@@ -2252,7 +2251,9 @@ with aba9:
                 "multa_quitada":          _multa_quitada_reab,
                 "condicoes_ato_punitivo": _conds_ato_reab,
             }
-            _data_ref_reab = _date_today.today()
+            # hoje em Brasilia: esta data decide se o prazo minimo do art. 163
+            # ja decorreu. Um dia de erro muda o parecer.
+            _data_ref_reab = ia_utils.hoje_brasilia()
             _prazo_reab = None
             if _data_sancao_reab:
                 _prazo_reab = ia_reabilitacao.calcular_prazo(

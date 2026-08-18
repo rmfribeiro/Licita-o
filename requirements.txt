@@ -8,3 +8,9 @@ PyYAML>=6.0
 # Autenticação (usuários no Supabase + senhas bcrypt)
 supabase>=2.4
 bcrypt>=4.0
+
+# Fuso horário: o servidor roda em UTC e os relatórios precisam sair no horário
+# de Brasília. Sem tzdata, o zoneinfo não encontra "America/Sao_Paulo" e o
+# ia_utils cai no fallback de UTC-3 fixo — que funciona hoje, mas não acompanha
+# a lei se o horário de verão voltar.
+tzdata>=2024.1

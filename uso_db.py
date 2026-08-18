@@ -17,19 +17,33 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import auth_db
+import ia_utils
 import precos
 
 TABELA_USO = "uso_relatorios"
 
 
 def _limites_mes(ano: int | None = None, mes: int | None = None):
-    agora = datetime.now(timezone.utc)
-    ano = ano or agora.year
-    mes = mes or agora.month
-    ini = datetime(ano, mes, 1, tzinfo=timezone.utc)
-    fim = (datetime(ano + 1, 1, 1, tzinfo=timezone.utc) if mes == 12
-           else datetime(ano, mes + 1, 1, tzinfo=timezone.utc))
-    return ini.isoformat(), fim.isoformat()
+    """Fronteiras do mes de cobranca — em horario de BRASILIA, nao em UTC.
+
+    DEFEITO REAL, corrigido em 18/08/2026: o mes era recortado em UTC. Como o
+    Brasil esta 3 horas atras, um relatorio gerado as 22h do dia 31 (horario de
+    Brasilia) cai em 01h do dia 1o em UTC — e era cobrado no MES SEGUINTE. O
+    mesmo acontecia no comeco do mes, ao contrario. Fatura fechada com base em
+    fuso do servidor gera divergencia com o que o cliente viu na tela.
+
+    O instante gravado no banco continua em UTC (padrao do Supabase); o que muda
+    e o recorte: monta-se a janela no fuso de Brasilia e converte-se para UTC
+    para consultar.
+    """
+    hoje = ia_utils.hoje_brasilia()
+    ano = ano or hoje.year
+    mes = mes or hoje.month
+    ini_br = datetime(ano, mes, 1, tzinfo=ia_utils.FUSO_BR)
+    fim_br = (datetime(ano + 1, 1, 1, tzinfo=ia_utils.FUSO_BR) if mes == 12
+              else datetime(ano, mes + 1, 1, tzinfo=ia_utils.FUSO_BR))
+    return (ini_br.astimezone(timezone.utc).isoformat(),
+            fim_br.astimezone(timezone.utc).isoformat())
 
 
 def registrar_uso(usuario: str, modulo: str):

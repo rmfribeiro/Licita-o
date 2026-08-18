@@ -10,6 +10,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import COR_STATUS_HEX as _COR_STATUS, as_list as _as_list, fmt_brl as _fmt_brl, safe_float as _safe_float, fmt_brl_opcional as _fmt_brl_opcional
+import ia_utils
 import branding
 from ia_contratos import TIPOS_ALTERACAO, NORM_PARECER_CONT as _NORM_PARECER_CONT
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
@@ -86,7 +87,7 @@ def gerar_pdf(dados_contrato: dict, tipo: str, parecer: dict) -> bytes:
         _ESTILO_PEQUENO,
     ))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
+        ia_utils.carimbo_brasilia(),
         _ESTILO_PEQUENO,
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))

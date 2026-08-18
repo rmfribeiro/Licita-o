@@ -16,6 +16,7 @@ from ia_utils import (
     aviso_adequacao_story as _aviso_adequacao_story,
 )
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
+import ia_utils
 import branding
 
 _COR_ADEQUACAO = {k: colors.HexColor(v) for k, v in _COR_ADEQUACAO_HEX.items()}
@@ -120,7 +121,7 @@ def gerar_pdf(
     story.append(Paragraph("Auditoria de Termo de Referência", _ESTILO_H1))
     story.append(Paragraph("IN SEGES/MGI 81/2022 · Lei 14.133/2021, art. 6º, XXIII", _ESTILO_PEQUENO))
     story.append(Paragraph(f"Tipo de objeto: {html.escape(tipo_label)}", _ESTILO_PEQUENO))
-    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}", _ESTILO_PEQUENO))
+    story.append(Paragraph(ia_utils.carimbo_brasilia(), _ESTILO_PEQUENO))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
     # Objeto analisado

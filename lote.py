@@ -12,6 +12,7 @@ Uso:
     python3 lote.py pasta/         # audita todos os PDFs da pasta (camada automatica)
 """
 import os, sys, json, glob, datetime, html
+import ia_utils
 from collections import Counter
 from analisador import extrair_texto, analisar, aplicar_pareceres, indice_de_risco, precisa_ocr
 
@@ -83,7 +84,7 @@ def agregar(resultados):
 # ----------------------------------------------------------------- painel HTML
 def painel_html(resultados, agg):
     e = html.escape
-    data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    data = ia_utils.agora_brasilia().strftime("%d/%m/%Y %H:%M") + " (horario de Brasilia)"
     try:
         import branding as _branding
         _logo_uri, _assinatura = _branding.logo_base64(), _branding.assinatura()

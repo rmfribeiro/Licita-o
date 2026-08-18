@@ -51,7 +51,7 @@ def calcular_prazo(
         raise ValueError(
             f"tipo_sancao inválido: '{tipo_sancao}'. Esperado: {list(TIPOS_SANCAO)}"
         )
-    hoje = data_referencia or date.today()
+    hoje = data_referencia or ia_utils.hoje_brasilia()
     prazo_anos = PRAZOS_MINIMOS_ANOS[tipo_sancao]
 
     anos = hoje.year - data_aplicacao.year
@@ -150,7 +150,7 @@ def analisar(
     _data_apl = dados_sancao.get("data_aplicacao")
     if isinstance(_data_apl, str):
         _raw = _data_apl.strip()
-        _ref = data_referencia or date.today()
+        _ref = data_referencia or ia_utils.hoje_brasilia()
         try:
             _data_apl = datetime.strptime(_raw.split("T")[0][:10], "%Y-%m-%d").date()
             if _data_apl > _ref:

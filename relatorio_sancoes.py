@@ -121,7 +121,7 @@ def gerar_pdf(dados_formulario: dict, parecer: dict, minuta: str) -> bytes:
         _ESTILO_PEQUENO,
     ))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
+        ia_utils.carimbo_brasilia(),
         _ESTILO_PEQUENO,
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))

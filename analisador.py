@@ -16,6 +16,7 @@ Observacoes:
   e alguns "detectores de red flag" por padrao (regex) demonstram o conceito.
 """
 import sys, json, re, unicodedata, datetime, html, os
+import ia_utils
 from ia_utils import COR_STATUS_HEX as _COR_STATUS_HEX
 
 # ---------------------------------------------------------------- utilidades
@@ -530,7 +531,7 @@ def gerar_html(apont, pct, nivel, nome_arquivo, n_paginas):
     cor_at = _COR_NIVEL[nivel_at]
     det_at = (f"{n_alta_g} achado(s) de alta severidade" if n_alta_g else
               (f"{n_media_g} de severidade media" if n_media_g else "sem achados que exijam correcao"))
-    data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    data = ia_utils.agora_brasilia().strftime("%d/%m/%Y %H:%M") + " (horario de Brasilia)"
 
     linhas = ""
     ordem = {"inconformidade": 0, "alerta": 1, "revisar": 2, "ok": 3}

@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
+import ia_utils
 import branding
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
@@ -75,7 +76,7 @@ def gerar_pdf(
     story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Avaliação do Programa de Integridade (PI)", _ESTILO_H1))
     story.append(Paragraph("Decreto 12.304/2024 · Lei 14.133/2021 · Lei 12.846/2013", _ESTILO_PEQUENO))
-    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))
+    story.append(Paragraph(ia_utils.carimbo_brasilia(), _ESTILO_PEQUENO))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
     # Identificação

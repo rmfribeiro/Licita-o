@@ -14,6 +14,7 @@ from ia_utils import (
     COR_ADEQUACAO_HEX as _COR_ADEQUACAO_HEX,
     aviso_adequacao_story as _aviso_adequacao_story,
 )
+import ia_utils
 import branding
 
 _COR_ADEQUACAO = {k: colors.HexColor(v) for k, v in _COR_ADEQUACAO_HEX.items()}
@@ -51,7 +52,7 @@ def gerar_pdf(nomes_arquivos: list[str], avisos: list[str], parecer: dict) -> by
     story.extend(branding.cabecalho_pdf(_ESTILO_TITULO))
     story.append(Paragraph("Auditoria de ETP — Estudo Técnico Preliminar", _ESTILO_H1))
     story.append(Paragraph("IN SEGES/MGI 58/2022 · Lei 14.133/2021, art. 18, I", _ESTILO_PEQUENO))
-    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y as %H:%M')}", _ESTILO_PEQUENO))
+    story.append(Paragraph(ia_utils.carimbo_brasilia(), _ESTILO_PEQUENO))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
     # Documentos analisados

@@ -1,5 +1,6 @@
 from __future__ import annotations
-from datetime import date as _date, datetime as _datetime
+from datetime import (date as _date, datetime as _datetime,
+                      timedelta as _timedelta, timezone as _timezone)
 import hashlib
 import json
 import logging as _logging
@@ -8,6 +9,51 @@ import re as _re
 import types
 import urllib.error
 import urllib.request
+
+# ---------------------------------------------------------------- fuso
+# DEFEITO REAL, descoberto em 18/08/2026: os relatorios carimbavam
+# `datetime.now()` SEM FUSO. O Streamlit Cloud roda em UTC e o Roberto esta em
+# Aracaju (UTC-3), entao todo relatorio gerado entre 21h e meia-noite saia
+# datado do DIA SEGUINTE. Comprovado: dois testes rodados as 23:11 e 23:13 de
+# 17/08 sairam carimbados "18/08/2026 as 02:11 / 02:13".
+#
+# Num documento que entra em processo administrativo isso nao e cosmetico —
+# e no oficio de diligencia, que abre prazo, e menos ainda. Pior: `date.today()`
+# tambem alimentava o calculo do prazo minimo do art. 163 na Reabilitacao e o
+# fechamento do MES da cobranca. Um dia de erro ali muda conclusao e dinheiro.
+_OFFSET_BR_FIXO = _timezone(_timedelta(hours=-3), "America/Sao_Paulo")
+
+try:                                     # tzdata pode faltar no servidor
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    FUSO_BR = _ZoneInfo("America/Sao_Paulo")
+except Exception:                        # pragma: no cover - depende do ambiente
+    # O Brasil extinguiu o horario de verao em 2019, entao UTC-3 fixo e correto
+    # hoje. O ZoneInfo continua sendo o preferido porque acompanha a lei se ela
+    # mudar; este ramo existe so para o app nao quebrar por falta de tzdata.
+    _logging.warning("ia_utils: tzdata indisponivel — usando UTC-3 fixo")
+    FUSO_BR = _OFFSET_BR_FIXO
+
+ROTULO_FUSO = "horário de Brasília"
+
+
+def agora_brasilia() -> _datetime:
+    """Agora, no fuso de quem usa o sistema — nunca no fuso do servidor."""
+    return _datetime.now(FUSO_BR)
+
+
+def hoje_brasilia() -> _date:
+    """Hoje em Brasilia. Usar sempre no lugar de `date.today()`."""
+    return agora_brasilia().date()
+
+
+def carimbo_brasilia(prefixo: str = "Gerado em") -> str:
+    """Carimbo dos relatorios, com o fuso dito por extenso.
+
+    Dizer qual e o fuso importa: o relatorio pode ser lido meses depois, por
+    um controlador que precisa saber a que hora aquilo foi produzido.
+    """
+    return (f"{prefixo}: {agora_brasilia().strftime('%d/%m/%Y às %H:%M')} "
+            f"({ROTULO_FUSO})")
 
 COR_STATUS_HEX: types.MappingProxyType[str, str] = types.MappingProxyType({
     "ok":      "#27AE60",

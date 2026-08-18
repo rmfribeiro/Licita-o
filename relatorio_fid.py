@@ -155,7 +155,7 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
         _ESTILO_PEQNO,
     ))
     story.append(Paragraph(
-        f"Gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}", _ESTILO_PEQNO,
+        ia_utils.carimbo_brasilia(), _ESTILO_PEQNO,
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.grey, spaceAfter=8))
 
