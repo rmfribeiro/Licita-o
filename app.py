@@ -119,7 +119,7 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.17-02"
+VERSAO_APP = "2026.08.17-03"
 VERSAO_NOTAS = "Declarado ≠ comprovado; aviso sem lastro documental; data em DD/MM/AAAA"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
@@ -2960,10 +2960,15 @@ with aba11:
         placeholder="Contratação de serviços de tecnologia da informação",
         key="fid_objeto",
     )
+    # index=None: a fase determina o dispositivo aplicavel (art. 42 §2º, 59 §2º
+    # ou 64) — deixar "Habilitacao" pre-selecionado era a interface escolhendo o
+    # regime juridico por quem nao escolheu nada.
     _fase_fid    = st.selectbox(
         "Fase do processo licitatório",
         options=list(ia_fid.FASES_PROCESSO.keys()),
         format_func=lambda k: ia_fid.FASES_PROCESSO[k],
+        index=None,
+        placeholder="Selecione a fase",
         key="fid_fase",
     )
     _situacao_fid = st.text_area(
@@ -2986,6 +2991,8 @@ with aba11:
     if st.button("Analisar e Gerar Minuta de Diligência", type="primary", key="btn_fid_analisar"):
         if not _api_key_fid:
             st.error("ANTHROPIC_API_KEY não configurada. Configure a variável de ambiente.")
+        elif not _fase_fid:
+            st.error("Selecione a fase do processo licitatório: ela define o dispositivo aplicável.")
         elif not _situacao_fid.strip():
             st.error("Descreva a situação identificada antes de analisar.")
         else:
@@ -3033,15 +3040,36 @@ with aba11:
 
         st.divider()
 
-        _res_fid = str(_p_fid.get("necessita_diligencia") or "PARCIALMENTE").strip().upper()
-        _icone_fid = {"SIM": "🔴", "NÃO": "🟢", "PARCIALMENTE": "🟠"}.get(_res_fid, "⚪")
+        _res_fid = str(_p_fid.get("necessita_diligencia")
+                       or ia_fid.RESULTADO_NAO_AVALIADO).strip().upper()
+        _icone_fid = {"SIM": "🔴", "NÃO": "🟢", "PARCIALMENTE": "🟠",
+                      ia_fid.RESULTADO_NAO_AVALIADO: "⚪"}.get(_res_fid, "⚪")
         _label_fid = relatorio_fid._LABEL_RESULTADO.get(_res_fid, _res_fid)
         st.subheader(f"{_icone_fid} {_label_fid}")
+
+        if _res_fid == ia_fid.RESULTADO_NAO_AVALIADO:
+            st.warning(relatorio_fid._TEXTO_NAO_AVALIADO)
+
         _aviso_nd = _p_fid.get("_aviso_nd")
         if _aviso_nd is not None:
             st.warning(
-                f"⚠️ Valor de necessita_diligencia não reconhecido: '{_safe_md(str(_aviso_nd))}' — registrado como **DILIGÊNCIA PARCIALMENTE NECESSÁRIA**. Verifique manualmente."
+                f"⚠️ Valor de necessita_diligencia não reconhecido no retorno da IA: "
+                f"'{_safe_md(str(_aviso_nd))}'. O resultado acima foi derivado pelo sistema."
             )
+        _div_fid = _p_fid.get("_divergencia_ia")
+        if _div_fid:
+            st.warning(
+                f"⚠️ A IA havia concluído **{_safe_md(str(_div_fid))}**. O sistema registrou "
+                f"**{_safe_md(_label_fid)}** por coerência com a lista de documentos a solicitar. "
+                "Confira antes de decidir."
+            )
+        _conf_fid = _p_fid.get("_conferencia_oficio") or []
+        if _conf_fid:
+            st.error("**Conferência automática da minuta — divergências encontradas:**")
+            for _c in _conf_fid:
+                st.write(f"- {_safe_md(str(_c))}")
+
+        _mostrar_documentos_lidos(_p_fid)
 
         _docs_sol = _p_fid.get("documentos_solicitados") or []
         if _docs_sol:
@@ -3054,7 +3082,9 @@ with aba11:
                     f"— {_safe_md(_d.get('situacao') or '')}"
                 ):
                     st.write(f"**Fundamento legal:** {_safe_md(_d.get('fundamento_legal') or '-')}")
-                    st.write(f"**Prazo sugerido:** {_d.get('prazo_dias', 5)} dias úteis")
+                    _pd = _d.get("prazo_dias")
+                    st.write(f"**Prazo:** {_pd} dias (do edital)" if isinstance(_pd, int)
+                             else "**Prazo:** a fixar pela autoridade")
 
         _pontos_fid = _p_fid.get("pontos_de_atencao") or []
         if _pontos_fid:
@@ -3063,8 +3093,23 @@ with aba11:
                 if str(_pt).strip():
                     st.warning(_safe_md(_pt))
 
-        _prazo_fid = _p_fid.get("prazo_resposta_sugerido", 5)
-        st.info(f"**Prazo de resposta sugerido:** {_prazo_fid} dias úteis")
+        # O prazo NAO e mais arbitrado pelo sistema. Antes, prazo ausente virava
+        # "5 dias uteis" aqui e "5 dias" no PDF — dois numeros de natureza
+        # diferente para o mesmo prazo preclusivo, ambos inventados.
+        _prazo_fid = _p_fid.get("prazo_resposta_sugerido")
+        if isinstance(_prazo_fid, int):
+            st.info(
+                f"**Prazo indicado pela análise:** {_prazo_fid} dias. Extraído dos "
+                "documentos anexados pela leitura automática, que não valida a origem: "
+                "confirme na fonte, inclusive se os dias são úteis ou corridos."
+            )
+        else:
+            st.warning(
+                "**Nenhum prazo foi localizado no edital ou nos documentos anexados.** "
+                "A Lei 14.133/2021 não fixa prazo geral de resposta à diligência: cabe à "
+                "autoridade fixá-lo de forma expressa e motivada, indicando se os dias são "
+                "úteis ou corridos. Este sistema não arbitra esse prazo."
+            )
 
         _minuta_fid = str(_p_fid.get("minuta_oficio") or "").strip()
         if _minuta_fid:
@@ -3092,7 +3137,15 @@ with aba11:
                 "fid_pdf" not in st.session_state
                 or st.session_state.get("fid_pdf_minuta") != _minuta_atual
             ):
-                _parecer_pdf = {**_p_fid, "minuta_oficio": _minuta_atual}
+                # A conferencia roda sobre a minuta QUE VAI SAIR — inclusive se o
+                # usuario a editou a mao. Conferir so a versao original deixaria
+                # passar exatamente o erro que a edicao introduziu.
+                _parecer_pdf = {
+                    **_p_fid,
+                    "minuta_oficio": _minuta_atual,
+                    "_conferencia_oficio": ia_fid.conferir_oficio(
+                        _minuta_atual, _p_fid, _dl_fid),
+                }
                 st.session_state["fid_pdf"] = relatorio_fid.gerar_pdf(_dl_fid, _fs_fid, _parecer_pdf)
                 st.session_state["fid_pdf_minuta"] = _minuta_atual
             _cnpj_fid_dl = (_dl_fid.get("cnpj") or "licitante")

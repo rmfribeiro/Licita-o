@@ -10,8 +10,9 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable,
 )
 from ia_utils import as_list as _as_list
+import ia_utils
 import branding
-from ia_fid import FASES_PROCESSO
+from ia_fid import FASES_PROCESSO, RESULTADO_NAO_AVALIADO
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
 
 _estilos_base  = getSampleStyleSheet()
@@ -49,15 +50,29 @@ def _rodape_todas_paginas(canvas, doc):
 
 
 _COR_RESULTADO = {
-    "SIM":          colors.HexColor("#C0392B"),
-    "PARCIALMENTE": colors.HexColor("#F39C12"),
-    "NÃO":          colors.HexColor("#27AE60"),
+    "SIM":                  colors.HexColor("#C0392B"),
+    "PARCIALMENTE":         colors.HexColor("#F39C12"),
+    "NÃO":                  colors.HexColor("#27AE60"),
+    RESULTADO_NAO_AVALIADO: colors.HexColor("#808080"),
 }
 _LABEL_RESULTADO = {
-    "SIM":          "DILIGÊNCIA NECESSÁRIA",
-    "NÃO":          "DILIGÊNCIA DESNECESSÁRIA",
-    "PARCIALMENTE": "DILIGÊNCIA PARCIALMENTE NECESSÁRIA",
+    "SIM":                  "DILIGÊNCIA NECESSÁRIA",
+    "NÃO":                  "DILIGÊNCIA DESNECESSÁRIA",
+    "PARCIALMENTE":         "DILIGÊNCIA PARCIALMENTE NECESSÁRIA",
+    RESULTADO_NAO_AVALIADO: "NÃO AVALIADO",
 }
+
+_TEXTO_NAO_AVALIADO = (
+    "Este relatório NÃO conclui pela necessidade nem pela desnecessidade de diligência. "
+    "A análise não produziu base suficiente para qualquer das duas conclusões — não há, "
+    "aqui, juízo favorável ou desfavorável ao licitante. Refaça a análise descrevendo a "
+    "situação com mais precisão e anexando os documentos pertinentes."
+)
+
+
+def _fmt_prazo(v) -> str:
+    """Prazo ausente e ausente. Nao vira 5."""
+    return f"{v} dias" if isinstance(v, int) else "a fixar"
 
 
 def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
@@ -100,7 +115,7 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
     story.append(t_id)
     story.append(Spacer(1, 0.4 * cm))
 
-    _res = str(parecer.get("necessita_diligencia") or "PARCIALMENTE").strip().upper()
+    _res = str(parecer.get("necessita_diligencia") or RESULTADO_NAO_AVALIADO).strip().upper()
     _cor_badge = _COR_RESULTADO.get(_res, colors.grey)
     _label_badge = _LABEL_RESULTADO.get(_res, _res)
     t_badge = Table(
@@ -115,13 +130,36 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
     story.append(t_badge)
     story.append(Spacer(1, 0.4 * cm))
 
+    if _res == RESULTADO_NAO_AVALIADO:
+        story.append(Paragraph(f"<b>{html.escape(_TEXTO_NAO_AVALIADO)}</b>", _ESTILO_CORPO))
+        story.append(Spacer(1, 0.3 * cm))
+
     _aviso_nd = parecer.get("_aviso_nd")
     if _aviso_nd is not None:
         story.append(Paragraph(
-            f"⚠ Valor original não reconhecido: '{html.escape(str(_aviso_nd))}' — registrado como DILIGÊNCIA PARCIALMENTE NECESSÁRIA.",
+            f"⚠ Valor original não reconhecido no retorno da IA: "
+            f"'{html.escape(str(_aviso_nd))}'. O resultado acima foi derivado pelo sistema.",
             _ESTILO_CORPO,
         ))
         story.append(Spacer(1, 0.2 * cm))
+
+    _div = parecer.get("_divergencia_ia")
+    if _div:
+        story.append(Paragraph(
+            f"⚠ A IA havia concluído '{html.escape(str(_div))}'. O sistema registrou "
+            f"'{html.escape(_label_badge)}' por coerência com a lista de documentos a "
+            "solicitar. Divergência entre as duas leituras — confira antes de decidir.",
+            _ESTILO_CORPO,
+        ))
+        story.append(Spacer(1, 0.2 * cm))
+
+    _conf = _as_list(parecer.get("_conferencia_oficio"))
+    if _conf:
+        story.append(Paragraph("Conferência automática da minuta", _ESTILO_H2))
+        for _c in _conf:
+            if str(_c).strip():
+                story.append(Paragraph(f"⚠ {html.escape(str(_c))}", _ESTILO_CORPO))
+        story.append(Spacer(1, 0.3 * cm))
 
     docs = _as_list(parecer.get("documentos_solicitados"))
     if docs:
@@ -135,7 +173,7 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
                 html.escape(str(d.get("documento") or "-")),
                 html.escape(str(d.get("situacao") or "-")),
                 html.escape(str(d.get("fundamento_legal") or "-")),
-                f"{d.get('prazo_dias', 5)} dias",
+                _fmt_prazo(d.get("prazo_dias")),
             ])
         t_docs = Table(linhas_docs, colWidths=[0.6 * cm, 5.8 * cm, 2.3 * cm, 5.4 * cm, 1.9 * cm])
         t_docs.setStyle(TableStyle([
@@ -170,6 +208,36 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
         story.append(Paragraph("Conclusão", _ESTILO_H2))
         story.append(Paragraph(html.escape(conclusao), _ESTILO_CORPO))
         story.append(Spacer(1, 0.3 * cm))
+
+    _prazo_geral = parecer.get("prazo_resposta_sugerido")
+    story.append(Paragraph("Prazo de Resposta", _ESTILO_H2))
+    if isinstance(_prazo_geral, int):
+        story.append(Paragraph(
+            f"Prazo indicado pela análise: <b>{_prazo_geral} dias</b>. Este número foi "
+            "extraído dos documentos anexados pela leitura automática, que não valida a "
+            "sua origem: confirme na fonte, inclusive se os dias são úteis ou corridos, "
+            "antes de expedir o ofício.",
+            _ESTILO_CORPO,
+        ))
+    else:
+        story.append(Paragraph(
+            "<b>Nenhum prazo foi localizado no edital ou nos documentos anexados.</b> "
+            "A Lei 14.133/2021 não fixa prazo geral de resposta à diligência: cabe à "
+            "autoridade fixá-lo de forma expressa e motivada, indicando se os dias são "
+            "úteis ou corridos. Este sistema não arbitra esse prazo.",
+            _ESTILO_CORPO,
+        ))
+    story.append(Spacer(1, 0.3 * cm))
+
+    story.append(Paragraph("Documentos Analisados", _ESTILO_H2))
+    _docs_lidos = _as_list(parecer.get("_documentos_analisados"))
+    if _docs_lidos:
+        for _l in ia_utils.linhas_manifesto(_docs_lidos):
+            story.append(Paragraph(f"- {html.escape(_l)}", _ESTILO_CORPO))
+    else:
+        story.append(Paragraph(
+            f"<b>{html.escape(ia_utils.AVISO_SEM_LASTRO)}</b>", _ESTILO_CORPO))
+    story.append(Spacer(1, 0.3 * cm))
 
     base_legal = _as_list(parecer.get("base_legal"))
     if base_legal:
