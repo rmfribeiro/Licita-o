@@ -434,3 +434,109 @@ class TestConferirOficio:
         with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
             r = ia_fid.analisar("habilitacao", _dados_licitante_mock(), "teste", None, "key")
         assert len(r["_conferencia_oficio"]) >= 2
+
+
+class TestSituacaoSemLastro:
+    """Defeito real do 1º teste: a REGRA DO LASTRO mandava usar 'pendente'. O
+    modelo escreveu na CONCLUSÃO que havia obedecido e preencheu a coluna com
+    'vencido' e 'inconsistente'. Declarar obediência a uma regra descumprida é
+    pior do que não ter a regra."""
+
+    def _com_situacoes(self, *situacoes):
+        return {**_parecer_api_mock(), "documentos_solicitados": [
+            {"documento": f"Doc {i}", "situacao": s,
+             "fundamento_legal": "Art. 64, I", "prazo_dias": None}
+            for i, s in enumerate(situacoes, 1)]}
+
+    def test_constatacao_sem_documento_anexado_vira_pendente(self):
+        parecer = self._com_situacoes("vencido", "inconsistente", "ausente", "ilegível")
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar("habilitacao", _dados_licitante_mock(), "teste", None, "key")
+        for d in r["documentos_solicitados"]:
+            assert d["situacao"] == ia_fid.SITUACAO_PENDENTE, d
+        assert [d["_situacao_declarada"] for d in r["documentos_solicitados"]] == \
+               ["vencido", "inconsistente", "ausente", "ilegível"]
+
+    def test_com_documento_anexado_a_constatacao_e_preservada(self):
+        parecer = self._com_situacoes("vencido")
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar("habilitacao", _dados_licitante_mock(), "teste",
+                                "[ARQUIVO: fgts.pdf]\nCertidão vencida em 10/05/2026", "key")
+        d = r["documentos_solicitados"][0]
+        assert d["situacao"] == "vencido"
+        assert "_situacao_declarada" not in d
+
+    def test_situacao_desconhecida_vira_pendente_mesmo_com_lastro(self):
+        parecer = self._com_situacoes("gravíssimo")
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar("habilitacao", _dados_licitante_mock(), "teste",
+                                "[ARQUIVO: a.pdf]\ntexto", "key")
+        d = r["documentos_solicitados"][0]
+        assert d["situacao"] == ia_fid.SITUACAO_PENDENTE
+        assert d["_situacao_declarada"] == "gravíssimo"
+
+    def test_pendente_declarado_pela_ia_nao_ganha_sufixo_redundante(self):
+        parecer = self._com_situacoes("pendente")
+        with patch("ia_utils.urllib.request.urlopen", return_value=_mock_urlopen(parecer)):
+            r = ia_fid.analisar("habilitacao", _dados_licitante_mock(), "teste", None, "key")
+        d = r["documentos_solicitados"][0]
+        assert d["situacao"] == ia_fid.SITUACAO_PENDENTE
+        assert "_situacao_declarada" not in d
+
+
+class TestDataNaMinuta:
+    """A conferência acusou 'a minuta contém data' por causa de 'validade
+    expirada em 10/05/2026' — citação legítima do vício, no corpo do ofício. O
+    campo da data estava em branco. Verificador que grita sem motivo queima a
+    credibilidade dos avisos verdadeiros."""
+
+    def _p(self):
+        return {"necessita_diligencia": "SIM", "prazo_resposta_sugerido": None}
+
+    def test_data_citada_no_corpo_nao_e_alerta(self):
+        for corpo in (
+            "A certidão apresenta validade expirada em 10/05/2026, o que configura vício.",
+            "O documento venceu em 1º de janeiro e não foi renovado.",
+            "Conforme edital publicado em 03/02/2026, apresente os documentos.",
+        ):
+            assert ia_fid.conferir_oficio(corpo, self._p(), {}) == [], corpo
+
+    def test_data_no_campo_do_oficio_e_alerta(self):
+        for cabecalho in ("Data: 17/08/2026", "Data : 17 de agosto de 2026",
+                          "Em: 17/08/2026"):
+            alertas = ia_fid.conferir_oficio(cabecalho, self._p(), {})
+            assert any("data" in a.lower() for a in alertas), cabecalho
+
+    def test_data_no_fecho_cidade_virgula_data_e_alerta(self):
+        alertas = ia_fid.conferir_oficio(
+            "Atenciosamente,\nAracaju, 17 de agosto de 2026\n____", self._p(), {})
+        assert any("data" in a.lower() for a in alertas)
+
+    def test_campo_de_data_em_branco_nao_e_alerta(self):
+        assert ia_fid.conferir_oficio("Data: ____", self._p(), {}) == []
+
+
+class TestCominacao:
+    """Defeito real do 2º teste: em pós-adjudicação a minuta escreveu 'sob pena
+    de desclassificação da proposta e consequente rescisão do processo de
+    contratação'. Nessa fase não se desclassifica proposta."""
+
+    def _p(self):
+        return {"necessita_diligencia": "SIM", "prazo_resposta_sugerido": None}
+
+    def test_sob_pena_de_e_apontado(self):
+        alertas = ia_fid.conferir_oficio(
+            "Apresente os documentos, sob pena de desclassificação da proposta.",
+            self._p(), {})
+        assert any("comina consequência" in a for a in alertas)
+
+    def test_variantes_de_cominacao(self):
+        for t in ("sob pena de inabilitação", "sob pena de rescisão contratual",
+                  "sob pena de desqualificação do certame"):
+            assert ia_fid.conferir_oficio(f"Apresente o documento, {t}.", self._p(), {}), t
+
+    def test_oficio_sem_cominacao_nao_gera_alerta(self):
+        alertas = ia_fid.conferir_oficio(
+            "OFÍCIO DE DILIGÊNCIA Nº ____\nData: ____\n"
+            "Apresente os documentos no prazo de ____ (____) dias.", self._p(), {})
+        assert alertas == []

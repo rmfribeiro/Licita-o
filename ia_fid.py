@@ -52,6 +52,18 @@ REGRA_LASTRO = (
 PRAZO_NAO_SUGERIDO = None
 _PRAZO_MIN, _PRAZO_MAX = 1, 30
 
+# "ausente", "vencido", "ilegivel" e "inconsistente" sao CONSTATACOES: afirmam
+# um fato sobre o documento. Sem documento anexado nao ha como constata-las, e
+# elas viram "pendente" — o unico rotulo que descreve o processo sem afirmar
+# nada sobre a prova.
+SITUACAO_PENDENTE = "pendente"
+_SITUACOES_DE_FATO = frozenset({"ausente", "vencido", "vencida",
+                                "ilegível", "ilegivel", "inconsistente"})
+_SITUACOES_VALIDAS = _SITUACOES_DE_FATO | {SITUACAO_PENDENTE}
+
+# Rotulo exibido quando a situacao so existe por declaracao do formulario.
+SUFIXO_DECLARADO = "declarado no formulário, sem comprovação documental anexada"
+
 REGRA_PRAZO = (
     "\n\nREGRA DO PRAZO — obrigatória:\n"
     "A Lei 14.133/2021 não fixa prazo geral de resposta à diligência. Só preencha "
@@ -115,8 +127,17 @@ _ANDAIME_MINUTA = (
     "'documentos_solicitados' — não acrescente exigência que não esteja nessa lista. "
     "O ofício deve pedir esclarecimento ou complementação de informação já existente no "
     "processo; não redija pedido de juntada de documento novo que altere o teor da "
-    "proposta ou supra requisito de habilitação não atendido na data de sua apresentação."
+    "proposta ou supra requisito de habilitação não atendido na data de sua apresentação. "
+    "NÃO cominhe consequência para o não atendimento — nada de 'sob pena de', "
+    "'sob pena de desclassificação', 'sob pena de inabilitação', 'sob pena de rescisão' "
+    "ou equivalente. A consequência do silêncio depende do edital e da decisão motivada "
+    "da autoridade, e não pode ser antecipada por esta ferramenta."
 )
+
+# Cominacoes que o oficio nao pode fazer por conta propria.
+_RE_COMINACAO = re.compile(
+    r"sob\s+pena\s+de\s+([^.,;\n]{3,60})"
+    r"|pena\s+de\s+(desclassifica|inabilita|rescis|desqualifica)", re.IGNORECASE)
 
 _ESTRUTURA_PARECER = """{
   "necessita_diligencia": "SIM|NÃO|PARCIALMENTE",
@@ -138,10 +159,22 @@ _ESTRUTURA_PARECER = """{
 
 _RE_PRAZO_MINUTA = re.compile(
     r"\b(\d{1,3})\s*(?:\([^)]{1,30}\))?\s*(?:dias?|horas?)\b", re.IGNORECASE)
+# DEFEITO REAL DA PROPRIA CONFERENCIA, pego no 1o teste (17/08/2026): a versao
+# anterior procurava data em QUALQUER lugar da minuta e acusou "a minuta contem
+# data" por causa de "validade expirada em 10/05/2026" — a citacao legitima do
+# vicio, dentro do corpo do oficio. O campo da data estava corretamente em
+# branco. Verificador que grita sem motivo queima a credibilidade dos avisos
+# verdadeiros; o alerta so vale na POSICAO da data do oficio: a linha "Data:" e
+# o fecho "Cidade, <data>".
+_DATA = (r"(?:\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4}"
+         r"|\d{1,2}\s+de\s+(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|"
+         r"setembro|outubro|novembro|dezembro)(?:\s+de\s+\d{4})?)")
 _RE_DATA_MINUTA = re.compile(
-    r"\b\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4}\b"
-    r"|\b\d{1,2}\s+de\s+(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|"
-    r"setembro|outubro|novembro|dezembro)\s+de\s+\d{4}\b", re.IGNORECASE)
+    # "Data: 17/08/2026" — a data do proprio oficio
+    r"^[^\S\n]*(?:data|em)[^\S\n]*[:\-][^\S\n]*" + _DATA
+    # "Aracaju, 17 de agosto de 2026" — o fecho
+    + r"|^[^\S\n]*[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'-]{2,40},[^\S\n]*" + _DATA + r"[^\S\n]*\.?[^\S\n]*$",
+    re.MULTILINE | re.IGNORECASE)
 _RE_NUM_OFICIO = re.compile(
     r"of[ií]cio[^\n]{0,40}?n[ºo°.]?\s*(\d{1,6})", re.IGNORECASE)
 _RE_CNPJ_MINUTA = re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b")
@@ -189,6 +222,20 @@ def conferir_oficio(minuta: str, parecer: dict, dados_licitante: dict | None = N
         alertas.append(
             "A minuta contém data por extenso ou numérica. A data do ofício deve ficar "
             "em branco para preenchimento por quem assina."
+        )
+
+    # DEFEITO REAL, pego no 2o teste (17/08/2026): em pos-adjudicacao a minuta
+    # escreveu "sob pena de desclassificacao da proposta e consequente rescisao
+    # do processo de contratacao". Nessa fase nao se desclassifica proposta, e
+    # "rescisao do processo de contratacao" nao existe. O oficio ameacava o
+    # licitante com uma consequencia que ninguem previu.
+    m_com = _RE_COMINACAO.search(texto)
+    if m_com:
+        _trecho = (m_com.group(1) or m_com.group(0)).strip()
+        alertas.append(
+            f"A minuta comina consequência ao licitante ('{_trecho}'). A consequência do "
+            "não atendimento depende do edital e de decisão motivada da autoridade — "
+            "não pode ser antecipada no ofício de diligência."
         )
 
     m_num = _RE_NUM_OFICIO.search(texto)
@@ -322,6 +369,24 @@ def analisar(
     parecer["prazo_resposta_sugerido"] = _prazo_geral
     for _d in _itens:
         _d["prazo_dias"] = _prazo_do_edital(_d.get("prazo_dias")) if _tem_lastro else None
+
+    # ------------------------------------------------------------- situacao
+    # DEFEITO REAL, pego no 1o teste (17/08/2026): a REGRA DO LASTRO mandava
+    # usar 'pendente' sem documento anexado. O modelo escreveu na CONCLUSAO que
+    # havia obedecido — "as situacoes foram registradas como 'pendentes'
+    # conforme a regra do lastro documental" — e preencheu a coluna com
+    # 'vencido' e 'inconsistente', afirmacoes de fato sobre documentos que
+    # ninguem viu. Declarar obediencia a uma regra descumprida e pior do que
+    # nao ter a regra: a declaracao tranquiliza quem le. Instrucao no prompt e
+    # pedido; o que garante e o codigo.
+    for _d in _itens:
+        _sit = str(_d.get("situacao") or "").strip().lower()
+        if not _tem_lastro and _sit in _SITUACOES_DE_FATO:
+            _d["_situacao_declarada"] = _sit
+            _d["situacao"] = SITUACAO_PENDENTE
+        elif _sit not in _SITUACOES_VALIDAS:
+            _d["_situacao_declarada"] = _d.get("situacao")
+            _d["situacao"] = SITUACAO_PENDENTE
 
     parecer["_conferencia_oficio"] = conferir_oficio(
         str(parecer.get("minuta_oficio") or ""), parecer, dados_licitante

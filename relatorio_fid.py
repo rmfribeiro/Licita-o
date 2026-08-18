@@ -11,6 +11,7 @@ from reportlab.platypus import (
 )
 from ia_utils import as_list as _as_list
 import ia_utils
+import ia_fid
 import branding
 from ia_fid import FASES_PROCESSO, RESULTADO_NAO_AVALIADO
 import disclaimers  # >>> DISCLAIMER (1/3): importa os textos centralizados
@@ -23,6 +24,8 @@ _ESTILO_CORPO  = ParagraphStyle("fid_corpo",   parent=_estilos_base["Normal"],  
 _ESTILO_PEQNO  = ParagraphStyle("fid_peq",     parent=_estilos_base["Normal"],   fontSize=8,  textColor=colors.grey)
 _ESTILO_BADGE  = ParagraphStyle("fid_badge",   parent=_estilos_base["Normal"],   fontSize=13, textColor=colors.white, alignment=1)
 _ESTILO_OFICIO = ParagraphStyle("fid_oficio",  parent=_estilos_base["Normal"],   fontSize=9,  spaceAfter=4, leading=14)
+_ESTILO_CELULA = ParagraphStyle("fid_celula",  parent=_estilos_base["Normal"],   fontSize=8,  leading=9.5, spaceAfter=0)
+_ESTILO_CEL_CAB = ParagraphStyle("fid_cel_cab", parent=_ESTILO_CELULA, textColor=colors.white)
 
 # >>> DISCLAIMER (2/3): estilo do rodapé fixo + função que o desenha em CADA página.
 _ESTILO_RODAPE = ParagraphStyle(
@@ -73,6 +76,28 @@ _TEXTO_NAO_AVALIADO = (
 def _fmt_prazo(v) -> str:
     """Prazo ausente e ausente. Nao vira 5."""
     return f"{v} dias" if isinstance(v, int) else "a fixar"
+
+
+def _rotulo_situacao(d: dict) -> str:
+    """Quando a situacao so existe por declaracao, o rotulo diz isso na celula.
+
+    Nao basta trocar 'vencido' por 'pendente': quem le a tabela precisa saber
+    POR QUE esta pendente, senao parece hesitacao da analise e nao ausencia de
+    prova. Mas a explicacao inteira dentro da celula esticava a linha e deixava
+    a coluna ilegivel — a frase completa vai na nota abaixo da tabela.
+    """
+    sit = html.escape(str(d.get("situacao") or "-"))
+    declarada = d.get("_situacao_declarada")
+    if not declarada:
+        return sit
+    return f"{sit} *<br/>(declarado: {html.escape(str(declarada))})"
+
+
+NOTA_DECLARADO = (
+    "* Situação registrada como <b>pendente</b> porque o vício indicado foi apenas "
+    "DECLARADO no formulário, sem comprovação documental anexada. O sistema não "
+    "constatou o vício: apenas registra o que lhe foi informado."
+)
 
 
 def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
@@ -164,27 +189,43 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
     docs = _as_list(parecer.get("documentos_solicitados"))
     if docs:
         story.append(Paragraph("Documentos / Informações a Solicitar", _ESTILO_H2))
-        linhas_docs: list[list] = [["#", "Documento / Informação", "Situação", "Fundamento Legal", "Prazo"]]
+        # DEFEITO REAL, pego no 1o teste (17/08/2026): as celulas iam como string
+        # crua. String crua no ReportLab NAO quebra linha — transborda e escreve
+        # por cima da coluna vizinha. No PDF entregue, "Certidao de Regularidade
+        # com o FGTS com validade vigente" atropelou a coluna Situacao e saiu
+        # "com vavleidnacdideo vigente". A tabela inteira ficou ilegivel.
+        # Paragraph quebra linha dentro da celula.
+        _cel = lambda t: Paragraph(html.escape(str(t)), _ESTILO_CELULA)
+        linhas_docs: list[list] = [[
+            Paragraph("<b>#</b>", _ESTILO_CEL_CAB),
+            Paragraph("<b>Documento / Informação</b>", _ESTILO_CEL_CAB),
+            Paragraph("<b>Situação</b>", _ESTILO_CEL_CAB),
+            Paragraph("<b>Fundamento Legal</b>", _ESTILO_CEL_CAB),
+            Paragraph("<b>Prazo</b>", _ESTILO_CEL_CAB),
+        ]]
         for i, d in enumerate(docs, 1):
             if not isinstance(d, dict):
                 continue
             linhas_docs.append([
-                str(i),
-                html.escape(str(d.get("documento") or "-")),
-                html.escape(str(d.get("situacao") or "-")),
-                html.escape(str(d.get("fundamento_legal") or "-")),
-                _fmt_prazo(d.get("prazo_dias")),
+                _cel(i),
+                _cel(d.get("documento") or "-"),
+                # ja vem escapado por _rotulo_situacao, que precisa do <br/>
+                Paragraph(_rotulo_situacao(d), _ESTILO_CELULA),
+                _cel(d.get("fundamento_legal") or "-"),
+                _cel(_fmt_prazo(d.get("prazo_dias"))),
             ])
-        t_docs = Table(linhas_docs, colWidths=[0.6 * cm, 5.8 * cm, 2.3 * cm, 5.4 * cm, 1.9 * cm])
+        t_docs = Table(linhas_docs, colWidths=[0.7 * cm, 5.4 * cm, 3.3 * cm, 5.0 * cm, 1.6 * cm])
         t_docs.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
-            ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
-            ("FONTSIZE",   (0, 0), (-1, -1), 8),
             ("GRID",       (0, 0), (-1, -1), 0.5, colors.grey),
             ("PADDING",    (0, 0), (-1, -1), 3),
             ("VALIGN",     (0, 0), (-1, -1), "TOP"),
         ]))
+        t_docs.hAlign = "LEFT"
         story.append(t_docs)
+        if any(isinstance(d, dict) and d.get("_situacao_declarada") for d in docs):
+            story.append(Spacer(1, 0.15 * cm))
+            story.append(Paragraph(NOTA_DECLARADO, _ESTILO_PEQNO))
         story.append(Spacer(1, 0.4 * cm))
 
     pontos = _as_list(parecer.get("pontos_de_atencao"))

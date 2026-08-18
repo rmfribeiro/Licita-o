@@ -97,3 +97,67 @@ class TestConferenciaNoPDF:
     def test_sem_alertas_a_secao_nao_aparece(self):
         txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", _parecer()))
         assert "Conferência automática da minuta" not in txt
+
+
+class TestTabelaNaoTransborda:
+    """Defeito real do 1º teste: as células iam como string crua, que no
+    ReportLab não quebra linha — transborda e escreve por cima da coluna
+    vizinha. Saiu 'com vavleidnacdideo vigente' no PDF entregue."""
+
+    def _parecer_com_texto_longo(self):
+        return _parecer(documentos_solicitados=[{
+            "documento": ("Esclarecimento sobre divergência de CNPJ entre a proposta "
+                          "e a nota fiscal apresentada como atestado de capacidade técnica"),
+            "situacao": "pendente",
+            "fundamento_legal": "Art. 59, §2º e Art. 64, II, Lei 14.133/2021",
+            "prazo_dias": None,
+        }])
+
+    def test_nenhuma_palavra_sai_embaralhada(self):
+        """O defeito antigo embaralhava CARACTERES de colunas vizinhas
+        ('validade' + 'vencido' = 'vavleidnacdideo'). Como a extração de PDF lê
+        a tabela linha a linha, a frase não sai contígua nem quando está certa —
+        então o que se verifica é que cada palavra chega inteira."""
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(
+            _dados(), "habilitacao", self._parecer_com_texto_longo()))
+        palavras = set(txt.split())
+        for p in ("Esclarecimento", "divergência", "proposta", "fiscal",
+                  "apresentada", "atestado", "capacidade", "técnica", "pendente"):
+            assert p in palavras, f"palavra '{p}' saiu quebrada ou colada em outra"
+
+    def test_fundamento_legal_nao_e_atropelado(self):
+        """A coluna do fundamento também quebra em duas linhas dentro da célula;
+        o que importa é que os tokens cheguem inteiros, sem letras de outra
+        coluna no meio."""
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(
+            _dados(), "habilitacao", self._parecer_com_texto_longo()))
+        palavras = set(txt.split())
+        for p in ("Art.", "59,", "§2º", "64,", "II,", "Lei", "14.133/2021"):
+            assert p in palavras, p
+
+    def test_cabecalho_da_tabela_integro(self):
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(
+            _dados(), "habilitacao", self._parecer_com_texto_longo()))
+        for col in ("Documento / Informação", "Situação", "Fundamento Legal", "Prazo"):
+            assert col in txt, col
+
+
+class TestSituacaoDeclaradaNoPDF:
+    def test_pendente_declarado_explica_o_motivo(self):
+        p = _parecer(documentos_solicitados=[{
+            "documento": "Certidão FGTS", "situacao": "pendente",
+            "_situacao_declarada": "vencido",
+            "fundamento_legal": "Art. 64, I", "prazo_dias": None}])
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
+        assert "(declarado: vencido)" in txt
+        assert "Situação registrada como pendente porque o vício indicado foi apenas" in txt
+        assert "sem comprovação documental anexada" in txt
+
+    def test_situacao_com_lastro_nao_ganha_ressalva(self):
+        p = _parecer(_documentos_analisados=[{"arquivo": "fgts.pdf", "chars": 500}],
+                     documentos_solicitados=[{
+                         "documento": "Certidão FGTS", "situacao": "vencido",
+                         "fundamento_legal": "Art. 64, I", "prazo_dias": None}])
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
+        assert "declarado:" not in txt
+        assert "Situação registrada como pendente" not in txt
