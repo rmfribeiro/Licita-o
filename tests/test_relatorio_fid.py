@@ -227,3 +227,43 @@ class TestIdentificacaoNaoVaza:
         for p in ("Registro", "preços", "papelaria", "suprimentos",
                   "administrativas", "escolares", "Município"):
             assert p in palavras, p
+
+
+class TestRessalvaCombinaComAConclusao:
+    """Defeito real do 3º teste, versão b: a ressalva era única e falava de
+    'vícios relatados'. Ela foi colada embaixo de um parecer que concluía NÃO
+    HAVER vício nenhum — aviso disparando fora de contexto, mesma família do
+    falso positivo da data. Aviso incoerente desmoraliza os verdadeiros."""
+
+    def _sem_vicio(self, resultado):
+        return _parecer(
+            necessita_diligencia=resultado, documentos_solicitados=[],
+            minuta_oficio="",
+            conclusao="Não há elementos suficientes para deflagração de diligência.")
+
+    def test_conclusao_negativa_nao_fala_de_vicios_relatados(self):
+        for resultado in ("NÃO", ia_fid.RESULTADO_NAO_AVALIADO):
+            txt = _texto_do_pdf(relatorio_fid.gerar_pdf(
+                _dados(), "habilitacao", self._sem_vicio(resultado)))
+            assert "apenas registra que foram relatados" not in txt, resultado
+            assert "declarado no formulário e não conferido" not in txt, resultado
+
+    def test_conclusao_negativa_avisa_que_nao_atesta_regularidade(self):
+        """O selo verde é a conclusão perigosa deste módulo: é a que pode ser
+        usada para seguir em frente."""
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(
+            _dados(), "habilitacao", self._sem_vicio("NÃO")))
+        assert "sem o exame de documento algum" in txt
+        assert "NÃO significa que a documentação do licitante esteja regular" in txt
+        assert "não autoriza, por si, o prosseguimento do processo" in txt
+
+    def test_conclusao_afirmativa_mantem_a_ressalva_dos_vicios(self):
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", _parecer()))
+        assert "declarado no formulário e não conferido" in txt
+        assert "NÃO significa que a documentação do licitante esteja regular" not in txt
+
+    def test_com_lastro_nenhuma_das_duas_aparece(self):
+        p = self._sem_vicio("NÃO")
+        p["_documentos_analisados"] = [{"arquivo": "fgts.pdf", "chars": 700}]
+        txt = _texto_do_pdf(relatorio_fid.gerar_pdf(_dados(), "habilitacao", p))
+        assert "RESSALVA OBRIGATÓRIA" not in txt

@@ -119,7 +119,7 @@ b = branding.carregar()
 # basta, e preciso Reboot — e sem um marcador visivel nao ha como saber, olhando
 # o app, se o que esta rodando e o codigo novo ou o antigo. Ja perdemos rodadas
 # de teste inteiras por isso. INCREMENTAR A CADA PUBLICACAO.
-VERSAO_APP = "2026.08.17-06"
+VERSAO_APP = "2026.08.17-07"
 VERSAO_NOTAS = "Declarado ≠ comprovado; aviso sem lastro documental; data em DD/MM/AAAA"
 _icone_marca = branding.caminho("icone") or "📄"
 st.set_page_config(page_title="RM Lisura — Auditoria de Editais",
@@ -3129,14 +3129,25 @@ with aba11:
             # constatados, mesmo com a tabela dizendo "declarado". A ressalva e
             # escrita por codigo e fica colada nela.
             if ia_utils.sem_lastro_documental(_p_fid):
-                st.error(
-                    "**RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:** nenhum documento foi "
-                    "anexado a esta análise. Onde a conclusão diz que um vício foi "
-                    "*identificado*, *constatado* ou *verificado*, leia-se **declarado no "
-                    "formulário e não conferido**. O sistema não teve acesso a documento "
-                    "algum do licitante e não afirma que os vícios existam — apenas "
-                    "registra que foram relatados."
-                )
+                if _res_fid in ("SIM", "PARCIALMENTE"):
+                    st.error(
+                        "**RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:** nenhum documento foi "
+                        "anexado a esta análise. Onde a conclusão diz que um vício foi "
+                        "*identificado*, *constatado* ou *verificado*, leia-se **declarado no "
+                        "formulário e não conferido**. O sistema não teve acesso a documento "
+                        "algum do licitante e não afirma que os vícios existam — apenas "
+                        "registra que foram relatados."
+                    )
+                else:
+                    st.error(
+                        "**RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:** esta conclusão foi "
+                        "formada **sem o exame de documento algum** — nenhum foi anexado à "
+                        "análise. Ela significa apenas que a situação descrita no formulário "
+                        "não apontou vício a diligenciar; **NÃO significa que a documentação "
+                        "do licitante esteja regular, completa ou válida**, o que não foi "
+                        "verificado. Este relatório não autoriza, por si, o prosseguimento "
+                        "do processo."
+                    )
 
         with st.expander("Base Legal"):
             for _bl_fid in (_p_fid.get("base_legal") or []):

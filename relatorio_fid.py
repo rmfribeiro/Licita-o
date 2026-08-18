@@ -106,15 +106,38 @@ NOTA_DECLARADO = (
 )
 
 # A conclusao acima e texto livre do modelo e costuma afirmar os vicios como
-# constatados. Esta frase e escrita pelo codigo, nao pelo modelo, e so aparece
-# quando nao houve documento anexado.
-RESSALVA_CONCLUSAO = (
+# constatados. Estas frases sao escritas pelo codigo, nao pelo modelo, e so
+# aparecem quando nao houve documento anexado.
+#
+# SAO DUAS, e a distincao veio de um defeito real (3o teste, versao b): a
+# ressalva unica falava de "vicios relatados" e foi colada embaixo de um parecer
+# que concluia NAO HAVER vicio nenhum. Aviso que dispara fora de contexto e da
+# mesma familia do falso positivo da data — desmoraliza os avisos verdadeiros.
+RESSALVA_CONCLUSAO_AFIRMATIVA = (
     "<b>RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:</b> nenhum documento foi anexado a esta "
     "análise. Onde a conclusão diz que um vício foi <i>identificado</i>, <i>constatado</i> "
     "ou <i>verificado</i>, leia-se <b>declarado no formulário e não conferido</b>. O sistema "
     "não teve acesso a documento algum do licitante e não afirma que os vícios existam — "
     "apenas registra que foram relatados. Confira os documentos antes de expedir a diligência."
 )
+
+# Esta e a mais importante das duas. O selo verde e a conclusao perigosa deste
+# modulo: e a que pode ser usada para seguir em frente. Dizer "nao ha o que
+# diligenciar" sem ter aberto documento algum nao e um atestado de regularidade.
+RESSALVA_CONCLUSAO_NEGATIVA = (
+    "<b>RESSALVA OBRIGATÓRIA À CONCLUSÃO ACIMA:</b> esta conclusão foi formada <b>sem o "
+    "exame de documento algum</b> — nenhum foi anexado à análise. Ela significa apenas que "
+    "a situação descrita no formulário não apontou vício a diligenciar; <b>NÃO significa que "
+    "a documentação do licitante esteja regular, completa ou válida</b>, o que não foi "
+    "verificado. Este relatório não autoriza, por si, o prosseguimento do processo."
+)
+
+
+def _ressalva_da_conclusao(resultado: str) -> str:
+    """A ressalva tem de dizer respeito ao que a conclusao afirma."""
+    if resultado in ("SIM", "PARCIALMENTE"):
+        return RESSALVA_CONCLUSAO_AFIRMATIVA
+    return RESSALVA_CONCLUSAO_NEGATIVA
 
 
 def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
@@ -281,7 +304,7 @@ def gerar_pdf(dados_licitante: dict, fase: str, parecer: dict) -> bytes:
         # colada onde o olho esta: nao depende de o modelo lembrar.
         if ia_utils.sem_lastro_documental(parecer):
             story.append(Spacer(1, 0.15 * cm))
-            story.append(Paragraph(RESSALVA_CONCLUSAO, _ESTILO_RESSALVA))
+            story.append(Paragraph(_ressalva_da_conclusao(_res), _ESTILO_RESSALVA))
         story.append(Spacer(1, 0.3 * cm))
 
     _prazo_geral = parecer.get("prazo_resposta_sugerido")
